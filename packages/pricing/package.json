@@ -1,0 +1,20 @@
+{
+  "name": "@agent-profiler/pricing",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@agent-profiler/tsconfig-base": "workspace:*",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

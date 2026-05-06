@@ -1,0 +1,16 @@
+{
+  "name": "@agent-profiler/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --build",
+    "dev": "echo 'dev not yet configured'",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@agent-profiler/tsconfig-base": "workspace:*",
+    "typescript": "^5.7.0"
+  }
+}
