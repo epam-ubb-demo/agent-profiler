@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+out/
+build/
+release/
+
+# Test and coverage output
+coverage/
+playwright-report/
+test-results/
+
+# Turborepo
+.turbo/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEs and editors
+.idea/
+.vscode/*.local
+.vscode/settings.local.json
+*.swp
+*.swo
+
+# Electron artefacts
+*.asar
+*.dmg
+*.exe
+*.deb
+*.rpm
