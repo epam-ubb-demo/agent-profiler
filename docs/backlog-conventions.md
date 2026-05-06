@@ -25,12 +25,12 @@ Expected label groups:
 
 ## Branch naming
 
-- Feature work: `feature/<slug>`
-- Releases: `release/x.y.z`
+- Feature work: `feature/<wbs>-<slug>`
+- Bug fixes: `fix/<wbs>-<slug>`
 - Hotfixes: `hotfix/<slug>`
 - Repository maintenance may use `chore/<slug>` when approved.
 
-Feature and chore branches normally target `develop`. Release and hotfix branches follow GitFlow and must be merged back into the appropriate long-lived branches.
+Feature and chore branches always target `main`. Releases are cut from `main` via tags; there are no long-lived release branches.
 
 ## Commit convention
 
@@ -63,7 +63,7 @@ Every Feature and PR must pass these five gates:
 - [ ] Requirements fully met
 - [ ] Copilot Review requested and feedback addressed
 - [ ] Code review feedback received and no errors remain
-- [ ] PR is merged back to `develop` (or `main` for the bootstrap/release PRs)
+- [ ] PR is merged into `main`
 
 ## Phase mapping
 

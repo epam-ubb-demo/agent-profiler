@@ -1,6 +1,6 @@
 # Contributing to Agent Profiler
 
-Agent Profiler is an Electron, React, and EPAM UUI desktop application for visualising AI coding-agent session logs from Copilot CLI, VS Code Copilot Chat, and ctb benchmark runs. It succeeds the `ctb viz` HTML prototype and will grow through small, reviewed GitFlow changes.
+Agent Profiler is an Electron, React, and EPAM UUI desktop application for visualising AI coding-agent session logs from Copilot CLI, VS Code Copilot Chat, and ctb benchmark runs. It succeeds the `ctb viz` HTML prototype and will grow through small, reviewed trunk-based changes.
 
 ## Local prerequisites
 
@@ -13,41 +13,26 @@ Do not add alternative package managers, lockfiles, or framework configuration u
 
 ## Branch model
 
-This repository uses GitFlow:
+This repository uses a **trunk-based workflow**. There is one long-lived branch: `main`.
 
-```mermaid
-gitGraph
-  commit id: "main"
-  branch develop
-  checkout develop
-  commit id: "integration"
-  branch feature/example
-  checkout feature/example
-  commit id: "feature work"
-  checkout develop
-  merge feature/example
-  branch release/0.1.0
-  checkout release/0.1.0
-  commit id: "release hardening"
-  checkout main
-  merge release/0.1.0
-  checkout develop
-  merge main
-  checkout main
-  branch hotfix/example
-  checkout hotfix/example
-  commit id: "hotfix"
-  checkout main
-  merge hotfix/example
-  checkout develop
-  merge main
-```
+- All work happens on short-lived branches off `main`.
+- Branches are merged back into `main` via squash-merge with a Conventional Commits title.
+- Releases are cut from `main` by tagging `vX.Y.Z`. There are no long-lived release branches.
 
-- `main` is the protected release branch.
-- `develop` is the integration branch for feature work.
-- Feature branches use `feature/<slug>` and target `develop`.
-- Release branches use `release/x.y.z`.
-- Hotfix branches use `hotfix/<slug>` and are merged back into both `main` and `develop`.
+### Branch naming
+
+| Prefix | Use when | Example |
+| ------ | -------- | ------- |
+| `feature/<wbs>-<slug>` | Implementing a Feature from the backlog | `feature/f0-1-monorepo-foundation` |
+| `fix/<wbs>-<slug>` | Bug fix tied to a backlog issue | `fix/f1-3-timeline-overflow` |
+| `chore/<slug>` | Repo plumbing, docs, governance | `chore/trunk-based-workflow` |
+| `hotfix/<slug>` | Urgent production fix | `hotfix/cve-2026-xxxx` |
+
+### Hotfix flow
+
+1. Branch from the affected tag: `git checkout -b hotfix/<slug> vX.Y.Z`.
+2. Fix and open a PR against `main`.
+3. After merge, tag `vX.Y.(Z+1)` on `main`.
 
 ## Commit convention
 
@@ -65,11 +50,11 @@ Keep commits focused and explain the reason for non-obvious changes in the body.
 1. Choose an issue labelled by type (`type:epic`, `type:feature`, `type:task`, `type:bug`, or `type:spike`) and phase (`phase:p0` through `phase:p6`).
 2. Check the requested specialist role: developer, infrastructure, testing, testing-automation, code-quality, tech-writer, business-analyst, release-manager, or onboarding-coach.
 3. Comment with your intended approach before starting if the issue is not already assigned.
-4. Create a branch from `develop` using the branch naming rules above.
+4. Create a short-lived branch from `main` using the branch naming rules above.
 
 ## Pull requests
 
-Open focused PRs against `develop` unless you are preparing an approved release or hotfix. The bootstrap PR is the only initial exception and targets `main` directly.
+Open focused PRs against `main` and use squash-merge with a Conventional Commits title.
 
 Every PR must satisfy the Definition of Done from `.github/PULL_REQUEST_TEMPLATE.md`:
 
@@ -77,7 +62,7 @@ Every PR must satisfy the Definition of Done from `.github/PULL_REQUEST_TEMPLATE
 - Requirements fully met
 - Copilot Review requested and feedback addressed
 - Code review feedback received and no errors remain
-- PR is merged back to `develop` (or `main` for the bootstrap/release PRs)
+- PR is merged into `main`
 
 Include testing notes, screenshots for UI changes, breaking-change notes, and documentation updates where relevant.
 
