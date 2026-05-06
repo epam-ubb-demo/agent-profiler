@@ -1,0 +1,20 @@
+{
+  "name": "@agent-profiler/eslint-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "dependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint-plugin-import-x": "^4.5.0",
+    "eslint-plugin-react": "^7.37.0",
+    "eslint-plugin-react-hooks": "^5.1.0"
+  },
+  "peerDependencies": {
+    "eslint": "^9.16.0",
+    "typescript": "^5.7.0"
+  }
+}

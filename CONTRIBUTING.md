@@ -4,10 +4,34 @@ Agent Profiler is an Electron, React, and EPAM UUI desktop application for visua
 
 ## Local prerequisites
 
-Feature implementation starts in a follow-up PR. Once the application scaffold exists, contributors should use:
+This is a **pnpm + Turborepo monorepo**. All workspaces are managed from the repository root.
 
-- Node.js 20 LTS
-- pnpm
+- **Node.js** ≥ 20 LTS
+- **pnpm** ≥ 9 (enabled via `corepack enable`)
+
+```bash
+corepack enable
+pnpm install
+```
+
+### Monorepo layout
+
+| Directory | Purpose |
+| --------- | ------- |
+| `packages/*` | Shared libraries (core, pricing, ui) |
+| `apps/*` | Deployable applications (desktop, docs) |
+| `tooling/*` | Internal configs (tsconfig, eslint, prettier) |
+
+Turborepo orchestrates all build/test/lint tasks. Run commands from the root:
+
+```bash
+pnpm build       # Build all workspaces
+pnpm lint        # Lint all workspaces
+pnpm typecheck   # Type-check all workspaces
+pnpm test        # Run Vitest across all workspaces
+```
+
+See [`DEVELOPING.md`](./DEVELOPING.md) for the full development guide.
 
 Do not add alternative package managers, lockfiles, or framework configuration unless an approved issue explicitly asks for them.
 

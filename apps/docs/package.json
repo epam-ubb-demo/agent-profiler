@@ -1,0 +1,16 @@
+{
+  "name": "@agent-profiler/docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo 'docs build not yet configured'",
+    "dev": "echo 'docs dev not yet configured'",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@agent-profiler/tsconfig-base": "workspace:*",
+    "typescript": "^5.7.0"
+  }
+}
