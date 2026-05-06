@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question or discuss an idea
+    url: https://github.com/epam-ubb-demo/agent-profiler/discussions
+    about: Use GitHub Discussions for questions, proposals, and community conversations.
+  - name: Report a security vulnerability
+    url: https://github.com/epam-ubb-demo/agent-profiler/security/policy
+    about: Please follow the responsible disclosure process instead of opening a public issue.

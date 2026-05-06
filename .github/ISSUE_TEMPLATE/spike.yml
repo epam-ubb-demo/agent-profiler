@@ -1,0 +1,34 @@
+name: Spike
+description: Time-box research to answer an open question.
+title: "[SPIKE] "
+labels: ["type:spike", "status:needs-spike"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What question must this spike answer?
+    validations:
+      required: true
+  - type: input
+    id: time-box
+    attributes:
+      label: Time-box
+      description: How much effort is allocated?
+      placeholder: e.g. 1 day, 2 days, 1 week
+    validations:
+      required: true
+  - type: textarea
+    id: outputs-decisions
+    attributes:
+      label: Outputs/decisions required
+      description: What artefacts, decisions, or recommendations should be produced?
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Owner
+      description: GitHub handle or specialist responsible for the spike.
+    validations:
+      required: true
