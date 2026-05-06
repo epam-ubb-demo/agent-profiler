@@ -1,0 +1,82 @@
+name: Feature
+description: Define a user-visible capability delivered through linked Tasks.
+title: "[FEATURE] "
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: user-story
+    attributes:
+      label: User story
+      description: Describe the user, need, and expected value.
+      placeholder: As a ..., I want ..., so that ...
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: List verifiable acceptance criteria.
+      placeholder: |
+        - Given ..., when ..., then ...
+    validations:
+      required: true
+  - type: textarea
+    id: linked-tasks
+    attributes:
+      label: Linked Tasks
+      description: Add native sub-issues or issue references as Tasks are created.
+      placeholder: "- #123"
+  - type: dropdown
+    id: specialist-roster
+    attributes:
+      label: Specialist roster
+      description: Select all specialist roles expected to contribute.
+      multiple: true
+      options:
+        - developer
+        - infrastructure
+        - testing
+        - testing-automation
+        - code-quality
+        - tech-writer
+        - business-analyst
+        - release-manager
+        - onboarding-coach
+    validations:
+      required: true
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Phase
+      description: Select the delivery phase for this feature.
+      options:
+        - P0
+        - P1
+        - P2
+        - P3
+        - P4
+        - P5
+        - P6
+    validations:
+      required: true
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: DoD checklist
+      description: These five gates must be complete before the Feature is considered done.
+      options:
+        - label: Pull Request created
+          required: true
+        - label: Requirements fully met
+          required: true
+        - label: Copilot Review requested and feedback addressed
+          required: true
+        - label: Code review feedback received and no errors remain
+          required: true
+        - label: PR is merged back to `develop` (or `main` for the bootstrap/release PRs)
+          required: true
+  - type: textarea
+    id: open-questions
+    attributes:
+      label: Open questions
+      description: Capture unresolved product, technical, or delivery questions.

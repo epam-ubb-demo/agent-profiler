@@ -1,0 +1,47 @@
+name: Epic
+description: Track a broad outcome delivered through linked Features.
+title: "[EPIC] "
+labels: ["type:epic"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What strategic goal does this epic support?
+      placeholder: Describe the product or delivery goal.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What user, business, or operational outcome should be visible when this is complete?
+    validations:
+      required: true
+  - type: textarea
+    id: in-scope
+    attributes:
+      label: In scope
+      description: List the capabilities, workflows, or decisions included in this epic.
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: List related items that are intentionally excluded.
+    validations:
+      required: true
+  - type: textarea
+    id: linked-features
+    attributes:
+      label: Linked Features
+      description: Add native sub-issues or issue references as Features are created.
+      placeholder: "- #123"
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks
+      description: Delivery, product, security, or technical risks to monitor.
+    validations:
+      required: true
