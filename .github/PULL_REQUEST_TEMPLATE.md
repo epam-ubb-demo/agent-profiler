@@ -30,7 +30,7 @@ Closes #
 - [ ] Requirements fully met
 - [ ] Copilot Review requested and feedback addressed
 - [ ] Code review feedback received and no errors remain
-- [ ] PR is merged back to `develop` (or `main` for the bootstrap/release PRs)
+- [ ] PR is merged into `main`
 
 ## Testing notes
 

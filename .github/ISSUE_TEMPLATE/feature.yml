@@ -73,7 +73,7 @@ body:
           required: true
         - label: Code review feedback received and no errors remain
           required: true
-        - label: PR is merged back to `develop` (or `main` for the bootstrap/release PRs)
+        - label: PR is merged into `main`
           required: true
   - type: textarea
     id: open-questions
