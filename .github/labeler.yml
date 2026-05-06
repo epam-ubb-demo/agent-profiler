@@ -1,0 +1,30 @@
+# Label configuration for actions/labeler@v5
+# Maps file path patterns to PR labels.
+
+pkg:core:
+  - changed-files:
+      - any-glob-to-any-file: 'packages/core/**'
+
+pkg:ui:
+  - changed-files:
+      - any-glob-to-any-file: 'packages/ui/**'
+
+pkg:pricing:
+  - changed-files:
+      - any-glob-to-any-file: 'packages/pricing/**'
+
+app:desktop:
+  - changed-files:
+      - any-glob-to-any-file: 'apps/desktop/**'
+
+app:docs:
+  - changed-files:
+      - any-glob-to-any-file: 'apps/docs/**'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: 'docs/**'
