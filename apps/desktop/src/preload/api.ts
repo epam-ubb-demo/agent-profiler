@@ -11,21 +11,18 @@ export interface ElectronApi {
 
   session: {
     /** Lists all available session summaries */
-    list: () => Promise<SessionSummary[]>;
+    list: () => Promise<SessionListItemIpc[]>;
     /** Opens a session by ID, returning full session data or null */
-    open: (sessionId: string) => Promise<SessionData | null>;
+    open: (sessionId: string) => Promise<unknown | null>;
+    /** Sets the root directory for session scanning */
+    setRootDir: (dir: string) => Promise<boolean>;
   };
 }
 
-export interface SessionSummary {
+export interface SessionListItemIpc {
   id: string;
   name: string;
+  path: string;
   createdAt: string;
-}
-
-export interface SessionData {
-  id: string;
-  name: string;
-  createdAt: string;
-  events: unknown[];
+  adapter: 'copilot-cli' | 'vscode-chat' | 'vscode-agent' | 'ctb';
 }

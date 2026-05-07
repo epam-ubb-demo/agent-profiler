@@ -1,0 +1,35 @@
+{
+  "name": "@agent-profiler/data-source",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./hooks": "./src/hooks/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agent-profiler/core": "workspace:*",
+    "@agent-profiler/adapters-copilot-cli": "workspace:*",
+    "@tanstack/react-query": "^5.0.0"
+  },
+  "devDependencies": {
+    "@agent-profiler/tsconfig-base": "workspace:*",
+    "@testing-library/react": "^16.0.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.0.0",
+    "jsdom": "^25.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  }
+}

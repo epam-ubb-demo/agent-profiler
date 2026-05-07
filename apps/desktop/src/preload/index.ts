@@ -7,6 +7,7 @@ const api: ElectronApi = {
   session: {
     list: () => ipcRenderer.invoke('session:list'),
     open: (sessionId: string) => ipcRenderer.invoke('session:open', sessionId),
+    setRootDir: (dir: string) => ipcRenderer.invoke('session:setRootDir', dir),
   },
 };
 

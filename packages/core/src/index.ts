@@ -47,5 +47,11 @@ export {
 } from './schemas/index';
 
 // IPC (existing)
-export { sessionSummarySchema, sessionDataSchema, ipcChannels } from './ipc-schemas';
-export type { SessionSummary, SessionData } from './ipc-schemas';
+export {
+  sessionSummarySchema,
+  sessionDataSchema,
+  adapterTypeSchema,
+  sessionListItemSchema,
+  ipcChannels,
+} from './ipc-schemas';
+export type { SessionSummary, SessionData, AdapterTypeIpc, SessionListItemIpc } from './ipc-schemas';
