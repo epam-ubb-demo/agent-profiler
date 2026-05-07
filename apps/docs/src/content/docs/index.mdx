@@ -1,0 +1,37 @@
+---
+title: Agent Profiler
+description: Visualise AI coding-agent sessions
+template: splash
+hero:
+  tagline: Visualise AI coding-agent sessions — understand token usage, tool calls, and conversation flow at a glance.
+  actions:
+    - text: Getting started
+      link: /agent-profiler/getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/epam-ubb-demo/agent-profiler
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+:::caution[Pre-alpha]
+This project is in pre-alpha. APIs may change without notice.
+:::
+
+<CardGrid>
+  <Card title="Session visualisation" icon="rocket">
+    Explore turn-by-turn conversations, tool invocations, and token consumption across your AI coding sessions.
+  </Card>
+  <Card title="Multiple adapters" icon="puzzle">
+    Support for GitHub Copilot CLI, VS Code Copilot Chat, and more — bring your own data source.
+  </Card>
+  <Card title="Cost analysis" icon="information">
+    Track token usage and estimate costs per session, per model, and per tool call.
+  </Card>
+  <Card title="Open source" icon="open-book">
+    MIT-licensed. Contribute adapters, visualisations, or documentation.
+  </Card>
+</CardGrid>

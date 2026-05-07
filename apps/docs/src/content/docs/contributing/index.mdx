@@ -1,0 +1,35 @@
+---
+title: Contributing & operations
+description: How to contribute to Agent Profiler and operational guidance.
+---
+
+Thank you for your interest in contributing to Agent Profiler!
+
+## Getting started
+
+1. Fork the repository
+2. Create a feature branch from `main`
+3. Make your changes following our conventions
+4. Submit a pull request
+
+## Development setup
+
+```bash
+pnpm install
+pnpm build
+pnpm test
+pnpm lint
+```
+
+## Conventions
+
+- **Commits**: Conventional Commits (`feat:`, `fix:`, `docs:`, etc.)
+- **Language**: British English throughout documentation
+- **Testing**: Vitest for unit tests; co-locate test files as `*.spec.ts`
+- **Packages**: each workspace package is independently versioned
+
+## Operations
+
+- CI runs on every PR via GitHub Actions
+- Documentation deploys automatically on merge to `main`
+- Desktop releases are triggered by version tags
