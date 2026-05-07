@@ -530,6 +530,21 @@ const TurnDetail = memo(function TurnDetail({ turn }: TurnDetailProps) {
           {firstAssistant && (
             <div className={styles.turnPanelAgent}>
               <div className={styles.turnPanelLabel}>AGENT RESPONSE</div>
+              {/* Token summary for this turn */}
+              {(() => {
+                const tok = turnTokens(turn);
+                const hasTokData = tok.output > 0 || tok.input > 0 || tok.cacheRead > 0;
+                if (!hasTokData) return null;
+                const parts: string[] = [];
+                if (tok.output > 0) parts.push(`Out: ${formatTokenCount(tok.output)}`);
+                if (tok.input > 0) parts.push(`In: ${formatTokenCount(tok.input)}`);
+                if (tok.cacheRead > 0) parts.push(`Cached: ${formatTokenCount(tok.cacheRead)}`);
+                return (
+                  <div className={styles.turnTokenSummary}>
+                    {parts.join(' · ')}
+                  </div>
+                );
+              })()}
               {firstAssistant.reasoningText && (
                 <div className={styles.reasoning}>{firstAssistant.reasoningText}</div>
               )}

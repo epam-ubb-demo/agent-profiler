@@ -321,6 +321,13 @@
   margin-bottom: 8px;
 }
 
+.turnTokenSummary {
+  font-size: 0.75rem;
+  color: var(--uui-text-info);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
 .turnPanelBody {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 0.75rem;
