@@ -154,6 +154,7 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
           includeCompactions={includeCompactions}
           onToggleCompactions={toggleCompactions}
           modelColours={modelColours}
+          onSessionNavigate={onSessionNavigate}
         />
       </Section>
 
@@ -190,7 +191,7 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
       {/* 11. Sub-agent fan-outs */}
       {session.subagents.length > 0 && (
         <Section title="Sub-agent fan-outs">
-          <SubagentTable subagents={session.subagents} />
+          <SubagentTable subagents={session.subagents} onSessionNavigate={onSessionNavigate} />
         </Section>
       )}
 

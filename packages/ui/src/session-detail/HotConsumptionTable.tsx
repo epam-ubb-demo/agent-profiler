@@ -16,6 +16,8 @@ export interface HotConsumptionTableProps {
   readonly includeCompactions: boolean;
   readonly onToggleCompactions: () => void;
   readonly modelColours: Record<string, string>;
+  /** Called when the user wants to drill into a sub-agent's child session. */
+  readonly onSessionNavigate?: (sessionId: string) => void;
 }
 
 const TYPE_BADGE_CLASS: Record<HotConsumptionEntry['type'], string> = {
@@ -42,6 +44,7 @@ function HotConsumptionTableInner({
   includeCompactions,
   onToggleCompactions,
   modelColours,
+  onSessionNavigate,
 }: HotConsumptionTableProps) {
   const { entries, totalEntries, topNTokens } = result;
 
@@ -120,7 +123,19 @@ function HotConsumptionTableInner({
                   }}
                 />
               </td>
-              <td>{entry.detail}</td>
+              <td>
+                {entry.detail}
+                {entry.childSessionRef && onSessionNavigate && (
+                  <button
+                    type="button"
+                    className={styles.drillDownButton}
+                    onClick={() => onSessionNavigate(entry.childSessionRef!)}
+                    title={`Open child session ${entry.childSessionRef}`}
+                  >
+                    Open session ↗
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

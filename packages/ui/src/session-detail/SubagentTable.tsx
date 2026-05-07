@@ -11,6 +11,8 @@ import styles from './session-detail.module.css';
 
 export interface SubagentTableProps {
   readonly subagents: readonly SubagentInvocation[];
+  /** Called when the user wants to drill into a sub-agent's child session. */
+  readonly onSessionNavigate?: (sessionId: string) => void;
 }
 
 /** Format an ISO timestamp to a time-only string, or return an em-dash. */
@@ -27,7 +29,7 @@ function formatTime(ts: string | null): string {
   }
 }
 
-function SubagentTableInner({ subagents }: SubagentTableProps) {
+function SubagentTableInner({ subagents, onSessionNavigate }: SubagentTableProps) {
   return (
     <table className={styles.dataTable} role="grid">
       <thead>
@@ -38,6 +40,7 @@ function SubagentTableInner({ subagents }: SubagentTableProps) {
           <th scope="col" className={styles.numericCell}>Tokens</th>
           <th scope="col" className={styles.numericCell}>Messages</th>
           <th scope="col" className={styles.numericCell}>Tool calls</th>
+          {onSessionNavigate && <th scope="col" />}
         </tr>
       </thead>
       <tbody>
@@ -51,6 +54,20 @@ function SubagentTableInner({ subagents }: SubagentTableProps) {
             <td className={styles.numericCell}>{formatTokenCount(sub.totalTokens)}</td>
             <td className={styles.numericCell}>{sub.messageCount}</td>
             <td className={styles.numericCell}>{sub.toolCallCount}</td>
+            {onSessionNavigate && (
+              <td>
+                {sub.childSessionRef && (
+                  <button
+                    type="button"
+                    className={styles.drillDownButton}
+                    onClick={() => onSessionNavigate(sub.childSessionRef!)}
+                    title={`Open child session ${sub.childSessionRef}`}
+                  >
+                    Open session ↗
+                  </button>
+                )}
+              </td>
+            )}
           </tr>
         ))}
       </tbody>

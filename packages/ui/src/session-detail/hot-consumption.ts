@@ -42,6 +42,8 @@ export interface HotConsumptionEntry {
   readonly proportion: number;
   /** Brief human-readable summary of the event's contents. */
   readonly detail: string;
+  /** Child session reference for sub-agent entries (null otherwise). */
+  readonly childSessionRef: string | null;
 }
 
 /** Aggregated result returned by {@link computeHotConsumption}. */
@@ -83,6 +85,7 @@ interface RawEntry {
   readonly model: string | null;
   readonly tokens: number;
   readonly detail: string;
+  readonly childSessionRef: string | null;
 }
 
 /** Compute total tokens for a single turn across all assistant messages. */
@@ -184,6 +187,7 @@ export function computeHotConsumption(
         : null,
       tokens,
       detail: turnDetail(turn),
+      childSessionRef: null,
     });
   }
 
@@ -196,6 +200,7 @@ export function computeHotConsumption(
       model: null,
       tokens: sub.totalTokens,
       detail: subagentDetail(sub),
+      childSessionRef: sub.childSessionRef,
     });
   }
 
@@ -210,6 +215,7 @@ export function computeHotConsumption(
         model: c.model,
         tokens,
         detail: compactionDetail(c),
+        childSessionRef: null,
       });
     }
   }
@@ -233,6 +239,7 @@ export function computeHotConsumption(
     estimatedUsd: null,
     proportion: maxTokens > 0 ? e.tokens / maxTokens : 0,
     detail: e.detail,
+    childSessionRef: e.childSessionRef,
   }));
 
   return {
