@@ -1,0 +1,9 @@
+{
+  "name": "valid-pkg",
+  "version": "1.0.0",
+  "type": "module",
+  "keywords": ["agent-profiler-plugin"],
+  "exports": {
+    ".": "./index.mjs"
+  }
+}
