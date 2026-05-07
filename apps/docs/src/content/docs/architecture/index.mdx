@@ -1,0 +1,24 @@
+---
+title: Architecture & ADRs
+description: System design, package structure, and architecture decision records.
+---
+
+This section documents the high-level architecture of Agent Profiler and the decisions that shaped it.
+
+## Package structure
+
+```
+agent-profiler/
+├── apps/
+│   ├── desktop/      # Electron desktop application
+│   └── docs/         # This documentation site
+├── packages/
+│   ├── core/         # Canonical types and shared logic
+│   ├── ui/           # React component library
+│   └── adapters-*/   # Data-source adapters
+└── tooling/          # Shared build configuration
+```
+
+## Architecture Decision Records
+
+ADRs document significant technical choices. See the [ADR index](/agent-profiler/architecture/adr/) for the full list.
