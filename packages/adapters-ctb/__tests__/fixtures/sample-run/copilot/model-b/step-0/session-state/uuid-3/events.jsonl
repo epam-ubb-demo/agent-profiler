@@ -1,0 +1,2 @@
+{"type":"session.start","timestamp":"2025-01-15T10:02:00.000Z","id":"evt-001","data":{"sessionId":"sess-uuid-3","copilotVersion":"1.0.0","selectedModel":"model-b","reasoningEffort":"low","startTime":"2025-01-15T10:02:00.000Z","context":{"repository":"test/repo","branch":"main","cwd":"/tmp"}}}
+{"type":"session.shutdown","timestamp":"2025-01-15T10:02:05.000Z","id":"evt-002","data":{"totalPremiumRequests":0,"totalApiDurationMs":0,"modelMetrics":{},"currentTokens":0,"systemTokens":0,"conversationTokens":0,"toolDefinitionsTokens":0,"codeChanges":{}}}
