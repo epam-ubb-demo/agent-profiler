@@ -189,6 +189,44 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/debug@4.1.13)(@types/node@20.19.39)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.8.4)
 
+  packages/adapters-vscode-chat:
+    dependencies:
+      '@agent-profiler/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@agent-profiler/tsconfig-base':
+        specifier: workspace:*
+        version: link:../../tooling/tsconfig-base
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.39
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@20.19.39)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.8.4)
+
+  packages/adapters-vscode-coding-agent:
+    dependencies:
+      '@agent-profiler/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@agent-profiler/tsconfig-base':
+        specifier: workspace:*
+        version: link:../../tooling/tsconfig-base
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.39
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@20.19.39)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.8.4)
+
   packages/core:
     dependencies:
       zod:
