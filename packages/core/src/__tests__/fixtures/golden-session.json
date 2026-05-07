@@ -1,0 +1,459 @@
+{
+  "sessionId": "sess-abc-123-def-456",
+  "copilotVersion": "1.73.0",
+  "selectedModel": "claude-sonnet-4-20250514",
+  "reasoningEffort": "high",
+  "repository": "epam-ubb-demo/agent-profiler",
+  "branch": "main",
+  "cwd": "/home/user/projects/agent-profiler",
+  "startTs": "2025-01-15T10:00:00.000Z",
+  "endTs": "2025-01-15T10:05:30.000Z",
+  "modelChanges": [
+    { "timestamp": "2025-01-15T10:02:00.000Z", "model": "claude-sonnet-4-20250514" }
+  ],
+  "toolCalls": [
+    {
+      "toolCallId": "tc-001",
+      "toolName": "bash",
+      "model": "claude-sonnet-4-20250514",
+      "startTs": "2025-01-15T10:00:30.000Z",
+      "endTs": "2025-01-15T10:00:32.500Z",
+      "durationMs": 2500,
+      "success": true,
+      "parentId": null,
+      "turnId": "turn-1",
+      "eventId": "evt-010",
+      "argumentsPreview": "ls -la"
+    },
+    {
+      "toolCallId": "tc-002",
+      "toolName": "view",
+      "model": "claude-sonnet-4-20250514",
+      "startTs": "2025-01-15T10:01:00.000Z",
+      "endTs": "2025-01-15T10:01:01.200Z",
+      "durationMs": 1200,
+      "success": true,
+      "parentId": null,
+      "turnId": "turn-2",
+      "eventId": "evt-020",
+      "argumentsPreview": "path: /src/index.ts"
+    },
+    {
+      "toolCallId": "tc-003",
+      "toolName": "edit",
+      "model": "claude-sonnet-4-20250514",
+      "startTs": "2025-01-15T10:03:00.000Z",
+      "endTs": "2025-01-15T10:03:05.000Z",
+      "durationMs": 5000,
+      "success": true,
+      "parentId": null,
+      "turnId": "turn-3",
+      "eventId": "evt-030",
+      "argumentsPreview": "path: /src/utils.ts old_str: ..."
+    }
+  ],
+  "assistantMessages": [
+    {
+      "interactionId": "int-001",
+      "requestId": "req-001",
+      "outputTokens": 150,
+      "inputTokens": 2000,
+      "cacheReadTokens": 500,
+      "cacheWriteTokens": 1500,
+      "model": "claude-sonnet-4-20250514",
+      "timestamp": "2025-01-15T10:00:25.000Z",
+      "turnId": "turn-1",
+      "eventId": "evt-005",
+      "parentId": null,
+      "content": "I'll start by listing the directory contents...",
+      "reasoningText": ""
+    },
+    {
+      "interactionId": "int-002",
+      "requestId": "req-002",
+      "outputTokens": 320,
+      "inputTokens": 3500,
+      "cacheReadTokens": 2000,
+      "cacheWriteTokens": 0,
+      "model": "claude-sonnet-4-20250514",
+      "timestamp": "2025-01-15T10:01:05.000Z",
+      "turnId": "turn-2",
+      "eventId": "evt-015",
+      "parentId": null,
+      "content": "Let me review the source file...",
+      "reasoningText": ""
+    },
+    {
+      "interactionId": "int-003",
+      "requestId": "req-003",
+      "outputTokens": 500,
+      "inputTokens": 5000,
+      "cacheReadTokens": 4000,
+      "cacheWriteTokens": 0,
+      "model": "claude-sonnet-4-20250514",
+      "timestamp": "2025-01-15T10:03:10.000Z",
+      "turnId": "turn-3",
+      "eventId": "evt-025",
+      "parentId": null,
+      "content": "I've made the necessary changes to utils.ts...",
+      "reasoningText": ""
+    },
+    {
+      "interactionId": "int-004",
+      "requestId": "req-004",
+      "outputTokens": 200,
+      "inputTokens": 6000,
+      "cacheReadTokens": 5500,
+      "cacheWriteTokens": 0,
+      "model": "claude-sonnet-4-20250514",
+      "timestamp": "2025-01-15T10:04:00.000Z",
+      "turnId": "turn-4",
+      "eventId": "evt-035",
+      "parentId": null,
+      "content": "Now let me run the tests to verify...",
+      "reasoningText": ""
+    },
+    {
+      "interactionId": "int-005",
+      "requestId": "req-005",
+      "outputTokens": 100,
+      "inputTokens": 7000,
+      "cacheReadTokens": 6500,
+      "cacheWriteTokens": 0,
+      "model": "claude-sonnet-4-20250514",
+      "timestamp": "2025-01-15T10:05:00.000Z",
+      "turnId": "turn-5",
+      "eventId": "evt-045",
+      "parentId": null,
+      "content": "All tests pass. The task is complete.",
+      "reasoningText": ""
+    }
+  ],
+  "userMessages": [
+    {
+      "interactionId": "int-001",
+      "timestamp": "2025-01-15T10:00:00.000Z",
+      "turnId": "turn-1",
+      "content": "Fix the bug in utils.ts where the sort function fails on empty arrays"
+    },
+    {
+      "interactionId": "int-002",
+      "timestamp": "2025-01-15T10:01:30.000Z",
+      "turnId": "turn-3",
+      "content": "Yes, go ahead with that approach"
+    }
+  ],
+  "compactions": [
+    {
+      "timestamp": "2025-01-15T10:02:30.000Z",
+      "inputTokens": 8000,
+      "outputTokens": 1200,
+      "cacheRead": 6000,
+      "cacheWrite": 0,
+      "model": "claude-sonnet-4-20250514",
+      "turnId": "turn-3"
+    }
+  ],
+  "subagents": [
+    {
+      "timestamp": "2025-01-15T10:04:30.000Z",
+      "totalTokens": 3500,
+      "messageCount": 4,
+      "toolCallCount": 2,
+      "turnId": "turn-5",
+      "eventId": "evt-040",
+      "parentId": null,
+      "agentName": "test-runner",
+      "agentType": "task",
+      "childSessionRef": "sess-child-789"
+    }
+  ],
+  "shutdown": {
+    "totalPremiumRequests": 5,
+    "totalApiDurationMs": 28000,
+    "modelMetrics": [
+      {
+        "model": "claude-sonnet-4-20250514",
+        "inputTokens": 23500,
+        "outputTokens": 1270,
+        "cacheReadTokens": 18500,
+        "cacheWriteTokens": 1500,
+        "requestCount": 5,
+        "apiDurationMs": 28000
+      }
+    ],
+    "currentTokens": 12000,
+    "systemTokens": 3000,
+    "conversationTokens": 7000,
+    "toolDefinitionsTokens": 2000,
+    "codeChanges": { "filesChanged": 1, "insertions": 5, "deletions": 2 },
+    "timestamp": "2025-01-15T10:05:30.000Z"
+  },
+  "success": true,
+  "fanoutTurns": [
+    {
+      "turnId": "turn-1",
+      "startTs": "2025-01-15T10:00:00.000Z",
+      "endTs": "2025-01-15T10:00:35.000Z",
+      "model": "claude-sonnet-4-20250514",
+      "assistantMessages": [
+        {
+          "interactionId": "int-001",
+          "requestId": "req-001",
+          "outputTokens": 150,
+          "inputTokens": 2000,
+          "cacheReadTokens": 500,
+          "cacheWriteTokens": 1500,
+          "model": "claude-sonnet-4-20250514",
+          "timestamp": "2025-01-15T10:00:25.000Z",
+          "turnId": "turn-1",
+          "eventId": "evt-005",
+          "parentId": null,
+          "content": "I'll start by listing the directory contents...",
+          "reasoningText": ""
+        }
+      ],
+      "toolCalls": [
+        {
+          "toolCallId": "tc-001",
+          "toolName": "bash",
+          "model": "claude-sonnet-4-20250514",
+          "startTs": "2025-01-15T10:00:30.000Z",
+          "endTs": "2025-01-15T10:00:32.500Z",
+          "durationMs": 2500,
+          "success": true,
+          "parentId": null,
+          "turnId": "turn-1",
+          "eventId": "evt-010",
+          "argumentsPreview": "ls -la"
+        }
+      ],
+      "subagents": [],
+      "userMessage": {
+        "interactionId": "int-001",
+        "timestamp": "2025-01-15T10:00:00.000Z",
+        "turnId": "turn-1",
+        "content": "Fix the bug in utils.ts where the sort function fails on empty arrays"
+      }
+    }
+  ],
+  "turns": [
+    {
+      "turnId": "turn-1",
+      "startTs": "2025-01-15T10:00:00.000Z",
+      "endTs": "2025-01-15T10:00:35.000Z",
+      "userMessage": {
+        "interactionId": "int-001",
+        "timestamp": "2025-01-15T10:00:00.000Z",
+        "turnId": "turn-1",
+        "content": "Fix the bug in utils.ts where the sort function fails on empty arrays"
+      },
+      "assistantMessages": [
+        {
+          "interactionId": "int-001",
+          "requestId": "req-001",
+          "outputTokens": 150,
+          "inputTokens": 2000,
+          "cacheReadTokens": 500,
+          "cacheWriteTokens": 1500,
+          "model": "claude-sonnet-4-20250514",
+          "timestamp": "2025-01-15T10:00:25.000Z",
+          "turnId": "turn-1",
+          "eventId": "evt-005",
+          "parentId": null,
+          "content": "I'll start by listing the directory contents...",
+          "reasoningText": ""
+        }
+      ],
+      "toolCalls": [
+        {
+          "toolCallId": "tc-001",
+          "toolName": "bash",
+          "model": "claude-sonnet-4-20250514",
+          "startTs": "2025-01-15T10:00:30.000Z",
+          "endTs": "2025-01-15T10:00:32.500Z",
+          "durationMs": 2500,
+          "success": true,
+          "parentId": null,
+          "turnId": "turn-1",
+          "eventId": "evt-010",
+          "argumentsPreview": "ls -la"
+        }
+      ],
+      "subagents": []
+    },
+    {
+      "turnId": "turn-2",
+      "startTs": "2025-01-15T10:00:55.000Z",
+      "endTs": "2025-01-15T10:01:05.000Z",
+      "userMessage": null,
+      "assistantMessages": [
+        {
+          "interactionId": "int-002",
+          "requestId": "req-002",
+          "outputTokens": 320,
+          "inputTokens": 3500,
+          "cacheReadTokens": 2000,
+          "cacheWriteTokens": 0,
+          "model": "claude-sonnet-4-20250514",
+          "timestamp": "2025-01-15T10:01:05.000Z",
+          "turnId": "turn-2",
+          "eventId": "evt-015",
+          "parentId": null,
+          "content": "Let me review the source file...",
+          "reasoningText": ""
+        }
+      ],
+      "toolCalls": [
+        {
+          "toolCallId": "tc-002",
+          "toolName": "view",
+          "model": "claude-sonnet-4-20250514",
+          "startTs": "2025-01-15T10:01:00.000Z",
+          "endTs": "2025-01-15T10:01:01.200Z",
+          "durationMs": 1200,
+          "success": true,
+          "parentId": null,
+          "turnId": "turn-2",
+          "eventId": "evt-020",
+          "argumentsPreview": "path: /src/index.ts"
+        }
+      ],
+      "subagents": []
+    },
+    {
+      "turnId": "turn-3",
+      "startTs": "2025-01-15T10:01:30.000Z",
+      "endTs": "2025-01-15T10:03:10.000Z",
+      "userMessage": {
+        "interactionId": "int-002",
+        "timestamp": "2025-01-15T10:01:30.000Z",
+        "turnId": "turn-3",
+        "content": "Yes, go ahead with that approach"
+      },
+      "assistantMessages": [
+        {
+          "interactionId": "int-003",
+          "requestId": "req-003",
+          "outputTokens": 500,
+          "inputTokens": 5000,
+          "cacheReadTokens": 4000,
+          "cacheWriteTokens": 0,
+          "model": "claude-sonnet-4-20250514",
+          "timestamp": "2025-01-15T10:03:10.000Z",
+          "turnId": "turn-3",
+          "eventId": "evt-025",
+          "parentId": null,
+          "content": "I've made the necessary changes to utils.ts...",
+          "reasoningText": ""
+        }
+      ],
+      "toolCalls": [
+        {
+          "toolCallId": "tc-003",
+          "toolName": "edit",
+          "model": "claude-sonnet-4-20250514",
+          "startTs": "2025-01-15T10:03:00.000Z",
+          "endTs": "2025-01-15T10:03:05.000Z",
+          "durationMs": 5000,
+          "success": true,
+          "parentId": null,
+          "turnId": "turn-3",
+          "eventId": "evt-030",
+          "argumentsPreview": "path: /src/utils.ts old_str: ..."
+        }
+      ],
+      "subagents": []
+    },
+    {
+      "turnId": "turn-4",
+      "startTs": "2025-01-15T10:03:30.000Z",
+      "endTs": "2025-01-15T10:04:00.000Z",
+      "userMessage": null,
+      "assistantMessages": [
+        {
+          "interactionId": "int-004",
+          "requestId": "req-004",
+          "outputTokens": 200,
+          "inputTokens": 6000,
+          "cacheReadTokens": 5500,
+          "cacheWriteTokens": 0,
+          "model": "claude-sonnet-4-20250514",
+          "timestamp": "2025-01-15T10:04:00.000Z",
+          "turnId": "turn-4",
+          "eventId": "evt-035",
+          "parentId": null,
+          "content": "Now let me run the tests to verify...",
+          "reasoningText": ""
+        }
+      ],
+      "toolCalls": [],
+      "subagents": []
+    },
+    {
+      "turnId": "turn-5",
+      "startTs": "2025-01-15T10:04:10.000Z",
+      "endTs": "2025-01-15T10:05:00.000Z",
+      "userMessage": null,
+      "assistantMessages": [
+        {
+          "interactionId": "int-005",
+          "requestId": "req-005",
+          "outputTokens": 100,
+          "inputTokens": 7000,
+          "cacheReadTokens": 6500,
+          "cacheWriteTokens": 0,
+          "model": "claude-sonnet-4-20250514",
+          "timestamp": "2025-01-15T10:05:00.000Z",
+          "turnId": "turn-5",
+          "eventId": "evt-045",
+          "parentId": null,
+          "content": "All tests pass. The task is complete.",
+          "reasoningText": ""
+        }
+      ],
+      "toolCalls": [],
+      "subagents": [
+        {
+          "timestamp": "2025-01-15T10:04:30.000Z",
+          "totalTokens": 3500,
+          "messageCount": 4,
+          "toolCallCount": 2,
+          "turnId": "turn-5",
+          "eventId": "evt-040",
+          "parentId": null,
+          "agentName": "test-runner",
+          "agentType": "task",
+          "childSessionRef": "sess-child-789"
+        }
+      ]
+    }
+  ],
+  "parseStatus": {
+    "status": "ok",
+    "error": null
+  },
+  "utilisation": [
+    {
+      "timestamp": "2025-01-15T10:00:25.000Z",
+      "percentage": 15.5,
+      "used": 3100,
+      "total": 20000,
+      "buckets": { "system": 1500, "conversation": 1000, "toolDefinitions": 600 }
+    },
+    {
+      "timestamp": "2025-01-15T10:02:30.000Z",
+      "percentage": 45.0,
+      "used": 9000,
+      "total": 20000,
+      "buckets": { "system": 1500, "conversation": 5500, "toolDefinitions": 2000 }
+    },
+    {
+      "timestamp": "2025-01-15T10:05:00.000Z",
+      "percentage": 60.0,
+      "used": 12000,
+      "total": 20000,
+      "buckets": { "system": 3000, "conversation": 7000, "toolDefinitions": 2000 }
+    }
+  ]
+}
