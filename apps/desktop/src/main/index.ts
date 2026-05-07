@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { ipcChannels, sessionListItemSchema } from '@agent-profiler/core';
 import { LocalFsDataSource } from '@agent-profiler/data-source';
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 
 /** Default directory for Copilot CLI session state. */
 const DEFAULT_ROOT_DIR = join(homedir(), '.copilot', 'session-state');
@@ -77,7 +77,32 @@ ipcMain.handle(ipcChannels.SESSION_SET_ROOT_DIR, async (_event, dir: string) => 
   return false;
 });
 
-app.whenReady().then(() => {
+ipcMain.handle(ipcChannels.DIALOG_OPEN_DIRECTORY, async () => {
+  const focusedWindow = BrowserWindow.getFocusedWindow();
+  const result = await dialog.showOpenDialog(focusedWindow ?? BrowserWindow.getAllWindows()[0]!, {
+    properties: ['openDirectory'],
+    title: 'Select session logs folder',
+  });
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+  return result.filePaths[0] ?? null;
+});
+
+app.whenReady().then(async () => {
+  // Auto-discover sessions at default location on startup
+  const available = await dataSource.isAvailable();
+  if (available) {
+    const sessions = await dataSource.listSessions();
+    console.log(
+      `[agent-profiler] Auto-discovered ${sessions.length} session(s) in ${DEFAULT_ROOT_DIR}`,
+    );
+  } else {
+    console.log(
+      `[agent-profiler] Default session directory not found: ${DEFAULT_ROOT_DIR}`,
+    );
+  }
+
   createWindow();
 
   app.on('activate', () => {

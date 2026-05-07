@@ -17,6 +17,11 @@ export interface ElectronApi {
     /** Sets the root directory for session scanning */
     setRootDir: (dir: string) => Promise<boolean>;
   };
+
+  dialog: {
+    /** Opens a native directory picker. Returns the selected path, or null if cancelled. */
+    openDirectory: () => Promise<string | null>;
+  };
 }
 
 export interface SessionListItemIpc {

@@ -1,46 +1,40 @@
-import { Moon, Sun, FolderOpen } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useCallback, useState } from 'react';
 
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SessionBrowser } from '@/pages/SessionBrowser';
+import { SessionDetail } from '@/pages/SessionDetail';
+
+type AppRoute = { view: 'list' } | { view: 'detail'; sessionId: string };
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 export function App() {
-  const [version, setVersion] = useState<string>('…');
-  const [isDark, setIsDark] = useState(false);
+  const [route, setRoute] = useState<AppRoute>({ view: 'list' });
 
-  useEffect(() => {
-    window.electronApi.getVersion().then(setVersion);
+  const handleSelectSession = useCallback((sessionId: string) => {
+    setRoute({ view: 'detail', sessionId });
   }, []);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark);
-  }, [isDark]);
+  const handleBack = useCallback(() => {
+    setRoute({ view: 'list' });
+  }, []);
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Agent Profiler</CardTitle>
-          <CardDescription>
-            Desktop application for visualising AI agent session logs
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center gap-4">
-          <p className="text-sm text-muted-foreground">Version {version}</p>
-          <Button className="w-full" variant="default">
-            <FolderOpen className="mr-2 h-4 w-4" />
-            Open Session
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setIsDark(!isDark)}
-            aria-label="Toggle theme"
-          >
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <div className="min-h-screen">
+        {route.view === 'list' && <SessionBrowser onSelectSession={handleSelectSession} />}
+        {route.view === 'detail' && (
+          <SessionDetail sessionId={route.sessionId} onBack={handleBack} />
+        )}
+      </div>
+    </QueryClientProvider>
   );
 }
+
