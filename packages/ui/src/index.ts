@@ -7,6 +7,8 @@
 export * from './timeline/index';
 export { useTimelineZoom } from './hooks/useTimelineZoom';
 export type { UseTimelineZoomReturn } from './hooks/useTimelineZoom';
+export { useDeepLink } from './hooks/useDeepLink';
+export type { UseDeepLinkReturn } from './hooks/useDeepLink';
 
 // Per-turn panels & detail modal
 export * from './panels/index';
