@@ -1,8 +1,9 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ElectronApi } from '../src/preload/api';
 import { SessionDetail } from '../src/renderer/pages/SessionDetail';
+
+import { cleanup, render, screen, waitFor } from './test-utils';
 
 // Minimal mock session data
 function createMockSession(overrides: Record<string, unknown> = {}) {
@@ -79,16 +80,16 @@ afterEach(() => {
 });
 
 describe('SessionDetail', () => {
-  it('shows loading state initially', () => {
+  it('shows loading state initially', async () => {
     vi.mocked(mockElectronApi.session.open).mockImplementation(() => new Promise(() => {}));
-    render(<SessionDetail sessionId="test-id" onBack={vi.fn()} />);
+    await render(<SessionDetail sessionId="test-id" onBack={vi.fn()} />);
     expect(screen.getByTestId('session-detail-loading')).toBeDefined();
   });
 
   it('renders timeline and turn list when session loads', async () => {
     vi.mocked(mockElectronApi.session.open).mockResolvedValue(createMockSession());
 
-    render(<SessionDetail sessionId="test-session-id" onBack={vi.fn()} />);
+    await render(<SessionDetail sessionId="test-session-id" onBack={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('session-detail')).toBeDefined();
@@ -101,7 +102,7 @@ describe('SessionDetail', () => {
   it('shows error state when session not found', async () => {
     vi.mocked(mockElectronApi.session.open).mockResolvedValue(null);
 
-    render(<SessionDetail sessionId="missing-id" onBack={vi.fn()} />);
+    await render(<SessionDetail sessionId="missing-id" onBack={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('session-detail-error')).toBeDefined();
@@ -117,7 +118,7 @@ describe('SessionDetail', () => {
       }),
     );
 
-    render(<SessionDetail sessionId="test-id" onBack={vi.fn()} />);
+    await render(<SessionDetail sessionId="test-id" onBack={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('session-detail')).toBeDefined();
@@ -130,7 +131,7 @@ describe('SessionDetail', () => {
     vi.mocked(mockElectronApi.session.open).mockResolvedValue(createMockSession());
     const onBack = vi.fn();
 
-    render(<SessionDetail sessionId="test-id" onBack={onBack} />);
+    await render(<SessionDetail sessionId="test-id" onBack={onBack} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('session-detail')).toBeDefined();
