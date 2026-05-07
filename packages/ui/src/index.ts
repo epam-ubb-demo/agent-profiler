@@ -24,3 +24,6 @@ export * from './settings';
 
 // Annotations — tagging, commenting, filtering
 export * from './annotations';
+
+// PDF export button
+export { PdfExportButton } from './pdf/PdfExportButton';
