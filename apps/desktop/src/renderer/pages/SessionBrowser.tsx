@@ -1,4 +1,4 @@
-import { Button } from '@epam/uui';
+import { Badge, Button, FlexRow, Panel, Spinner, Text } from '@epam/uui';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { SessionListItemIpc } from '../../preload/api';
@@ -48,9 +48,9 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
   if (loading) {
     return (
-      <div data-testid="session-browser-loading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem' }}>
-        <p style={{ fontSize: '0.875rem', color: '#6C6F80' }}>Loading sessions…</p>
-      </div>
+      <FlexRow justifyContent="center" padding="24" rawProps={{ 'data-testid': 'session-browser-loading' }}>
+        <Spinner />
+      </FlexRow>
     );
   }
 
@@ -59,49 +59,31 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
   }
 
   return (
-    <div data-testid="session-browser" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h1 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Sessions</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+    <div data-testid="session-browser" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px' }}>
+      <FlexRow alignItems="center" spacing="12">
+        <Text size="42" fontWeight="600">Sessions</Text>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
           <Button fill="outline" size="30" icon={FolderOpenIcon} caption="Open Folder…" onClick={handleOpenFolder} />
           <SettingsPanel onSettingsSaved={handleSettingsSaved} />
         </div>
-      </div>
-      <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', listStyle: 'none', padding: 0 }} data-testid="session-list">
+      </FlexRow>
+      <div data-testid="session-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {sessions.map((session) => (
-          <li key={session.id}>
-            <button
-              type="button"
-              style={{
-                width: '100%',
-                borderRadius: '0.375rem',
-                border: '1px solid #E1E3EB',
-                padding: '0.75rem',
-                textAlign: 'left',
-                background: 'none',
-                cursor: 'pointer',
-              }}
-              onClick={() => onSelectSession(session.id)}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontWeight: 500 }}>{session.name}</span>
-                <span style={{
-                  borderRadius: '0.25rem',
-                  backgroundColor: '#F5F6FA',
-                  padding: '0.125rem 0.5rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 500,
-                }}>
-                  {session.adapter}
-                </span>
+          <Panel key={session.id} shadow onClick={() => onSelectSession(session.id)}>
+            <FlexRow padding="12" spacing="12" alignItems="center">
+              <Text size="30" fontWeight="600">{session.name}</Text>
+              <div style={{ marginLeft: 'auto' }}>
+                <Badge color="info" fill="outline" caption={session.adapter} size="18" />
               </div>
-              <p style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: '#6C6F80' }}>
+            </FlexRow>
+            <FlexRow padding="12">
+              <Text size="18" color="secondary">
                 {new Date(session.createdAt).toLocaleString()}
-              </p>
-            </button>
-          </li>
+              </Text>
+            </FlexRow>
+          </Panel>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
