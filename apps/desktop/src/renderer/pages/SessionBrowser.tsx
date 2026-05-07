@@ -1,11 +1,11 @@
-import { FolderOpen } from 'lucide-react';
+import { Button } from '@epam/uui';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { SessionListItemIpc } from '../../preload/api';
 
 import { EmptyState } from '@/components/EmptyState';
+import { FolderOpenIcon } from '@/components/icons';
 import { SettingsPanel } from '@/components/SettingsPanel';
-import { Button } from '@/components/ui/button';
 
 export interface SessionBrowserProps {
   /** Called when the user selects a session to view. */
@@ -63,12 +63,10 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h1 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Sessions</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Button variant="outline" size="sm" onClick={handleOpenFolder}>
-            <FolderOpen style={{ marginRight: '0.5rem', height: '1rem', width: '1rem' }} />
-            Open Folder…
-          </Button>
+          <Button fill="outline" size="30" icon={FolderOpenIcon} caption="Open Folder…" onClick={handleOpenFolder} />
           <SettingsPanel onSettingsSaved={handleSettingsSaved} />
         </div>
+      </div>
       <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', listStyle: 'none', padding: 0 }} data-testid="session-list">
         {sessions.map((session) => (
           <li key={session.id}>

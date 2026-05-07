@@ -1,9 +1,9 @@
 import type { Session } from '@agent-profiler/core';
 import { FanoutTree, Timeline, TurnList } from '@agent-profiler/ui';
-import { ArrowLeft } from 'lucide-react';
+import { Button } from '@epam/uui';
 import { useCallback, useEffect, useState } from 'react';
 
-import { Button } from '@/components/ui/button';
+import { ArrowLeftIcon } from '@/components/icons';
 
 export interface SessionDetailProps {
   /** The session ID to display. */
@@ -53,10 +53,7 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
     return (
       <div data-testid="session-detail-error" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '3rem' }}>
         <p style={{ fontSize: '0.875rem', color: '#E54322' }}>{error}</p>
-        <Button variant="outline" size="sm" onClick={onBack}>
-          <ArrowLeft style={{ marginRight: '0.5rem', height: '1rem', width: '1rem' }} />
-          Back to sessions
-        </Button>
+        <Button fill="outline" size="30" icon={ArrowLeftIcon} caption="Back to sessions" onClick={onBack} />
       </div>
     );
   }
@@ -68,9 +65,7 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
   return (
     <div data-testid="session-detail" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <Button variant="ghost" size="sm" onClick={onBack} aria-label="Back">
-          <ArrowLeft style={{ height: '1rem', width: '1rem' }} />
-        </Button>
+        <Button fill="ghost" size="30" icon={ArrowLeftIcon} onClick={onBack} rawProps={{ 'aria-label': 'Back' }} />
         <h1 style={{ fontSize: '1.125rem', fontWeight: 600 }}>{session.sessionId}</h1>
         {session.parseStatus.status === 'partial' && (
           <span style={{
