@@ -12,6 +12,9 @@ on:
           - windows
           - linux
           - all
+  push:
+    tags:
+      - '@agent-profiler/desktop@*'
 
 permissions:
   contents: read

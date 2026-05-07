@@ -1,0 +1,87 @@
+# End-to-End Release Runbook
+
+This document describes the complete release process for the Agent Profiler monorepo.
+
+## How changesets work in this repo
+
+We use [Changesets](https://github.com/changesets/changesets) to manage versioning across all library packages. Key points:
+
+- All library packages are **linked** — they version together (e.g., if `@agent-profiler/core` bumps to 0.4.0, all linked packages do too).
+- The desktop app (`@agent-profiler/desktop`) and docs are **excluded** — they follow their own release cadence.
+- Changesets are markdown files in `.changeset/` that describe what changed and the bump type.
+
+## Release Steps
+
+### Step 1: Merge features to main
+
+All feature PRs targeting `main` should include a changeset file if they affect library packages. Run `pnpm changeset` during development to create one.
+
+### Step 2: Changesets action creates a "Version Packages" PR
+
+When changesets are present on `main`, the **Version & Release** workflow (`.github/workflows/version.yml`) automatically opens a PR titled `chore: version packages`. This PR:
+
+- Bumps `version` fields in each affected `package.json`
+- Updates per-package `CHANGELOG.md` files
+- Removes consumed `.changeset/*.md` files
+
+### Step 3: Review and merge the version PR
+
+A maintainer reviews the version PR to confirm:
+
+- Version bumps are correct (patch/minor/major)
+- Changelog entries are accurate
+- No unexpected packages are affected
+
+Merge when ready.
+
+### Step 4: Tags are created automatically
+
+On merge of the version PR, the workflow runs `pnpm run release` which:
+
+1. Builds all packages (`pnpm run build`)
+2. Creates git tags for each bumped package (e.g., `@agent-profiler/core@0.4.0`)
+
+### Step 5: Trigger the `release.yml` workflow to build platform packages
+
+The `release.yml` workflow is triggered either:
+
+- **Automatically** on tag push matching `@agent-profiler/desktop@*`
+- **Manually** via `workflow_dispatch` selecting the target platform
+
+This builds the Electron desktop app for macOS, Windows, and/or Linux.
+
+### Step 6: Attach built artifacts to the GitHub Release
+
+After the release workflow completes:
+
+1. Download build artifacts from the workflow run
+2. Create a GitHub Release for the tag
+3. Attach the platform-specific installers (`.dmg`, `.exe`, `.AppImage`, `.deb`)
+
+## Troubleshooting
+
+### "No changesets found" but I expected a version PR
+
+- Ensure changeset files are committed to `main` (not just in a feature branch)
+- Check that the changeset file has valid frontmatter with package names matching `package.json` names exactly
+
+### Version PR has unexpected bumps
+
+- Linked packages always move together. If one package gets a `minor` bump, all linked packages do too.
+- Check `.changeset/config.json` `linked` array if grouping seems wrong.
+
+### Tags weren't created after merging the version PR
+
+- Verify the `release` script ran successfully in the workflow logs
+- Check that `changeset tag` found version changes to tag
+- Ensure the workflow has `contents: write` permission
+
+### Release workflow didn't trigger on tag push
+
+- Confirm the tag matches the pattern `@agent-profiler/desktop@*`
+- For library-only releases (no desktop changes), manual dispatch is needed
+
+### Build fails during release
+
+- The `release` script runs `pnpm run build` first — check for TypeScript or build errors
+- Ensure all dependencies are correctly declared in each package's `package.json`
