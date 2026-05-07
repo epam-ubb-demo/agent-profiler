@@ -5,6 +5,8 @@ import { ipcChannels, sessionListItemSchema } from '@agent-profiler/core';
 import { LocalFsDataSource } from '@agent-profiler/data-source';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 
+import { AppUpdater } from './auto-updater';
+
 /** Default directory for Copilot CLI session state. */
 const DEFAULT_ROOT_DIR = join(homedir(), '.copilot', 'session-state');
 
@@ -102,6 +104,15 @@ app.whenReady().then(async () => {
       `[agent-profiler] Default session directory not found: ${DEFAULT_ROOT_DIR}`,
     );
   }
+
+  // ─── Auto-Updater ─────────────────────────────────────────
+  const updater = new AppUpdater({
+    provider: 'github',
+    owner: 'epam-ubb-demo',
+    repo: 'agent-profiler',
+  });
+  updater.setupIpcHandlers();
+  updater.startPeriodicChecks();
 
   createWindow();
 

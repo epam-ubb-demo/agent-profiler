@@ -48,8 +48,12 @@ const config: Configuration = {
     maintainer: 'EPAM UBB <ubb@epam.com>',
   },
 
-  // ─── Publishing (disabled — manual upload for now) ───────
-  publish: null,
+  // ─── Publishing (GitHub Releases for auto-update) ────────
+  publish: {
+    provider: 'github',
+    owner: 'epam-ubb-demo',
+    repo: 'agent-profiler',
+  },
 };
 
 export default config;
