@@ -264,6 +264,18 @@
   transform: rotate(90deg);
 }
 
+.fanoutCompactionRow td {
+  background: var(--uui-warning-5);
+  font-style: italic;
+}
+
+.fanoutModelSummary {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
 .fanoutDetail {
   padding: 16px 24px;
   background: var(--uui-surface-main);
