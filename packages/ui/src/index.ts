@@ -18,3 +18,6 @@ export * from './fanout/index';
 
 // Comparative multi-session view
 export * from './comparative';
+
+// Settings — source picker
+export * from './settings';
