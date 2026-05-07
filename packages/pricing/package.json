@@ -10,7 +10,10 @@
     "build": "tsc --build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agent-profiler/core": "workspace:*"
   },
   "devDependencies": {
     "@agent-profiler/tsconfig-base": "workspace:*",

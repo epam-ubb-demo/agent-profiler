@@ -127,6 +127,25 @@ importers:
         specifier: ^0.6.1
         version: 0.6.1(@astrojs/starlight@0.37.7(astro@5.18.1(@types/node@24.12.2)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.60.3)(typescript@5.9.3)(yaml@2.8.4)))(astro@5.18.1(@types/node@24.12.2)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.60.3)(typescript@5.9.3)(yaml@2.8.4))
 
+  packages/adapters-copilot-cli:
+    dependencies:
+      '@agent-profiler/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
+    devDependencies:
+      '@agent-profiler/tsconfig-base':
+        specifier: workspace:*
+        version: link:../../tooling/tsconfig-base
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.8.4)
+
   packages/core:
     dependencies:
       zod:
@@ -144,6 +163,10 @@ importers:
         version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.8.4)
 
   packages/pricing:
+    dependencies:
+      '@agent-profiler/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@agent-profiler/tsconfig-base':
         specifier: workspace:*
