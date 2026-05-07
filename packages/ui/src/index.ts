@@ -21,3 +21,6 @@ export * from './comparative';
 
 // Settings — source picker
 export * from './settings';
+
+// Annotations — tagging, commenting, filtering
+export * from './annotations';
