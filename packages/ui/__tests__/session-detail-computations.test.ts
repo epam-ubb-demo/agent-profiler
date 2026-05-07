@@ -29,6 +29,7 @@ function makeMetrics(overrides?: Partial<ModelMetrics>): ModelMetrics {
     outputTokens: 500,
     cacheReadTokens: 200,
     cacheWriteTokens: 100,
+    reasoningTokens: 0,
     requestCount: 5,
     premiumRequestCost: 0,
     apiDurationMs: 3000,

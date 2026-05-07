@@ -198,14 +198,23 @@ For example, the `session.shutdown` event changed from flat fields (`inputTokens
 
 Instead of detecting the format version and branching, the parser uses **per-field fallback**: it tries the newest known location first, then falls back to older locations.
 
-Example pattern from `onShutdown()` in `packages/adapters-copilot-cli/src/event-handlers.ts`:
+All format-specific extraction lives in `normalise-model-metrics.ts`. The normaliser handles **two structural formats**: a dictionary (keys are model names) and a legacy array (`modelId` field on each element). Within each entry, the `extractEntry()` function applies per-field fallback:
 
 ```ts
-inputTokens: safeInt(usage['inputTokens'] ?? m['inputTokens']),
-requestCount: safeInt(requests['count']    ?? m['requestCount']),
+inputTokens:     safeInt(usage['inputTokens']      ?? flat['inputTokens']),
+cacheReadTokens: safeInt(
+  usage['cacheReadTokens']  ?? usage['cacheReadInputTokens']
+  ?? flat['cacheReadTokens'] ?? flat['cacheReadInputTokens'],
+),
+cacheWriteTokens: safeInt(
+  usage['cacheWriteTokens'] ?? usage['cacheCreationInputTokens']
+  ?? flat['cacheWriteTokens'] ?? flat['cacheCreationInputTokens'],
+),
+reasoningTokens: safeInt(usage['reasoningTokens']   ?? flat['reasoningTokens']),
+requestCount:    safeInt(requests['count']           ?? flat['requestCount']),
 ```
 
-This tries the nested `usage` / `requests` sub-objects first, then the flat field on the model entry. The approach handles old, new, mixed, and partial formats gracefully without explicit version detection.
+This tries the nested `usage` / `requests` sub-objects first, then the flat field on the model entry. Cache field names are also aliased across CLI versions (`cacheCreationInputTokens` → `cacheWriteTokens`, `cacheReadInputTokens` → `cacheReadTokens`). The approach handles old, new, mixed, and partial formats gracefully without explicit version detection.
 
 ### Post-Parse Validation
 
@@ -218,7 +227,7 @@ This acts as an early-warning system: if the CLI changes format again and the fa
 When the Copilot CLI changes its event format again:
 
 1. **Obtain a sample** — capture a session with the new format and inspect the raw `events.jsonl`.
-2. **Update the fallback chain** — in `event-handlers.ts`, extend the field extraction to try the new location first, keeping existing fallback paths.
+2. **Update the fallback chain** — in `normalise-model-metrics.ts`, extend the field extraction in `extractEntry()` to try the new location first, keeping existing fallback paths. Note that `event-handlers.ts` no longer contains format-specific logic — it delegates to `normaliseModelMetrics()`.
 3. **Add test fixtures** — create a new fixture file in `__tests__/fixtures/` with the new format. Add tests covering the new format and verify that old-format tests still pass.
 4. **Verify post-parse validation** — confirm that the validation check in `index.ts` does not trigger a false warning for the new format.
 5. **Run all tests**:

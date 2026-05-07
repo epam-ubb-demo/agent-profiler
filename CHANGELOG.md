@@ -12,6 +12,9 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 ### Added
 
+- `reasoningTokens` field is now extracted from shutdown metrics (previously silently dropped).
+- Model metrics normalisation extracted into a dedicated module (`normalise-model-metrics.ts`) to isolate Copilot CLI format-specific logic.
+- `tooling/validate-sessions.py` script for validating local sessions against the parser.
 - Post-parse validation detects when shutdown metrics exist but all token counts are zero, flagging a possible Copilot CLI event schema mismatch as a `partial` parse status.
 - Schema evolution guidance documented in `DEVELOPING.md`.
 

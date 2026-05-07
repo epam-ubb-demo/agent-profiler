@@ -14,6 +14,7 @@ export interface ModelMetrics {
   readonly outputTokens: number;
   readonly cacheReadTokens: number;
   readonly cacheWriteTokens: number;
+  readonly reasoningTokens: number;
   readonly requestCount: number;
   readonly premiumRequestCost: number;
   readonly apiDurationMs: number;

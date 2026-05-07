@@ -17,6 +17,7 @@ import type {
 } from '@agent-profiler/core';
 
 import type { RawEvent, RawSessionContext } from './types';
+import { normaliseModelMetrics, safeInt } from './normalise-model-metrics.js';
 
 // ---------------------------------------------------------------------------
 // Session builder — mutable accumulator used during event processing
@@ -80,18 +81,6 @@ function turnIdOf(event: RawEvent): string | null {
   const data = (event.data ?? {}) as Record<string, unknown>;
   const raw = data['turnId'] ?? event.turnId;
   return raw == null ? null : String(raw);
-}
-
-function safeInt(value: unknown, fallback = 0): number {
-  if (value == null) return fallback;
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.round(n) : fallback;
-}
-
-function safeNumber(value: unknown, fallback = 0): number {
-  if (value == null) return fallback;
-  const n = Number(value);
-  return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
 
 function safeStr(value: unknown, fallback = ''): string {
@@ -364,31 +353,7 @@ function onShutdown(
   _pending: Map<string, ToolCall>,
   currentModel: string | null,
 ): string | null {
-  const rawModelMetrics = (data['modelMetrics'] ?? {}) as Record<string, unknown>;
-  const modelMetrics = Object.entries(rawModelMetrics).map(([model, raw]) => {
-    const m = raw !== null && typeof raw === 'object' && !Array.isArray(raw)
-      ? raw as Record<string, unknown>
-      : {};
-
-    const usage = m['usage'] !== null && typeof m['usage'] === 'object' && !Array.isArray(m['usage'])
-      ? m['usage'] as Record<string, unknown>
-      : {};
-
-    const requests = m['requests'] !== null && typeof m['requests'] === 'object' && !Array.isArray(m['requests'])
-      ? m['requests'] as Record<string, unknown>
-      : {};
-
-    return {
-      model,
-      inputTokens: safeInt(usage['inputTokens'] ?? m['inputTokens']),
-      outputTokens: safeInt(usage['outputTokens'] ?? m['outputTokens']),
-      cacheReadTokens: safeInt(usage['cacheReadTokens'] ?? m['cacheReadTokens']),
-      cacheWriteTokens: safeInt(usage['cacheWriteTokens'] ?? m['cacheWriteTokens']),
-      requestCount: safeInt(requests['count'] ?? m['requestCount']),
-      premiumRequestCost: safeNumber(requests['cost']),
-      apiDurationMs: safeInt(m['apiDurationMs']),
-    };
-  });
+  const modelMetrics = normaliseModelMetrics(data['modelMetrics']);
 
   sb.shutdown = {
     totalPremiumRequests: safeInt(data['totalPremiumRequests']),

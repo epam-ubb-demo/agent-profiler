@@ -10,6 +10,7 @@ export const modelMetricsSchema = z.object({
   outputTokens: z.number().int().nonnegative(),
   cacheReadTokens: z.number().int().nonnegative(),
   cacheWriteTokens: z.number().int().nonnegative(),
+  reasoningTokens: z.number().int().nonnegative().default(0),
   requestCount: z.number().int().nonnegative(),
   premiumRequestCost: z.number().nonnegative().default(0),
   apiDurationMs: z.number().int().nonnegative(),
