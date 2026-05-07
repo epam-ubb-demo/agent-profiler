@@ -87,6 +87,24 @@ importers:
         specifier: ^3.24.0
         version: 3.25.76
     devDependencies:
+      '@agent-profiler/adapters-copilot-cli':
+        specifier: workspace:*
+        version: link:../../packages/adapters-copilot-cli
+      '@agent-profiler/adapters-ctb':
+        specifier: workspace:*
+        version: link:../../packages/adapters-ctb
+      '@agent-profiler/adapters-vscode-chat':
+        specifier: workspace:*
+        version: link:../../packages/adapters-vscode-chat
+      '@agent-profiler/annotations':
+        specifier: workspace:*
+        version: link:../../packages/annotations
+      '@agent-profiler/plugins':
+        specifier: workspace:*
+        version: link:../../packages/plugins
+      '@agent-profiler/pricing':
+        specifier: workspace:*
+        version: link:../../packages/pricing
       '@agent-profiler/tsconfig-base':
         specifier: workspace:*
         version: link:../../tooling/tsconfig-base

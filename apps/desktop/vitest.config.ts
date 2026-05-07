@@ -14,6 +14,7 @@ export default defineConfig({
     setupFiles: ['./__tests__/setup.ts'],
     environmentMatchGlobs: [
       ['src/main/**', 'node'],
+      ['__tests__/regression/**', 'node'],
     ],
   },
 });

@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run --passWithNoTests",
+    "regression": "vitest run __tests__/regression/",
     "test:e2e": "playwright test",
     "pack": "electron-builder --dir --config electron-builder.config.ts",
     "dist": "electron-builder --config electron-builder.config.ts",
@@ -34,6 +35,12 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@agent-profiler/adapters-copilot-cli": "workspace:*",
+    "@agent-profiler/adapters-ctb": "workspace:*",
+    "@agent-profiler/adapters-vscode-chat": "workspace:*",
+    "@agent-profiler/annotations": "workspace:*",
+    "@agent-profiler/plugins": "workspace:*",
+    "@agent-profiler/pricing": "workspace:*",
     "@agent-profiler/tsconfig-base": "workspace:*",
     "@playwright/test": "^1.49.0",
     "@tailwindcss/vite": "^4.0.0",
