@@ -3,10 +3,11 @@
  */
 
 import type { AssistantMessage } from '@agent-profiler/core';
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 
-import type { TimelineConfig } from './types';
-import { formatTime, modelColour, timeFraction } from './utils';
+import { messageTipContent } from './tooltip-content';
+import type { TimelineConfig, TooltipHandlers } from './types';
+import { modelColour, timeFraction } from './utils';
 
 export interface MessageLaneProps {
   readonly messages: readonly AssistantMessage[];
@@ -14,6 +15,7 @@ export interface MessageLaneProps {
   readonly durationMs: number;
   readonly config: TimelineConfig;
   readonly y: number;
+  readonly tooltip: TooltipHandlers;
 }
 
 export const MessageLane = memo(function MessageLane({
@@ -22,9 +24,22 @@ export const MessageLane = memo(function MessageLane({
   durationMs,
   config,
   y,
+  tooltip,
 }: MessageLaneProps) {
   const maxOutput = Math.max(1, ...messages.map((m) => m.outputTokens));
   const barWidth = Math.max(2, config.width / (messages.length * 3 || 1));
+
+  const handleEnter = useCallback(
+    (i: number, e: React.MouseEvent) => {
+      const msg = messages[i];
+      if (!msg?.timestamp) return;
+      tooltip.show(
+        messageTipContent(msg.timestamp, msg.model, msg.outputTokens, null, startMs),
+        e,
+      );
+    },
+    [messages, startMs, tooltip],
+  );
 
   return (
     <g data-testid="message-lane">
@@ -44,11 +59,11 @@ export const MessageLane = memo(function MessageLane({
             height={barHeight}
             fill={modelColour(msg.model)}
             opacity={0.8}
-          >
-            <title>
-              {`Time: ${formatTime(msg.timestamp)}\nModel: ${msg.model ?? 'unknown'}\nOutput tokens: ${String(msg.outputTokens)}`}
-            </title>
-          </rect>
+            style={{ cursor: 'crosshair' }}
+            onMouseEnter={(e) => { handleEnter(i, e); }}
+            onMouseMove={tooltip.move}
+            onMouseLeave={tooltip.hide}
+          />
         );
       })}
     </g>

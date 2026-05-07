@@ -4,10 +4,12 @@
 
 import type { AssistantMessage } from '@agent-profiler/core';
 import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { TokenHeatmap } from '../src/timeline/TokenHeatmap';
 import { DEFAULT_CONFIG } from '../src/timeline/types';
+
+const mockTooltip = { show: vi.fn(), move: vi.fn(), hide: vi.fn() };
 
 
 describe('TokenHeatmap', () => {
@@ -21,6 +23,7 @@ describe('TokenHeatmap', () => {
           durationMs={60000}
           config={DEFAULT_CONFIG}
           y={0}
+          tooltip={mockTooltip}
         />
       </svg>,
     );
@@ -72,6 +75,7 @@ describe('TokenHeatmap', () => {
           durationMs={60000}
           config={DEFAULT_CONFIG}
           y={0}
+          tooltip={mockTooltip}
         />
       </svg>,
     );
@@ -93,6 +97,7 @@ describe('TokenHeatmap', () => {
           durationMs={60000}
           config={DEFAULT_CONFIG}
           y={0}
+          tooltip={mockTooltip}
         />
       </svg>,
     );

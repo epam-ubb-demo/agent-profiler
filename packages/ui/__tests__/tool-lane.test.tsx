@@ -4,10 +4,12 @@
 
 import type { ToolCall } from '@agent-profiler/core';
 import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ToolLane, getToolLaneCount } from '../src/timeline/ToolLane';
 import { DEFAULT_CONFIG } from '../src/timeline/types';
+
+const mockTooltip = { show: vi.fn(), move: vi.fn(), hide: vi.fn() };
 
 
 function makeToolCall(id: string, startTs: string, endTs: string): ToolCall {
@@ -37,6 +39,7 @@ describe('ToolLane', () => {
           config={DEFAULT_CONFIG}
           y={0}
           zoom={1}
+          tooltip={mockTooltip}
         />
       </svg>,
     );
@@ -60,6 +63,7 @@ describe('ToolLane', () => {
           config={DEFAULT_CONFIG}
           y={0}
           zoom={1}
+          tooltip={mockTooltip}
         />
       </svg>,
     );

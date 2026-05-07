@@ -3,10 +3,11 @@
  */
 
 import type { ToolCall } from '@agent-profiler/core';
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 
-import type { TimelineConfig } from './types';
-import { formatDuration, formatTime, modelColour, packToolLanes } from './utils';
+import { toolTipContent } from './tooltip-content';
+import type { TimelineConfig, TooltipHandlers } from './types';
+import { modelColour, packToolLanes } from './utils';
 
 export interface ToolLaneProps {
   readonly toolCalls: readonly ToolCall[];
@@ -15,6 +16,7 @@ export interface ToolLaneProps {
   readonly config: TimelineConfig;
   readonly y: number;
   readonly zoom: number;
+  readonly tooltip: TooltipHandlers;
 }
 
 export const ToolLane = memo(function ToolLane({
@@ -24,19 +26,41 @@ export const ToolLane = memo(function ToolLane({
   config,
   y,
   zoom,
+  tooltip,
 }: ToolLaneProps) {
   const assignments = packToolLanes(toolCalls, startMs, durationMs);
   const maxLane = assignments.length > 0 ? Math.max(...assignments.map((a) => a.lane)) : 0;
   const laneH = config.laneHeight - 4;
   const rowHeight = laneH / Math.max(1, maxLane + 1);
 
+  const handleEnter = useCallback(
+    (i: number, e: React.MouseEvent) => {
+      const a = assignments[i];
+      if (!a) return;
+      // Find the original tool call for args preview
+      const tc = toolCalls.find((t) => t.toolCallId === a.toolCallId);
+      tooltip.show(
+        toolTipContent(
+          a.toolName,
+          a.model,
+          a.startTs,
+          a.durationMs,
+          a.success,
+          tc?.argumentsPreview ?? '',
+          startMs,
+        ),
+        e,
+      );
+    },
+    [assignments, toolCalls, startMs, tooltip],
+  );
+
   return (
     <g data-testid="tool-lane">
-      {assignments.map((a) => {
+      {assignments.map((a, i) => {
         const x = a.startFrac * config.width;
         const width = Math.max(2, (a.endFrac - a.startFrac) * config.width);
         const ry = a.lane * rowHeight + y + 2;
-        const status = a.success === null ? '?' : a.success ? '✓' : '✗';
         const showLabel = width * zoom > 60;
 
         return (
@@ -50,11 +74,11 @@ export const ToolLane = memo(function ToolLane({
               rx={2}
               ry={2}
               opacity={0.85}
-            >
-              <title>
-                {`${a.toolName} (${status})\nModel: ${a.model ?? 'unknown'}\nStart: ${a.startTs ? formatTime(a.startTs) : '?'}\nDuration: ${a.durationMs ? formatDuration(a.durationMs) : '?'}`}
-              </title>
-            </rect>
+              style={{ cursor: 'crosshair' }}
+              onMouseEnter={(e) => { handleEnter(i, e); }}
+              onMouseMove={tooltip.move}
+              onMouseLeave={tooltip.hide}
+            />
             {showLabel && (
               <text
                 x={x + 3}

@@ -1,0 +1,63 @@
+/* Timeline tooltip — floating dark tooltip that follows the cursor. */
+
+.tooltip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background: var(--uui-surface-higher, #0a1733);
+  color: var(--uui-text-primary, #f5f7ff);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  max-width: 380px;
+  min-width: 180px;
+  box-shadow: 0 6px 20px rgba(10, 23, 51, 0.32);
+  font-family: inherit;
+  transition: opacity 0.08s ease-out;
+}
+
+/* Force dark background for legibility in both themes */
+:global(.uui-theme-loveship) .tooltip {
+  background: #0a1733;
+  color: #f5f7ff;
+}
+
+:global(.uui-theme-loveship_dark) .tooltip {
+  background: #1a2744;
+  color: #f5f7ff;
+}
+
+.hidden {
+  display: none;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.header {
+  display: block;
+  font-weight: 600;
+  color: #fff;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.key {
+  color: #99a8d2;
+  flex: 0 0 90px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.value {
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  word-break: break-word;
+  flex: 1;
+}

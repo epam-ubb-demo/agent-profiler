@@ -16,9 +16,11 @@ import { CompactionLane } from './CompactionLane';
 import { MessageLane } from './MessageLane';
 import { ModelLane } from './ModelLane';
 import { TimelineControls } from './TimelineControls';
+import { TimelineTooltip } from './TimelineTooltip';
 import { TokenHeatmap } from './TokenHeatmap';
 import { ToolLane, getToolLaneCount } from './ToolLane';
 import { DEFAULT_CONFIG } from './types';
+import { useTimelineTooltip } from './useTimelineTooltip';
 
 export interface TimelineProps {
   readonly session: Session;
@@ -28,6 +30,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
   const { zoom, zoomIn, zoomOut, resetZoom, startPan, updatePan, endPan, isPanning } =
     useTimelineZoom();
   const containerRef = useRef<HTMLDivElement>(null);
+  const { state: tooltipState, handlers: tooltipHandlers, tooltipRef } = useTimelineTooltip();
 
   const config = DEFAULT_CONFIG;
 
@@ -50,14 +53,15 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
   const compactionY = messageY + config.laneHeight + config.lanePadding;
   const totalHeight = compactionY + config.laneHeight + config.lanePadding;
 
-  // Pan handlers
+  // Pan handlers — hide tooltip during pan
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (e.button === 0) {
         startPan(e.clientX);
+        tooltipHandlers.hide();
       }
     },
-    [startPan],
+    [startPan, tooltipHandlers],
   );
 
   const handleMouseMove = useCallback(
@@ -73,7 +77,8 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
 
   const handleMouseLeave = useCallback(() => {
     endPan();
-  }, [endPan]);
+    tooltipHandlers.hide();
+  }, [endPan, tooltipHandlers]);
 
   // Lane labels
   const labels = [
@@ -145,6 +150,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
               durationMs={durationMs}
               config={config}
               y={heatmapY}
+              tooltip={tooltipHandlers}
             />
 
             {/* Model lane */}
@@ -157,6 +163,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
               endTs={session.endTs}
               config={config}
               y={modelY}
+              tooltip={tooltipHandlers}
             />
 
             {/* Tool lane */}
@@ -167,6 +174,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
               config={config}
               y={toolY}
               zoom={zoom.scale}
+              tooltip={tooltipHandlers}
             />
 
             {/* Message lane */}
@@ -176,6 +184,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
               durationMs={durationMs}
               config={config}
               y={messageY}
+              tooltip={tooltipHandlers}
             />
 
             {/* Compaction lane */}
@@ -185,10 +194,14 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
               durationMs={durationMs}
               config={config}
               y={compactionY}
+              tooltip={tooltipHandlers}
             />
           </svg>
         </div>
       </FlexRow>
+
+      {/* Floating tooltip — rendered outside SVG for proper HTML layout */}
+      <TimelineTooltip state={tooltipState} tooltipRef={tooltipRef} />
     </div>
   );
 });
