@@ -1,8 +1,11 @@
-# ADR-0002: UI Component Library — shadcn/ui + Radix UI
+---
+title: "ADR-0002: UI Component Library — shadcn/ui + Radix UI"
+description: Original UI framework decision, now superseded by ADR-0007.
+---
 
 ## Status
 
-Superseded by [ADR-0007](ADR-0007-ui-framework-epam-uui.md)
+Superseded by [ADR-0007](/agent-profiler/architecture/adr/adr-0007-ui-framework-epam-uui/)
 
 ## Date
 
