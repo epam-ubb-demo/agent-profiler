@@ -24,6 +24,30 @@ export const sessionDataSchema = z.object({
 
 export type SessionData = z.infer<typeof sessionDataSchema>;
 
+/** Supported adapter types for session detection. */
+export const adapterTypeSchema = z.enum([
+  'copilot-cli',
+  'vscode-chat',
+  'vscode-agent',
+  'ctb',
+]);
+
+export type AdapterTypeIpc = z.infer<typeof adapterTypeSchema>;
+
+/**
+ * Schema for session list items flowing across IPC.
+ * Dates are serialized as ISO strings for IPC transport.
+ */
+export const sessionListItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  path: z.string(),
+  createdAt: z.string().datetime(),
+  adapter: adapterTypeSchema,
+});
+
+export type SessionListItemIpc = z.infer<typeof sessionListItemSchema>;
+
 /**
  * IPC channel names — single source of truth for channel strings.
  */
@@ -31,4 +55,5 @@ export const ipcChannels = {
   APP_GET_VERSION: 'app:getVersion',
   SESSION_LIST: 'session:list',
   SESSION_OPEN: 'session:open',
+  SESSION_SET_ROOT_DIR: 'session:setRootDir',
 } as const;

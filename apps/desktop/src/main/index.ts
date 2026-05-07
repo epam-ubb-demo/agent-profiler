@@ -1,6 +1,15 @@
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 
+import { ipcChannels, sessionListItemSchema } from '@agent-profiler/core';
+import { LocalFsDataSource } from '@agent-profiler/data-source';
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
+
+/** Default directory for Copilot CLI session state. */
+const DEFAULT_ROOT_DIR = join(homedir(), '.copilot', 'session-state');
+
+/** The active data source — replaced when root dir changes. */
+let dataSource = new LocalFsDataSource(DEFAULT_ROOT_DIR);
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
@@ -36,18 +45,36 @@ function createWindow(): BrowserWindow {
 }
 
 // IPC Handlers
-ipcMain.handle('app:getVersion', () => {
+ipcMain.handle(ipcChannels.APP_GET_VERSION, () => {
   return app.getVersion();
 });
 
-ipcMain.handle('session:list', () => {
-  // Placeholder — returns empty list until session storage is implemented
-  return [];
+ipcMain.handle(ipcChannels.SESSION_LIST, async () => {
+  const items = await dataSource.listSessions();
+  // Serialize for IPC transport (Dates → ISO strings, validate with Zod)
+  return items.map((item) =>
+    sessionListItemSchema.parse({
+      id: item.id,
+      name: item.name,
+      path: item.path,
+      createdAt: item.createdAt.toISOString(),
+      adapter: item.adapter,
+    }),
+  );
 });
 
-ipcMain.handle('session:open', (_event, _sessionId: string) => {
-  // Placeholder — no-op until session storage is implemented
-  return null;
+ipcMain.handle(ipcChannels.SESSION_OPEN, async (_event, sessionId: string) => {
+  return dataSource.getSession(sessionId);
+});
+
+ipcMain.handle(ipcChannels.SESSION_SET_ROOT_DIR, async (_event, dir: string) => {
+  const newSource = new LocalFsDataSource(dir);
+  const available = await newSource.isAvailable();
+  if (available) {
+    dataSource = newSource;
+    return true;
+  }
+  return false;
 });
 
 app.whenReady().then(() => {
