@@ -1,54 +1,50 @@
-import { Slot } from '@radix-ui/react-slot';
-import { cva } from 'class-variance-authority';
-import type { VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
-import { cn } from '@/lib/utils';
+/**
+ * Stub Button component — the shadcn/ui Button stripped of Tailwind classes.
+ * Will be replaced by @epam/loveship Button in a later migration task (T0.7.9).
+ */
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        default: 'bg-primary text-primary-foreground shadow hover:bg-primary/90',
-        destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
-        outline: 'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground',
-        secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
-      },
-      size: {
-        default: 'h-9 px-4 py-2',
-        sm: 'h-8 rounded-md px-3 text-xs',
-        lg: 'h-10 rounded-md px-8',
-        icon: 'h-9 w-9',
-      },
-    },
-    defaultVariants: {
-      variant: 'default',
-      size: 'default',
-    },
-  },
-);
-
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
   asChild?: boolean;
 }
 
+const variantStyles: Record<string, React.CSSProperties> = {
+  default: { backgroundColor: '#303240', color: '#fff', border: 'none' },
+  destructive: { backgroundColor: '#E54322', color: '#fff', border: 'none' },
+  outline: { backgroundColor: 'transparent', color: '#303240', border: '1px solid #E1E3EB' },
+  secondary: { backgroundColor: '#F5F6FA', color: '#303240', border: 'none' },
+  ghost: { backgroundColor: 'transparent', color: '#303240', border: 'none' },
+  link: { backgroundColor: 'transparent', color: '#303240', border: 'none', textDecoration: 'underline' },
+};
+
+const sizeStyles: Record<string, React.CSSProperties> = {
+  default: { height: '2.25rem', padding: '0.5rem 1rem', fontSize: '0.875rem' },
+  sm: { height: '2rem', padding: '0.25rem 0.75rem', fontSize: '0.75rem' },
+  lg: { height: '2.5rem', padding: '0.5rem 2rem', fontSize: '0.875rem' },
+  icon: { height: '2.25rem', width: '2.25rem', padding: '0' },
+};
+
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : 'button';
-    return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        {...props}
-      />
-    );
+  ({ style, variant = 'default', size = 'default', asChild: _asChild, ...props }, ref) => {
+    const baseStyle: React.CSSProperties = {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '0.5rem',
+      whiteSpace: 'nowrap',
+      borderRadius: '0.375rem',
+      fontWeight: 500,
+      cursor: 'pointer',
+      ...variantStyles[variant],
+      ...sizeStyles[size],
+      ...style,
+    };
+    return <button ref={ref} style={baseStyle} {...props} />;
   },
 );
 Button.displayName = 'Button';
 
-export { Button, buttonVariants };
+export { Button };

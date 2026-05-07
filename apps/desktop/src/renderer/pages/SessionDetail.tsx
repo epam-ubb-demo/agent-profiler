@@ -43,18 +43,18 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
 
   if (loading) {
     return (
-      <div data-testid="session-detail-loading" className="flex items-center justify-center p-12">
-        <p className="text-sm text-muted-foreground">Loading session…</p>
+      <div data-testid="session-detail-loading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem' }}>
+        <p style={{ fontSize: '0.875rem', color: '#6C6F80' }}>Loading session…</p>
       </div>
     );
   }
 
   if (error && !session) {
     return (
-      <div data-testid="session-detail-error" className="flex flex-col items-center gap-4 p-12">
-        <p className="text-sm text-destructive">{error}</p>
+      <div data-testid="session-detail-error" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '3rem' }}>
+        <p style={{ fontSize: '0.875rem', color: '#E54322' }}>{error}</p>
         <Button variant="outline" size="sm" onClick={onBack}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
+          <ArrowLeft style={{ marginRight: '0.5rem', height: '1rem', width: '1rem' }} />
           Back to sessions
         </Button>
       </div>
@@ -66,21 +66,34 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
   }
 
   return (
-    <div data-testid="session-detail" className="flex flex-col gap-4 p-4">
-      <div className="flex items-center gap-2">
+    <div data-testid="session-detail" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <Button variant="ghost" size="sm" onClick={onBack} aria-label="Back">
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft style={{ height: '1rem', width: '1rem' }} />
         </Button>
-        <h1 className="text-lg font-semibold">{session.sessionId}</h1>
+        <h1 style={{ fontSize: '1.125rem', fontWeight: 600 }}>{session.sessionId}</h1>
         {session.parseStatus.status === 'partial' && (
-          <span className="rounded bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">
+          <span style={{
+            borderRadius: '0.25rem',
+            backgroundColor: '#FEF9C3',
+            padding: '0.125rem 0.5rem',
+            fontSize: '0.75rem',
+            color: '#854D0E',
+          }}>
             Partial parse
           </span>
         )}
       </div>
 
       {error && (
-        <div className="rounded border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
+        <div style={{
+          borderRadius: '0.25rem',
+          border: '1px solid rgba(229, 67, 34, 0.5)',
+          backgroundColor: 'rgba(229, 67, 34, 0.1)',
+          padding: '0.5rem',
+          fontSize: '0.875rem',
+          color: '#E54322',
+        }}>
           {error}
         </div>
       )}

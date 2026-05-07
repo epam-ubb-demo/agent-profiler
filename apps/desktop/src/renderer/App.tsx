@@ -1,3 +1,4 @@
+import { ContextProvider } from '@epam/uui-core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
@@ -27,14 +28,16 @@ export function App() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen">
-        {route.view === 'list' && <SessionBrowser onSelectSession={handleSelectSession} />}
-        {route.view === 'detail' && (
-          <SessionDetail sessionId={route.sessionId} onBack={handleBack} />
-        )}
-      </div>
-    </QueryClientProvider>
+    <ContextProvider onInitCompleted={() => {}}>
+      <QueryClientProvider client={queryClient}>
+        <div style={{ minHeight: '100vh' }}>
+          {route.view === 'list' && <SessionBrowser onSelectSession={handleSelectSession} />}
+          {route.view === 'detail' && (
+            <SessionDetail sessionId={route.sessionId} onBack={handleBack} />
+          )}
+        </div>
+      </QueryClientProvider>
+    </ContextProvider>
   );
 }
 

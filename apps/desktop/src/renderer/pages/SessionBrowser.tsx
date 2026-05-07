@@ -48,8 +48,8 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
   if (loading) {
     return (
-      <div data-testid="session-browser-loading" className="flex items-center justify-center p-12">
-        <p className="text-sm text-muted-foreground">Loading sessions…</p>
+      <div data-testid="session-browser-loading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem' }}>
+        <p style={{ fontSize: '0.875rem', color: '#6C6F80' }}>Loading sessions…</p>
       </div>
     );
   }
@@ -59,32 +59,45 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
   }
 
   return (
-    <div data-testid="session-browser" className="flex flex-col gap-4 p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Sessions</h1>
-        <div className="flex items-center gap-2">
+    <div data-testid="session-browser" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h1 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Sessions</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Button variant="outline" size="sm" onClick={handleOpenFolder}>
-            <FolderOpen className="mr-2 h-4 w-4" />
+            <FolderOpen style={{ marginRight: '0.5rem', height: '1rem', width: '1rem' }} />
             Open Folder…
           </Button>
           <SettingsPanel onSettingsSaved={handleSettingsSaved} />
         </div>
-      </div>
-      <ul className="flex flex-col gap-2" data-testid="session-list">
+      <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', listStyle: 'none', padding: 0 }} data-testid="session-list">
         {sessions.map((session) => (
           <li key={session.id}>
             <button
               type="button"
-              className="w-full rounded-md border p-3 text-left transition-colors hover:bg-muted"
+              style={{
+                width: '100%',
+                borderRadius: '0.375rem',
+                border: '1px solid #E1E3EB',
+                padding: '0.75rem',
+                textAlign: 'left',
+                background: 'none',
+                cursor: 'pointer',
+              }}
               onClick={() => onSelectSession(session.id)}
             >
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{session.name}</span>
-                <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: 500 }}>{session.name}</span>
+                <span style={{
+                  borderRadius: '0.25rem',
+                  backgroundColor: '#F5F6FA',
+                  padding: '0.125rem 0.5rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                }}>
                   {session.adapter}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: '#6C6F80' }}>
                 {new Date(session.createdAt).toLocaleString()}
               </p>
             </button>
