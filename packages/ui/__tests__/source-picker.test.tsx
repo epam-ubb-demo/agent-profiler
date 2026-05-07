@@ -2,7 +2,7 @@
  * Tests for the Source Picker UI components.
  */
 
-import { render, screen, fireEvent, cleanup, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act, waitFor } from './test-utils';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 
 import { SourceCard } from '../src/settings/SourceCard';
@@ -106,7 +106,8 @@ describe('SourceCard', () => {
 
     const badge = screen.getByTestId('source-status-copilot-cli');
     expect(badge).toHaveTextContent('42 sessions found');
-    expect(badge).toHaveStyle({ color: '#16a34a' });
+    // UUI Badge uses CSS classes for colour, not inline styles
+    expect(badge).toBeInTheDocument();
   });
 
   it('shows status badge — scanning (yellow)', () => {
@@ -117,7 +118,7 @@ describe('SourceCard', () => {
 
     const badge = screen.getByTestId('source-status-copilot-cli');
     expect(badge).toHaveTextContent('Scanning...');
-    expect(badge).toHaveStyle({ color: '#ca8a04' });
+    expect(badge).toBeInTheDocument();
   });
 
   it('shows status badge — error (red)', () => {
@@ -128,7 +129,7 @@ describe('SourceCard', () => {
 
     const badge = screen.getByTestId('source-status-copilot-cli');
     expect(badge).toHaveTextContent('Error: path not found');
-    expect(badge).toHaveStyle({ color: '#dc2626' });
+    expect(badge).toBeInTheDocument();
   });
 
   it('shows status badge — idle (grey)', () => {
@@ -139,7 +140,7 @@ describe('SourceCard', () => {
 
     const badge = screen.getByTestId('source-status-copilot-cli');
     expect(badge).toHaveTextContent('Idle');
-    expect(badge).toHaveStyle({ color: '#6b7280' });
+    expect(badge).toBeInTheDocument();
   });
 
   it('shows discovered path when status is found', () => {

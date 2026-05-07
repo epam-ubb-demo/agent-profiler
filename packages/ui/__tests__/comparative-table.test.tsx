@@ -3,7 +3,7 @@
  */
 
 import type { BenchRunAggregation, SessionSummaryRow, ModelUsageRollup, ToolUsageSummary } from '@agent-profiler/core';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup } from './test-utils';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 
 import { ComparativeTable } from '../src/comparative/ComparativeTable';

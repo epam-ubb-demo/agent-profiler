@@ -6,6 +6,7 @@
  */
 
 import type { Session, ToolCall, Turn } from '@agent-profiler/core';
+import { FlexRow } from '@epam/uui';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 import { TurnPanel } from './TurnPanel';
@@ -93,9 +94,10 @@ export const TurnList = memo(function TurnList({
       onScroll={shouldVirtualize ? handleScroll : undefined}
     >
       <div style={totalHeight != null ? { height: totalHeight, position: 'relative' } : undefined}>
-        <div
-          className="flex flex-col gap-2 p-2"
-          style={shouldVirtualize ? { transform: `translateY(${offsetTop}px)` } : undefined}
+        <FlexRow
+          cx="p-2"
+          columnGap="6"
+          rawProps={{ style: shouldVirtualize ? { flexDirection: 'column', transform: `translateY(${offsetTop}px)` } : { flexDirection: 'column' } }}
         >
           {turns.slice(startIndex, endIndex).map((turn) => (
             <TurnPanel
@@ -106,7 +108,7 @@ export const TurnList = memo(function TurnList({
               onToolCallClick={(tc) => handleToolCallClick(tc, turn)}
             />
           ))}
-        </div>
+        </FlexRow>
       </div>
     </div>
   );

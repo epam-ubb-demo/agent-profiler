@@ -6,6 +6,7 @@
  */
 
 import type { Session } from '@agent-profiler/core';
+import { FlexRow, FlexCell } from '@epam/uui';
 import { memo, useCallback, useRef } from 'react';
 
 import { useTimelineZoom } from '../hooks/useTimelineZoom';
@@ -84,14 +85,14 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
   ];
 
   return (
-    <div data-testid="timeline" className="flex flex-col w-full" style={{ background: '#fafbff' }}>
+    <div data-testid="timeline" className="flex flex-col w-full" style={{ background: 'var(--uui-surface-main)' }}>
       <TimelineControls zoom={zoom.scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} />
-      <div className="flex">
+      <FlexRow>
         {/* Fixed gutter with lane labels */}
-        <div
-          className="flex-shrink-0 flex flex-col"
-          style={{ width: config.gutterWidth }}
-          data-testid="timeline-gutter"
+        <FlexCell
+          width={config.gutterWidth}
+          shrink={0}
+          rawProps={{ 'data-testid': 'timeline-gutter' }}
         >
           <svg width={config.gutterWidth} height={totalHeight}>
             {labels.map((label) => (
@@ -100,7 +101,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
                 x={config.gutterWidth - 8}
                 y={label.y + config.laneHeight / 2}
                 fontSize={10}
-                fill="#34406b"
+                fill="var(--uui-text-primary)"
                 textAnchor="end"
                 dominantBaseline="central"
               >
@@ -108,7 +109,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
               </text>
             ))}
           </svg>
-        </div>
+        </FlexCell>
 
         {/* Scrollable timeline area */}
         <div
@@ -188,7 +189,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
             />
           </svg>
         </div>
-      </div>
+      </FlexRow>
     </div>
   );
 });

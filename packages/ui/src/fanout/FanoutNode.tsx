@@ -6,6 +6,7 @@
  */
 
 import type { FanoutTurn } from '@agent-profiler/core';
+import { FlexRow, Text } from '@epam/uui';
 import { memo, useCallback, useState } from 'react';
 
 export interface FanoutNodeProps {
@@ -35,34 +36,36 @@ export const FanoutNode = memo(function FanoutNode({ turn, depth, onNodeClick }:
       {/* Node header */}
       <button
         data-testid="fanout-node-header"
-        className="flex items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-50 w-full"
+        className="flex items-center gap-2 rounded px-2 py-1.5 text-left w-full"
         onClick={toggle}
         aria-expanded={expanded}
+        style={{ background: 'transparent' }}
       >
         {/* Triangle/chevron indicator */}
         <span
-          className={`inline-block text-xs text-slate-400 transition-transform duration-200 ${
+          className={`inline-block transition-transform duration-200 ${
             expanded ? 'rotate-90' : ''
           }`}
+          style={{ color: 'var(--uui-text-disabled)', fontSize: '0.75rem' }}
         >
           ▶
         </span>
 
         {/* Agent label */}
-        <span className="text-sm font-medium text-slate-900">{label}</span>
+        <Text size="24" fontWeight="600">{label}</Text>
 
         {/* Stats */}
-        <span className="text-xs text-slate-500">
+        <Text size="18" color="secondary">
           {toolCount} tool{toolCount !== 1 ? 's' : ''}
-        </span>
-        {durationMs != null && <span className="text-xs text-slate-500">{durationMs}ms</span>}
+        </Text>
+        {durationMs != null && <Text size="18" color="secondary">{durationMs}ms</Text>}
 
         {/* Inspect button */}
         {onNodeClick && (
           <span
             role="button"
             tabIndex={0}
-            className="ml-auto text-xs text-blue-600 hover:underline"
+            style={{ marginLeft: 'auto', color: 'var(--uui-info-50)', fontSize: '0.75rem', cursor: 'pointer' }}
             onClick={(e) => {
               e.stopPropagation();
               onNodeClick(turn);
@@ -83,40 +86,42 @@ export const FanoutNode = memo(function FanoutNode({ turn, depth, onNodeClick }:
       {expanded && (
         <div
           data-testid="fanout-node-body"
-          className="ml-5 border-l border-slate-200 pl-3 py-1 space-y-1"
+          style={{ marginLeft: '1.25rem', borderLeft: '1px solid var(--uui-neutral-40)', paddingLeft: '0.75rem', paddingTop: '0.25rem', paddingBottom: '0.25rem' }}
         >
           {turn.toolCalls.map((tc) => (
-            <div key={tc.toolCallId} className="flex items-center gap-2 text-sm">
-              <span className="font-medium text-slate-900">{tc.toolName}</span>
+            <FlexRow key={tc.toolCallId} columnGap="6" alignItems="center">
+              <Text size="24" fontWeight="600">{tc.toolName}</Text>
               {tc.durationMs != null && (
-                <span className="text-xs text-slate-500">{tc.durationMs}ms</span>
+                <Text size="18" color="secondary">{tc.durationMs}ms</Text>
               )}
-              <span
-                className={`text-xs font-medium ${
+              <Text
+                size="18"
+                fontWeight="600"
+                color={
                   tc.success === true
-                    ? 'text-green-600'
+                    ? 'success'
                     : tc.success === false
-                      ? 'text-red-600'
-                      : 'text-slate-500'
-                }`}
+                      ? 'critical'
+                      : 'secondary'
+                }
               >
                 {tc.success === true ? '✓' : tc.success === false ? '✗' : '?'}
-              </span>
-            </div>
+              </Text>
+            </FlexRow>
           ))}
 
           {/* Recursive sub-agents */}
           {turn.subagents.map((sa, i) => (
-            <div key={i} className="mt-1 text-xs text-slate-500">
+            <Text key={i} size="18" color="secondary" rawProps={{ style: { marginTop: '0.25rem' } }}>
               Sub-agent: {sa.agentName} ({sa.toolCallCount} calls)
-            </div>
+            </Text>
           ))}
 
           {turn.assistantMessages.length > 0 && (
-            <div className="mt-1 text-xs text-slate-500">
+            <Text size="18" color="secondary" rawProps={{ style: { marginTop: '0.25rem' } }}>
               {turn.assistantMessages.length} assistant message
               {turn.assistantMessages.length !== 1 ? 's' : ''}
-            </div>
+            </Text>
           )}
         </div>
       )}

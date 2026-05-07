@@ -5,11 +5,12 @@
  * an autocomplete text input for adding new tags.
  */
 
+import { FlexRow, Text } from '@epam/uui';
 import { useState, useRef, useCallback, type KeyboardEvent, type ChangeEvent } from 'react';
 
 import type { Tag } from './types';
 
-/** Simple deterministic hash-to-colour for tag chips. */
+/** Simple deterministic hash-to-colour for tag chips using CSS custom properties. */
 function tagColour(label: string): string {
   let hash = 0;
   for (let i = 0; i < label.length; i++) {
@@ -66,7 +67,7 @@ export function TagInput({ tags, suggestions = [], onAdd, onRemove }: TagInputPr
 
   return (
     <div data-testid="tag-input" className="tag-input">
-      <div className="tag-input__chips" role="list" aria-label="Tags">
+      <FlexRow columnGap="6" rawProps={{ role: 'list', 'aria-label': 'Tags', style: { flexWrap: 'wrap' } }}>
         {tags.map((tag) => (
           <span
             key={tag.id}
@@ -74,7 +75,7 @@ export function TagInput({ tags, suggestions = [], onAdd, onRemove }: TagInputPr
             className="tag-input__chip"
             style={{ backgroundColor: tagColour(tag.label) }}
           >
-            {tag.label}
+            <Text size="18">{tag.label}</Text>
             <button
               type="button"
               aria-label={`Remove tag ${tag.label}`}
@@ -85,7 +86,7 @@ export function TagInput({ tags, suggestions = [], onAdd, onRemove }: TagInputPr
             </button>
           </span>
         ))}
-      </div>
+      </FlexRow>
       <div className="tag-input__input-wrapper">
         <input
           ref={inputRef}
@@ -117,7 +118,7 @@ export function TagInput({ tags, suggestions = [], onAdd, onRemove }: TagInputPr
                   addTag(suggestion);
                 }}
               >
-                {suggestion}
+                <Text size="24">{suggestion}</Text>
               </li>
             ))}
           </ul>
