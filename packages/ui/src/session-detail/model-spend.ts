@@ -8,7 +8,7 @@
  */
 
 import type { ShutdownMetrics } from '@agent-profiler/core';
-import { calculateCost } from '@agent-profiler/pricing';
+import { calculateCost, DEFAULT_PRICING_TABLE } from '@agent-profiler/pricing';
 import type { CostConfidence } from '@agent-profiler/pricing';
 
 /* ------------------------------------------------------------------ */
@@ -81,7 +81,7 @@ export function computeModelSpend(
 ): ModelSpendResult | null {
   if (shutdown === null) return null;
 
-  const costBreakdown = calculateCost(shutdown);
+  const costBreakdown = calculateCost(shutdown, DEFAULT_PRICING_TABLE);
 
   /* ---- Build unsorted rows ---- */
   const rows: ModelSpendRow[] = shutdown.modelMetrics.map((m) => {

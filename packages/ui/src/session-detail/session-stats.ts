@@ -7,7 +7,7 @@
  */
 
 import type { Session } from '@agent-profiler/core';
-import { calculateCost } from '@agent-profiler/pricing';
+import { calculateCost, DEFAULT_PRICING_TABLE } from '@agent-profiler/pricing';
 
 import { formatCost, formatDuration, formatTokenCount } from '../comparative/format';
 
@@ -83,7 +83,7 @@ export function computeSessionStats(session: Session): SessionStats {
   const shutdown = session.shutdown;
 
   const costBreakdown =
-    shutdown !== null ? calculateCost(shutdown) : null;
+    shutdown !== null ? calculateCost(shutdown, DEFAULT_PRICING_TABLE) : null;
 
   const toolCount = session.toolCalls.length;
 

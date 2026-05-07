@@ -9,8 +9,6 @@
  * whose schema matches `PricingTable`.
  */
 
-import { readFileSync } from 'node:fs';
-
 import type { ModelRateCard, PricingTable } from './types';
 
 const ENV_OVERRIDE = 'AGENT_PROFILER_PRICING_PATH';
@@ -87,9 +85,14 @@ function validatePricingTable(data: unknown): PricingTable | null {
 /**
  * Load a pricing table from a JSON file path.
  * Returns `null` if the file cannot be read or parsed.
+ *
+ * The `node:fs` import is deferred so the module can be safely
+ * imported in browser/renderer contexts that never call this function.
  */
 function loadFromFile(filePath: string): PricingTable | null {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { readFileSync } = require('node:fs') as typeof import('node:fs');
     const raw = readFileSync(filePath, 'utf-8');
     const parsed: unknown = JSON.parse(raw);
     return validatePricingTable(parsed);
