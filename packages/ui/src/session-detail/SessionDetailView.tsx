@@ -30,8 +30,10 @@ import { computeSessionStats } from './session-stats';
 import { SessionHeader } from './SessionHeader';
 import { StatsGrid } from './StatsGrid';
 import { SubagentTable } from './SubagentTable';
+import { computeToolInventory } from './tool-inventory';
 import { computeToolStats } from './tool-stats';
 import { ToolFrequencyTable } from './ToolFrequencyTable';
+import { ToolInventoryTable } from './ToolInventoryTable';
 import { ToolTokenTable } from './ToolTokenTable';
 
 /* ------------------------------------------------------------------ */
@@ -120,6 +122,7 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
   );
 
   const toolStats = useMemo(() => computeToolStats(session), [session]);
+  const toolInventory = useMemo(() => computeToolInventory(session), [session]);
   const eventTypes = useMemo(() => computeEventTypeStats(session), [session]);
 
   /* --- render ------------------------------------------------------ */
@@ -188,21 +191,26 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
         <ToolFrequencyTable rows={toolStats.frequencyStats} />
       </Section>
 
-      {/* 11. Sub-agent fan-outs */}
+      {/* 11. Tool usage by category */}
+      <Section title="Tool usage by category">
+        <ToolInventoryTable result={toolInventory} />
+      </Section>
+
+      {/* 12. Sub-agent fan-outs */}
       {session.subagents.length > 0 && (
         <Section title="Sub-agent fan-outs">
           <SubagentTable subagents={session.subagents} onSessionNavigate={onSessionNavigate} />
         </Section>
       )}
 
-      {/* 12. Compactions */}
+      {/* 13. Compactions */}
       {session.compactions.length > 0 && (
         <Section title="Compactions">
           <CompactionsTable compactions={session.compactions} />
         </Section>
       )}
 
-      {/* 13. Event types observed */}
+      {/* 14. Event types observed */}
       <Section title="Event types observed">
         <EventTypesTable rows={eventTypes} />
       </Section>
