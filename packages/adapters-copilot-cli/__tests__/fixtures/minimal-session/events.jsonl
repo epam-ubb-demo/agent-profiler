@@ -1,0 +1,2 @@
+{"type":"session.start","timestamp":"2025-01-15T10:00:00.000Z","id":"evt-001","data":{"sessionId":"sess-minimal-001","copilotVersion":"1.0.0","selectedModel":"gpt-4o","reasoningEffort":"low","startTime":"2025-01-15T10:00:00.000Z","context":{"repository":"","branch":"","cwd":"/tmp"}}}
+{"type":"session.shutdown","timestamp":"2025-01-15T10:00:01.000Z","id":"evt-002","data":{"totalPremiumRequests":0,"totalApiDurationMs":0,"modelMetrics":{},"currentTokens":0,"systemTokens":0,"conversationTokens":0,"toolDefinitionsTokens":0,"codeChanges":{}}}

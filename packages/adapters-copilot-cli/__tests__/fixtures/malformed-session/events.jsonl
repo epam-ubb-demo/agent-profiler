@@ -1,0 +1,7 @@
+{"type":"session.start","timestamp":"2025-01-15T10:00:00.000Z","id":"evt-001","data":{"sessionId":"sess-malformed-001","copilotVersion":"1.2.3","selectedModel":"claude-sonnet-4-20250514","reasoningEffort":"medium","startTime":"2025-01-15T10:00:00.000Z","context":{"repository":"test-org/test-repo","branch":"main","cwd":"/tmp/test"}}}
+this is not json at all
+{"type":"user.message","timestamp":"2025-01-15T10:00:01.000Z","id":"evt-002","data":{"interactionId":"int-001","content":"Hello","turnId":"0"}}
+{malformed json here!!!
+{"type":"assistant.message","timestamp":"2025-01-15T10:00:02.000Z","id":"evt-003","data":{"interactionId":"int-001","requestId":"req-001","outputTokens":50,"inputTokens":500,"cacheReadTokens":0,"cacheWriteTokens":0,"content":"Hi there!","reasoningText":"","turnId":"0"}}
+[1, 2, 3]
+{"type":"session.shutdown","timestamp":"2025-01-15T10:00:03.000Z","id":"evt-004","data":{"totalPremiumRequests":1,"totalApiDurationMs":2000,"modelMetrics":{},"currentTokens":500,"systemTokens":200,"conversationTokens":250,"toolDefinitionsTokens":50,"codeChanges":{}}}
