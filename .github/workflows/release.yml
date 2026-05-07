@@ -12,9 +12,12 @@ on:
           - windows
           - linux
           - all
+  push:
+    tags:
+      - '@agent-profiler/desktop@*'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-macos:
@@ -36,6 +39,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: macos-release
@@ -57,6 +61,7 @@ jobs:
         env:
           CSC_LINK: ${{ secrets.WIN_CERT_P12 }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: windows-release
@@ -75,6 +80,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @agent-profiler/desktop run build
       - run: pnpm --filter @agent-profiler/desktop run dist:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: linux-release

@@ -27,3 +27,11 @@ export * from './annotations';
 
 // PDF export button
 export { PdfExportButton } from './pdf/PdfExportButton';
+
+// Auto-update notification
+export { UpdateNotification } from './components/UpdateNotification';
+export type {
+  UpdateNotificationProps,
+  UpdateNotificationState,
+  UpdaterIpc,
+} from './components/UpdateNotification';
