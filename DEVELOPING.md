@@ -175,3 +175,53 @@ ESLint enforces layered architecture rules:
 - **packages/core** must not import from **packages/ui** (core is UI-agnostic)
 
 These rules are configured in the root `eslint.config.mjs`.
+
+## Copilot CLI Event Schema Evolution
+
+### Background
+
+Agent Profiler parses raw `events.jsonl` files produced by the GitHub Copilot CLI.
+The CLI's event format is **not** a stable public API and can change without notice.
+
+For example, the `session.shutdown` event changed from flat fields (`inputTokens`,
+`outputTokens`, `requestCount` directly on each model entry) to nested sub-objects
+(`usage: { inputTokens, … }`, `requests: { count, cost }`).
+
+### Data Flow
+
+- Raw `events.jsonl` files in `~/.copilot/session-state/<uuid>/` are the **immutable source of truth**.
+- Sessions are always re-parsed from raw events on load — there is no persistent cache.
+- This means parser fixes retroactively fix **all** existing sessions. No data migration is ever needed.
+- The parsing entry point is `parseCopilotCliSession()` in `packages/adapters-copilot-cli/src/index.ts`.
+
+### Per-Field Fallback Strategy
+
+Instead of detecting the format version and branching, the parser uses **per-field fallback**: it tries the newest known location first, then falls back to older locations.
+
+Example pattern from `onShutdown()` in `packages/adapters-copilot-cli/src/event-handlers.ts`:
+
+```ts
+inputTokens: safeInt(usage['inputTokens'] ?? m['inputTokens']),
+requestCount: safeInt(requests['count']    ?? m['requestCount']),
+```
+
+This tries the nested `usage` / `requests` sub-objects first, then the flat field on the model entry. The approach handles old, new, mixed, and partial formats gracefully without explicit version detection.
+
+### Post-Parse Validation
+
+After parsing, `parseCopilotCliSession()` checks whether shutdown metrics exist but all token counts are zero. If so, `parseStatus` is set to `'partial'` with a diagnostic warning about a possible schema mismatch.
+
+This acts as an early-warning system: if the CLI changes format again and the fallback chain does not cover it, the validation will catch it and surface a visible warning in the UI.
+
+### Adding Support for a New Format
+
+When the Copilot CLI changes its event format again:
+
+1. **Obtain a sample** — capture a session with the new format and inspect the raw `events.jsonl`.
+2. **Update the fallback chain** — in `event-handlers.ts`, extend the field extraction to try the new location first, keeping existing fallback paths.
+3. **Add test fixtures** — create a new fixture file in `__tests__/fixtures/` with the new format. Add tests covering the new format and verify that old-format tests still pass.
+4. **Verify post-parse validation** — confirm that the validation check in `index.ts` does not trigger a false warning for the new format.
+5. **Run all tests**:
+   ```bash
+   pnpm --filter @agent-profiler/adapters-copilot-cli test
+   ```

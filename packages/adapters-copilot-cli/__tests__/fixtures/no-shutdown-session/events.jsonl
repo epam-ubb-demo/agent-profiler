@@ -1,0 +1,2 @@
+{"type":"session.start","timestamp":"2025-01-15T10:00:00.000Z","id":"evt-001","data":{"sessionId":"sess-no-shutdown","copilotVersion":"1.0.0","selectedModel":"claude-sonnet-4-20250514","reasoningEffort":"medium","startTime":"2025-01-15T10:00:00.000Z","context":{"repository":"org/repo","branch":"main","cwd":"/tmp"}}}
+{"type":"user.message","timestamp":"2025-01-15T10:00:01.000Z","id":"evt-002","data":{"interactionId":"int-1","content":"Hello","turnId":"0"}}

@@ -5,13 +5,18 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { join } from 'node:path';
+
 import {
   countPostShutdownEvents,
   createSessionBuilder,
   deriveSessionOutcome,
   processEvents,
 } from '../src/event-handlers';
+import { parseCopilotCliSession } from '../src/index';
 import type { RawEvent } from '../src/types';
+
+const FIXTURES = join(import.meta.dirname, 'fixtures');
 
 describe('processEvents', () => {
   it('processes session.start into session metadata', () => {
@@ -484,5 +489,50 @@ describe('deriveSessionOutcome', () => {
       { kind: 'abort', timestamp: '2025-01-15T10:00:01.000Z', success: null },
     ];
     expect(deriveSessionOutcome(sb)).toBe(false);
+  });
+});
+
+describe('parseCopilotCliSession — post-parse validation', () => {
+  it('detects schema mismatch when all shutdown token counts are zero', async () => {
+    const session = await parseCopilotCliSession(join(FIXTURES, 'zero-tokens-session'));
+
+    expect(session.parseStatus.status).toBe('partial');
+    expect(session.parseStatus.error).toContain('possible event schema mismatch');
+  });
+
+  it('does not warn when shutdown has non-zero token counts', async () => {
+    const session = await parseCopilotCliSession(join(FIXTURES, 'valid-session'));
+
+    expect(session.parseStatus.status).toBe('ok');
+    expect(session.parseStatus.error).toBeNull();
+  });
+
+  it('does not warn when no shutdown event exists', async () => {
+    // A session with only a start event — no shutdown at all
+    const session = await parseCopilotCliSession(join(FIXTURES, 'no-shutdown-session'));
+
+    // error should be null (no warnings at all) or at least not mention schema mismatch
+    if (session.parseStatus.error !== null) {
+      expect(session.parseStatus.error).not.toContain('schema mismatch');
+    }
+  });
+
+  it('does not warn when mixed models have at least one with non-zero tokens', async () => {
+    const session = await parseCopilotCliSession(join(FIXTURES, 'mixed-models-session'));
+
+    expect(session.parseStatus.status).toBe('ok');
+    expect(session.parseStatus.error).toBeNull();
+  });
+
+  it('stacks warnings from skipped events and schema mismatch', async () => {
+    const session = await parseCopilotCliSession(
+      join(FIXTURES, 'zero-tokens-with-skipped-session'),
+    );
+
+    expect(session.parseStatus.status).toBe('partial');
+    expect(session.parseStatus.error).toContain('skipped');
+    expect(session.parseStatus.error).toContain('possible event schema mismatch');
+    // Verify both warnings are joined
+    expect(session.parseStatus.error).toContain('; ');
   });
 });
