@@ -1,0 +1,70 @@
+# macOS Release Runbook
+
+## Prerequisites
+
+- **Apple Developer account** (paid, $99/year) enrolled in the [Apple Developer Program](https://developer.apple.com/programs/).
+- **Developer ID Application** certificate generated via Xcode or Apple Developer portal.
+- **App-specific password** for notarisation (generated at [appleid.apple.com](https://appleid.apple.com/)).
+
+## Exporting the Signing Certificate as .p12
+
+1. Open **Keychain Access** on macOS.
+2. Select the **Developer ID Application** certificate under "My Certificates".
+3. Right-click → **Export…** → Choose `.p12` format.
+4. Set a strong password — you'll need it as a GitHub secret.
+5. Base64-encode the file for storage:
+   ```bash
+   base64 -i certificate.p12 -o certificate-base64.txt
+   ```
+
+## GitHub Secrets to Configure
+
+| Secret | Description |
+|--------|-------------|
+| `MAC_CERT_P12` | Base64-encoded `.p12` certificate |
+| `MAC_CERT_PASSWORD` | Password for the `.p12` file |
+| `APPLE_ID` | Apple ID email used for notarisation |
+| `APPLE_APP_PASSWORD` | App-specific password |
+| `APPLE_TEAM_ID` | 10-character Apple Team ID |
+
+Configure in **Settings → Secrets and variables → Actions** in the GitHub repository.
+
+## Triggering the Release
+
+1. Go to **Actions** → **Release** workflow.
+2. Click **Run workflow**.
+3. Select **macos** (or **all**) as the platform.
+4. Wait for the build to complete (~10-15 min).
+5. Download the `.dmg` artifact from the completed run.
+
+## Notarisation (When Enabled)
+
+Currently `notarize: false` in `electron-builder.config.ts`. To enable:
+
+1. Set `notarize: true` (or configure `notarize` object with `teamId`).
+2. Ensure all Apple secrets above are configured.
+3. The build will automatically submit to Apple for notarisation.
+4. Apple typically responds within 5–15 minutes.
+5. electron-builder staples the notarisation ticket to the DMG.
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| `errSecInternalComponent` | Unlock keychain: `security unlock-keychain` (CI uses `CSC_LINK` env) |
+| Code signing fails silently | Verify `CSC_LINK` is base64 of valid `.p12`, not the raw binary |
+| Notarisation timeout | Increase timeout or retry; Apple services can be slow |
+| "App is damaged" on open | The DMG wasn't notarised; users must right-click → Open |
+| `The identity … can't be found` | Certificate expired or not in keychain; re-export and update secret |
+| Hardened Runtime issues | Check entitlements in `build/entitlements.mac.plist` |
+
+## Local Development Build (Unsigned)
+
+For local testing without signing:
+
+```bash
+pnpm --filter @agent-profiler/desktop run build
+pnpm --filter @agent-profiler/desktop run dist:mac
+```
+
+The build will produce an unsigned DMG in `apps/desktop/dist-release/`. macOS will require right-click → Open for unsigned apps.
