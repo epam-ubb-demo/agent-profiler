@@ -1,0 +1,3 @@
+{"type":"session.start","data":{"sessionId":"test-session-002","version":1,"producer":"copilot-agent","copilotVersion":"0.45.0","vscodeVersion":"1.117.0","startTime":"2026-04-29T10:00:00.000Z"},"id":"evt-100","timestamp":"2026-04-29T10:00:00.000Z","parentId":null}
+this is not valid json
+{"type":"user.message","data":{"content":"Hello","attachments":[]},"id":"evt-101","timestamp":"2026-04-29T10:00:01.000Z","parentId":"evt-100"}
