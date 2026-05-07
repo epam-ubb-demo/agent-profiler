@@ -1,0 +1,22 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8]: EPAM
+        - generic [ref=e10]: Agent Profiler
+      - button "Switch to dark theme" [ref=e11] [cursor=pointer]:
+        - generic [ref=e12]:
+          - img
+        - generic [ref=e13]: Dark mode
+  - generic [ref=e16]:
+    - img [ref=e17]
+    - generic [ref=e20]: No sessions found
+    - generic [ref=e21]:
+      - text: Agent Profiler looks for Copilot CLI sessions in
+      - code [ref=e22]: ~/.copilot/session-state/
+    - button "Open a folder containing session logs" [ref=e23] [cursor=pointer]:
+      - generic [ref=e24]: Open a folder containing session logs
+    - generic [ref=e25]:
+      - text: To generate sessions, use the Copilot CLI (
+      - code [ref=e26]: gh copilot
+      - text: ) in any repository. Sessions appear here automatically.
