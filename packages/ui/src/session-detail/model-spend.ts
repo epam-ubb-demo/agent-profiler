@@ -1,15 +1,19 @@
 /**
- * Pure-function utility that transforms {@link ShutdownMetrics.modelMetrics}
- * into table rows for the "Per-model spend" table.
+ * Pure-function utility that transforms model metrics into table rows
+ * for the "Per-model spend" table.
  *
  * All computation is side-effect-free; the module exports a single
  * {@link computeModelSpend} function that derives sorted spend rows
- * and footer totals from shutdown metrics.
+ * and footer totals from a {@link Session} object.
+ *
+ * When shutdown metrics are available they are preferred (most accurate).
+ * Otherwise, per-request token data from assistant messages is aggregated
+ * as a fallback.
  */
 
-import type { ShutdownMetrics } from '@agent-profiler/core';
+import type { AssistantMessage, Session } from '@agent-profiler/core';
 import { calculateCost, DEFAULT_PRICING_TABLE } from '@agent-profiler/pricing';
-import type { CostConfidence } from '@agent-profiler/pricing';
+import type { CostConfidence, TokenUsage } from '@agent-profiler/pricing';
 
 /* ------------------------------------------------------------------ */
 /*  Public interfaces                                                  */
@@ -61,6 +65,66 @@ export interface ModelSpendResult {
   readonly totals: ModelSpendTotals;
   /** Confidence level of the cost estimate. */
   readonly confidence: CostConfidence;
+  /** Whether data was derived from shutdown metrics or assistant messages. */
+  readonly source: 'shutdown' | 'messages';
+}
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Aggregate per-model token data from assistant messages.
+ *
+ * Messages with `model: null` are excluded. Returns a `TokenUsage`-compatible
+ * array of per-model token totals and a parallel request-count map.
+ */
+function aggregateFromMessages(
+  messages: readonly AssistantMessage[],
+): { usage: TokenUsage; requestCounts: Record<string, number> } | null {
+  const byModel = new Map<
+    string,
+    { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; requestCount: number }
+  >();
+
+  for (const msg of messages) {
+    if (msg.model === null) continue;
+
+    const existing = byModel.get(msg.model);
+    if (existing) {
+      existing.inputTokens += msg.inputTokens;
+      existing.outputTokens += msg.outputTokens;
+      existing.cacheReadTokens += msg.cacheReadTokens;
+      existing.cacheWriteTokens += msg.cacheWriteTokens;
+      existing.requestCount += 1;
+    } else {
+      byModel.set(msg.model, {
+        inputTokens: msg.inputTokens,
+        outputTokens: msg.outputTokens,
+        cacheReadTokens: msg.cacheReadTokens,
+        cacheWriteTokens: msg.cacheWriteTokens,
+        requestCount: 1,
+      });
+    }
+  }
+
+  if (byModel.size === 0) return null;
+
+  const modelMetrics: TokenUsage['modelMetrics'][number][] = [];
+  const requestCounts: Record<string, number> = {};
+
+  for (const [model, agg] of byModel) {
+    modelMetrics.push({
+      model,
+      inputTokens: agg.inputTokens,
+      outputTokens: agg.outputTokens,
+      cacheReadTokens: agg.cacheReadTokens,
+      cacheWriteTokens: agg.cacheWriteTokens,
+    });
+    requestCounts[model] = agg.requestCount;
+  }
+
+  return { usage: { modelMetrics }, requestCounts };
 }
 
 /* ------------------------------------------------------------------ */
@@ -68,28 +132,62 @@ export interface ModelSpendResult {
 /* ------------------------------------------------------------------ */
 
 /**
- * Compute per-model spend rows, footer totals, and cost confidence
- * from shutdown metrics.
+ * Compute per-model spend rows, footer totals, and cost confidence.
  *
- * Returns `null` when no shutdown data is available.
+ * Prefers shutdown metrics when available (most accurate). Falls back
+ * to aggregating per-request token data from assistant messages when
+ * the session has no shutdown data.
  *
- * @param shutdown - The session's shutdown metrics, or `null`.
+ * Returns `null` when neither source provides data.
+ *
+ * @param session - The full session object.
  * @returns Sorted spend rows with totals, or `null`.
  */
 export function computeModelSpend(
-  shutdown: ShutdownMetrics | null,
+  session: Session,
 ): ModelSpendResult | null {
-  if (shutdown === null) return null;
+  const { shutdown } = session;
 
-  const costBreakdown = calculateCost(shutdown, DEFAULT_PRICING_TABLE);
+  /* ---- Preferred path: shutdown metrics ---- */
+  if (shutdown !== null) {
+    const costBreakdown = calculateCost(shutdown, DEFAULT_PRICING_TABLE);
 
-  /* ---- Build unsorted rows ---- */
-  const rows: ModelSpendRow[] = shutdown.modelMetrics.map((m) => {
+    const rows: ModelSpendRow[] = shutdown.modelMetrics.map((m) => {
+      const cost = costBreakdown.perModel[m.model]?.totalCostUsd ?? 0;
+
+      return {
+        model: m.model,
+        requestCount: m.requestCount,
+        premiumCostUsd: cost,
+        inputTokens: m.inputTokens,
+        outputTokens: m.outputTokens,
+        cacheReadTokens: m.cacheReadTokens,
+        cacheWriteTokens: m.cacheWriteTokens,
+        estimatedUsd: cost,
+      };
+    });
+
+    rows.sort((a, b) => b.estimatedUsd - a.estimatedUsd);
+
+    return {
+      ...buildTotals(rows),
+      confidence: costBreakdown.confidence,
+      source: 'shutdown',
+    };
+  }
+
+  /* ---- Fallback: aggregate from assistant messages ---- */
+  const aggregated = aggregateFromMessages(session.assistantMessages);
+  if (aggregated === null) return null;
+
+  const costBreakdown = calculateCost(aggregated.usage, DEFAULT_PRICING_TABLE);
+
+  const rows: ModelSpendRow[] = aggregated.usage.modelMetrics.map((m) => {
     const cost = costBreakdown.perModel[m.model]?.totalCostUsd ?? 0;
 
     return {
       model: m.model,
-      requestCount: m.requestCount,
+      requestCount: aggregated.requestCounts[m.model] ?? 0,
       premiumCostUsd: cost,
       inputTokens: m.inputTokens,
       outputTokens: m.outputTokens,
@@ -99,10 +197,22 @@ export function computeModelSpend(
     };
   });
 
-  /* ---- Sort by estimatedUsd descending ---- */
   rows.sort((a, b) => b.estimatedUsd - a.estimatedUsd);
 
-  /* ---- Compute footer totals ---- */
+  return {
+    ...buildTotals(rows),
+    confidence: costBreakdown.confidence,
+    source: 'messages',
+  };
+}
+
+/**
+ * Sum row values into footer totals.
+ */
+function buildTotals(rows: readonly ModelSpendRow[]): {
+  rows: readonly ModelSpendRow[];
+  totals: ModelSpendTotals;
+} {
   let requestCount = 0;
   let premiumCostUsd = 0;
   let inputTokens = 0;
@@ -130,6 +240,5 @@ export function computeModelSpend(
       cacheWriteTokens,
       estimatedUsd: premiumCostUsd,
     },
-    confidence: costBreakdown.confidence,
   };
 }

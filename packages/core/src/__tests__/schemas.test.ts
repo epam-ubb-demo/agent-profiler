@@ -222,6 +222,7 @@ describe('shutdownMetricsSchema', () => {
           cacheReadTokens: 18500,
           cacheWriteTokens: 1500,
           requestCount: 5,
+          premiumRequestCost: 0,
           apiDurationMs: 28000,
         },
       ],
@@ -282,9 +283,24 @@ describe('modelMetricsSchema', () => {
       cacheReadTokens: 18500,
       cacheWriteTokens: 1500,
       requestCount: 5,
+      premiumRequestCost: 3,
       apiDurationMs: 28000,
     };
     expect(modelMetricsSchema.parse(valid)).toEqual(valid);
+  });
+
+  it('defaults premiumRequestCost to 0 when omitted', () => {
+    const withoutCost = {
+      model: 'claude-sonnet-4-20250514',
+      inputTokens: 23500,
+      outputTokens: 1270,
+      cacheReadTokens: 18500,
+      cacheWriteTokens: 1500,
+      requestCount: 5,
+      apiDurationMs: 28000,
+    };
+    const parsed = modelMetricsSchema.parse(withoutCost);
+    expect(parsed.premiumRequestCost).toBe(0);
   });
 });
 

@@ -88,6 +88,12 @@ function safeInt(value: unknown, fallback = 0): number {
   return Number.isFinite(n) ? Math.round(n) : fallback;
 }
 
+function safeNumber(value: unknown, fallback = 0): number {
+  if (value == null) return fallback;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
 function safeStr(value: unknown, fallback = ''): string {
   if (value == null) return fallback;
   return String(value);
@@ -360,14 +366,26 @@ function onShutdown(
 ): string | null {
   const rawModelMetrics = (data['modelMetrics'] ?? {}) as Record<string, unknown>;
   const modelMetrics = Object.entries(rawModelMetrics).map(([model, raw]) => {
-    const m = (raw ?? {}) as Record<string, unknown>;
+    const m = raw !== null && typeof raw === 'object' && !Array.isArray(raw)
+      ? raw as Record<string, unknown>
+      : {};
+
+    const usage = m['usage'] !== null && typeof m['usage'] === 'object' && !Array.isArray(m['usage'])
+      ? m['usage'] as Record<string, unknown>
+      : {};
+
+    const requests = m['requests'] !== null && typeof m['requests'] === 'object' && !Array.isArray(m['requests'])
+      ? m['requests'] as Record<string, unknown>
+      : {};
+
     return {
       model,
-      inputTokens: safeInt(m['inputTokens']),
-      outputTokens: safeInt(m['outputTokens']),
-      cacheReadTokens: safeInt(m['cacheReadTokens']),
-      cacheWriteTokens: safeInt(m['cacheWriteTokens']),
-      requestCount: safeInt(m['requestCount']),
+      inputTokens: safeInt(usage['inputTokens'] ?? m['inputTokens']),
+      outputTokens: safeInt(usage['outputTokens'] ?? m['outputTokens']),
+      cacheReadTokens: safeInt(usage['cacheReadTokens'] ?? m['cacheReadTokens']),
+      cacheWriteTokens: safeInt(usage['cacheWriteTokens'] ?? m['cacheWriteTokens']),
+      requestCount: safeInt(requests['count'] ?? m['requestCount']),
+      premiumRequestCost: safeNumber(requests['cost']),
       apiDurationMs: safeInt(m['apiDurationMs']),
     };
   });

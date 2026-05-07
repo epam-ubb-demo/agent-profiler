@@ -107,7 +107,7 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
   const stats = useMemo(() => computeSessionStats(session), [session]);
 
   const modelSpend = useMemo(
-    () => (session.shutdown ? computeModelSpend(session.shutdown) : null),
+    () => computeModelSpend(session),
     [session],
   );
 

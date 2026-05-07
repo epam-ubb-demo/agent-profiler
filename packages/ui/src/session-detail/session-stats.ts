@@ -8,6 +8,7 @@
 
 import type { Session } from '@agent-profiler/core';
 import { calculateCost, DEFAULT_PRICING_TABLE } from '@agent-profiler/pricing';
+import type { TokenUsage } from '@agent-profiler/pricing';
 
 import { formatCost, formatDuration, formatTokenCount } from '../comparative/format';
 
@@ -71,6 +72,60 @@ function formatSuccess(success: boolean | null): string {
 }
 
 /**
+ * Build a minimal {@link TokenUsage} by aggregating assistant messages
+ * that carry non-null model attribution.
+ *
+ * Returns `null` when no usable messages exist.
+ */
+function buildTokenUsageFromMessages(
+  messages: readonly { readonly model: string | null; readonly inputTokens: number; readonly outputTokens: number; readonly cacheReadTokens: number; readonly cacheWriteTokens: number }[],
+): TokenUsage | null {
+  const byModel = new Map<
+    string,
+    { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number }
+  >();
+
+  for (const msg of messages) {
+    if (msg.model === null) continue;
+    const existing = byModel.get(msg.model);
+    if (existing) {
+      existing.inputTokens += msg.inputTokens;
+      existing.outputTokens += msg.outputTokens;
+      existing.cacheReadTokens += msg.cacheReadTokens;
+      existing.cacheWriteTokens += msg.cacheWriteTokens;
+    } else {
+      byModel.set(msg.model, {
+        inputTokens: msg.inputTokens,
+        outputTokens: msg.outputTokens,
+        cacheReadTokens: msg.cacheReadTokens,
+        cacheWriteTokens: msg.cacheWriteTokens,
+      });
+    }
+  }
+
+  if (byModel.size === 0) return null;
+
+  const modelMetrics: TokenUsage['modelMetrics'][number][] = [];
+  for (const [model, agg] of byModel) {
+    modelMetrics.push({ model, ...agg });
+  }
+  return { modelMetrics };
+}
+
+/**
+ * Sum output tokens from assistant messages (only those with non-null model).
+ */
+function totalOutputTokensFromMessages(
+  messages: readonly { readonly model: string | null; readonly outputTokens: number }[],
+): number {
+  let sum = 0;
+  for (const msg of messages) {
+    if (msg.model !== null) sum += msg.outputTokens;
+  }
+  return sum;
+}
+
+/**
  * Derive all 11 KPI stat entries from a session.
  *
  * The function is pure — it performs no I/O and has no side effects.
@@ -83,12 +138,19 @@ export function computeSessionStats(session: Session): SessionStats {
   const shutdown = session.shutdown;
 
   const costBreakdown =
-    shutdown !== null ? calculateCost(shutdown, DEFAULT_PRICING_TABLE) : null;
+    shutdown !== null
+      ? calculateCost(shutdown, DEFAULT_PRICING_TABLE)
+      : (() => {
+          const usage = buildTokenUsageFromMessages(session.assistantMessages);
+          return usage !== null ? calculateCost(usage, DEFAULT_PRICING_TABLE) : null;
+        })();
 
   const toolCount = session.toolCalls.length;
 
   const outputTotal =
-    shutdown !== null ? totalOutputTokens(shutdown.modelMetrics) : null;
+    shutdown !== null
+      ? totalOutputTokens(shutdown.modelMetrics)
+      : totalOutputTokensFromMessages(session.assistantMessages) || null;
 
   const avgTokens =
     outputTotal !== null && toolCount > 0

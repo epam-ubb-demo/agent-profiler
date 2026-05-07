@@ -111,6 +111,7 @@ describe('aggregateBenchRun', () => {
             cacheReadTokens: 2000,
             cacheWriteTokens: 1000,
             requestCount: 5,
+            premiumRequestCost: 0,
             apiDurationMs: 10000,
           },
         ],
@@ -157,7 +158,7 @@ describe('aggregateBenchRun', () => {
           totalPremiumRequests: 2,
           totalApiDurationMs: 5000,
           modelMetrics: [
-            { model: 'gpt-4.1', inputTokens: 8000, outputTokens: 4000, cacheReadTokens: 1000, cacheWriteTokens: 500, requestCount: 2, apiDurationMs: 5000 },
+            { model: 'gpt-4.1', inputTokens: 8000, outputTokens: 4000, cacheReadTokens: 1000, cacheWriteTokens: 500, requestCount: 2, premiumRequestCost: 0, apiDurationMs: 5000 },
           ],
           currentTokens: 0, systemTokens: 0, conversationTokens: 0, toolDefinitionsTokens: 0, codeChanges: {}, timestamp: null,
         },
@@ -174,7 +175,7 @@ describe('aggregateBenchRun', () => {
           totalPremiumRequests: 3,
           totalApiDurationMs: 8000,
           modelMetrics: [
-            { model: 'gpt-4.1', inputTokens: 12000, outputTokens: 6000, cacheReadTokens: 3000, cacheWriteTokens: 1500, requestCount: 3, apiDurationMs: 8000 },
+            { model: 'gpt-4.1', inputTokens: 12000, outputTokens: 6000, cacheReadTokens: 3000, cacheWriteTokens: 1500, requestCount: 3, premiumRequestCost: 0, apiDurationMs: 8000 },
           ],
           currentTokens: 0, systemTokens: 0, conversationTokens: 0, toolDefinitionsTokens: 0, codeChanges: {}, timestamp: null,
         },
@@ -246,8 +247,8 @@ describe('aggregateBenchRun', () => {
         shutdown: {
           totalPremiumRequests: 5, totalApiDurationMs: 10000,
           modelMetrics: [
-            { model: 'claude-sonnet-4', inputTokens: 5000, outputTokens: 2000, cacheReadTokens: 100, cacheWriteTokens: 50, requestCount: 3, apiDurationMs: 6000 },
-            { model: 'gpt-4.1', inputTokens: 3000, outputTokens: 1000, cacheReadTokens: 200, cacheWriteTokens: 100, requestCount: 2, apiDurationMs: 4000 },
+            { model: 'claude-sonnet-4', inputTokens: 5000, outputTokens: 2000, cacheReadTokens: 100, cacheWriteTokens: 50, requestCount: 3, premiumRequestCost: 0, apiDurationMs: 6000 },
+            { model: 'gpt-4.1', inputTokens: 3000, outputTokens: 1000, cacheReadTokens: 200, cacheWriteTokens: 100, requestCount: 2, premiumRequestCost: 0, apiDurationMs: 4000 },
           ],
           currentTokens: 0, systemTokens: 0, conversationTokens: 0, toolDefinitionsTokens: 0, codeChanges: {}, timestamp: null,
         },
@@ -257,7 +258,7 @@ describe('aggregateBenchRun', () => {
         shutdown: {
           totalPremiumRequests: 2, totalApiDurationMs: 5000,
           modelMetrics: [
-            { model: 'claude-sonnet-4', inputTokens: 7000, outputTokens: 3000, cacheReadTokens: 300, cacheWriteTokens: 150, requestCount: 2, apiDurationMs: 5000 },
+            { model: 'claude-sonnet-4', inputTokens: 7000, outputTokens: 3000, cacheReadTokens: 300, cacheWriteTokens: 150, requestCount: 2, premiumRequestCost: 0, apiDurationMs: 5000 },
           ],
           currentTokens: 0, systemTokens: 0, conversationTokens: 0, toolDefinitionsTokens: 0, codeChanges: {}, timestamp: null,
         },
@@ -309,7 +310,7 @@ describe('aggregateBenchRun', () => {
         sessionId: 'sess-1',
         shutdown: {
           totalPremiumRequests: 1, totalApiDurationMs: 1000,
-          modelMetrics: [{ model: 'gpt-4.1', inputTokens: 5000, outputTokens: 2000, cacheReadTokens: 0, cacheWriteTokens: 0, requestCount: 1, apiDurationMs: 1000 }],
+          modelMetrics: [{ model: 'gpt-4.1', inputTokens: 5000, outputTokens: 2000, cacheReadTokens: 0, cacheWriteTokens: 0, requestCount: 1, premiumRequestCost: 0, apiDurationMs: 1000 }],
           currentTokens: 0, systemTokens: 0, conversationTokens: 0, toolDefinitionsTokens: 0, codeChanges: {}, timestamp: null,
         },
       }),
@@ -361,7 +362,7 @@ describe('aggregateBenchRun', () => {
         sessionId: 'sess-1',
         shutdown: {
           totalPremiumRequests: 1, totalApiDurationMs: 1000,
-          modelMetrics: [{ model: 'gpt-4.1', inputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, requestCount: 1, apiDurationMs: 1000 }],
+          modelMetrics: [{ model: 'gpt-4.1', inputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, requestCount: 1, premiumRequestCost: 0, apiDurationMs: 1000 }],
           currentTokens: 0, systemTokens: 0, conversationTokens: 0, toolDefinitionsTokens: 0, codeChanges: {}, timestamp: null,
         },
       }),
@@ -369,7 +370,7 @@ describe('aggregateBenchRun', () => {
         sessionId: 'sess-2',
         shutdown: {
           totalPremiumRequests: 1, totalApiDurationMs: 1000,
-          modelMetrics: [{ model: 'gpt-4.1', inputTokens: 500_000, outputTokens: 500_000, cacheReadTokens: 0, cacheWriteTokens: 0, requestCount: 1, apiDurationMs: 1000 }],
+          modelMetrics: [{ model: 'gpt-4.1', inputTokens: 500_000, outputTokens: 500_000, cacheReadTokens: 0, cacheWriteTokens: 0, requestCount: 1, premiumRequestCost: 0, apiDurationMs: 1000 }],
           currentTokens: 0, systemTokens: 0, conversationTokens: 0, toolDefinitionsTokens: 0, codeChanges: {}, timestamp: null,
         },
       }),

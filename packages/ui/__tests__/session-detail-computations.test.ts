@@ -30,6 +30,7 @@ function makeMetrics(overrides?: Partial<ModelMetrics>): ModelMetrics {
     cacheReadTokens: 200,
     cacheWriteTokens: 100,
     requestCount: 5,
+    premiumRequestCost: 0,
     apiDurationMs: 3000,
     ...overrides,
   };
@@ -236,6 +237,45 @@ describe('computeSessionStats', () => {
     expect(stats.avgTokensPerToolCall.value).toBeNull();
   });
 
+  it('derives cost and avg tokens from assistant messages when shutdown is null', () => {
+    const session = makeSession({
+      shutdown: null,
+      toolCalls: [makeToolCall('a'), makeToolCall('b')],
+      assistantMessages: [
+        { ...makeAssistantMessage(100), model: 'claude-sonnet-4', inputTokens: 50000, outputTokens: 10000 },
+        { ...makeAssistantMessage(200), model: 'claude-sonnet-4', inputTokens: 30000, outputTokens: 20000 },
+      ],
+    });
+
+    const stats = computeSessionStats(session);
+
+    // Cost should now be a number (derived from messages)
+    expect(stats.estimatedCost.value).toBeTypeOf('number');
+    expect(stats.estimatedCost.value).toBeGreaterThan(0);
+
+    // Avg tokens: 30000 total output / 2 tool calls = 15000
+    expect(stats.avgTokensPerToolCall.value).toBe(15000);
+
+    // Premium requests and API time remain unavailable
+    expect(stats.premiumRequests.value).toBeNull();
+    expect(stats.premiumRequests.display).toBe('—');
+    expect(stats.apiTime.value).toBeNull();
+    expect(stats.apiTime.display).toBe('—');
+  });
+
+  it('skips null-model messages when computing fallback cost', () => {
+    const session = makeSession({
+      shutdown: null,
+      assistantMessages: [
+        { ...makeAssistantMessage(100), model: null },
+      ],
+    });
+
+    const stats = computeSessionStats(session);
+
+    expect(stats.estimatedCost.value).toBeNull();
+  });
+
   it('formats task success: true → "✓", false → "✗", null → "—"', () => {
     const trueStats = computeSessionStats(makeSession({ success: true }));
     expect(trueStats.taskSuccess.display).toBe('✓');
@@ -296,24 +336,37 @@ describe('computeSessionStats', () => {
 // ---------------------------------------------------------------------------
 
 describe('computeModelSpend', () => {
-  it('returns null for null shutdown', () => {
-    expect(computeModelSpend(null)).toBeNull();
+  it('returns null for session with no shutdown and no assistant messages', () => {
+    expect(computeModelSpend(makeSession({ shutdown: null, assistantMessages: [] }))).toBeNull();
   });
 
-  it('returns a single row with correct token counts for one model', () => {
-    const shutdown = makeShutdown({
-      modelMetrics: [makeMetrics({
-        model: 'claude-sonnet-4-20250514',
-        inputTokens: 2000,
-        outputTokens: 800,
-        cacheReadTokens: 300,
-        cacheWriteTokens: 150,
-        requestCount: 7,
-      })],
+  it('returns null when assistant messages all have null model', () => {
+    const session = makeSession({
+      shutdown: null,
+      assistantMessages: [
+        makeAssistantMessage(100),
+      ].map((m) => ({ ...m, model: null })),
+    });
+    expect(computeModelSpend(session)).toBeNull();
+  });
+
+  it('returns a single row with correct token counts for one model (shutdown path)', () => {
+    const session = makeSession({
+      shutdown: makeShutdown({
+        modelMetrics: [makeMetrics({
+          model: 'claude-sonnet-4-20250514',
+          inputTokens: 2000,
+          outputTokens: 800,
+          cacheReadTokens: 300,
+          cacheWriteTokens: 150,
+          requestCount: 7,
+        })],
+      }),
     });
 
-    const result = computeModelSpend(shutdown)!;
+    const result = computeModelSpend(session)!;
 
+    expect(result.source).toBe('shutdown');
     expect(result.rows).toHaveLength(1);
     const row = result.rows[0]!;
     expect(row.model).toBe('claude-sonnet-4-20250514');
@@ -326,14 +379,16 @@ describe('computeModelSpend', () => {
   });
 
   it('sorts multiple models by USD descending', () => {
-    const shutdown = makeShutdown({
-      modelMetrics: [
-        makeMetrics({ model: 'cheap-model', inputTokens: 10, outputTokens: 5 }),
-        makeMetrics({ model: 'expensive-model', inputTokens: 100000, outputTokens: 50000 }),
-      ],
+    const session = makeSession({
+      shutdown: makeShutdown({
+        modelMetrics: [
+          makeMetrics({ model: 'cheap-model', inputTokens: 10, outputTokens: 5 }),
+          makeMetrics({ model: 'expensive-model', inputTokens: 100000, outputTokens: 50000 }),
+        ],
+      }),
     });
 
-    const result = computeModelSpend(shutdown)!;
+    const result = computeModelSpend(session)!;
 
     expect(result.rows).toHaveLength(2);
     // The model with more tokens should appear first (higher USD)
@@ -341,14 +396,16 @@ describe('computeModelSpend', () => {
   });
 
   it('aggregates totals correctly across multiple models', () => {
-    const shutdown = makeShutdown({
-      modelMetrics: [
-        makeMetrics({ model: 'model-a', inputTokens: 1000, outputTokens: 500, cacheReadTokens: 100, cacheWriteTokens: 50, requestCount: 3 }),
-        makeMetrics({ model: 'model-b', inputTokens: 2000, outputTokens: 1000, cacheReadTokens: 200, cacheWriteTokens: 100, requestCount: 5 }),
-      ],
+    const session = makeSession({
+      shutdown: makeShutdown({
+        modelMetrics: [
+          makeMetrics({ model: 'model-a', inputTokens: 1000, outputTokens: 500, cacheReadTokens: 100, cacheWriteTokens: 50, requestCount: 3 }),
+          makeMetrics({ model: 'model-b', inputTokens: 2000, outputTokens: 1000, cacheReadTokens: 200, cacheWriteTokens: 100, requestCount: 5 }),
+        ],
+      }),
     });
 
-    const result = computeModelSpend(shutdown)!;
+    const result = computeModelSpend(session)!;
 
     expect(result.totals.inputTokens).toBe(3000);
     expect(result.totals.outputTokens).toBe(1500);
@@ -359,10 +416,77 @@ describe('computeModelSpend', () => {
   });
 
   it('includes confidence from the pricing calculator', () => {
-    const result = computeModelSpend(makeShutdown())!;
+    const result = computeModelSpend(makeSession())!;
 
     expect(result.confidence).toBeDefined();
     expect(['known', 'estimated', 'unknown']).toContain(result.confidence);
+  });
+
+  it('falls back to assistant messages when shutdown is null', () => {
+    const session = makeSession({
+      shutdown: null,
+      assistantMessages: [
+        { ...makeAssistantMessage(100), model: 'claude-sonnet-4-20250514', inputTokens: 500, outputTokens: 100, cacheReadTokens: 50, cacheWriteTokens: 10 },
+        { ...makeAssistantMessage(200), model: 'claude-sonnet-4-20250514', inputTokens: 300, outputTokens: 200, cacheReadTokens: 30, cacheWriteTokens: 20 },
+        { ...makeAssistantMessage(50), model: 'gpt-4o', inputTokens: 1000, outputTokens: 50, cacheReadTokens: 100, cacheWriteTokens: 5 },
+      ],
+    });
+
+    const result = computeModelSpend(session)!;
+
+    expect(result.source).toBe('messages');
+    expect(result.rows).toHaveLength(2);
+
+    // Verify aggregated token totals for claude
+    const claudeRow = result.rows.find((r) => r.model === 'claude-sonnet-4-20250514')!;
+    expect(claudeRow.inputTokens).toBe(800);
+    expect(claudeRow.outputTokens).toBe(300);
+    expect(claudeRow.cacheReadTokens).toBe(80);
+    expect(claudeRow.cacheWriteTokens).toBe(30);
+    expect(claudeRow.requestCount).toBe(2);
+
+    // Verify gpt row
+    const gptRow = result.rows.find((r) => r.model === 'gpt-4o')!;
+    expect(gptRow.inputTokens).toBe(1000);
+    expect(gptRow.outputTokens).toBe(50);
+    expect(gptRow.requestCount).toBe(1);
+
+    // Totals
+    expect(result.totals.inputTokens).toBe(1800);
+    expect(result.totals.outputTokens).toBe(350);
+    expect(result.totals.requestCount).toBe(3);
+  });
+
+  it('skips assistant messages with null model in fallback aggregation', () => {
+    const session = makeSession({
+      shutdown: null,
+      assistantMessages: [
+        { ...makeAssistantMessage(100), model: 'claude-sonnet-4-20250514' },
+        { ...makeAssistantMessage(200), model: null },
+      ],
+    });
+
+    const result = computeModelSpend(session)!;
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]!.model).toBe('claude-sonnet-4-20250514');
+  });
+
+  it('prefers shutdown over assistant messages when both exist', () => {
+    const session = makeSession({
+      shutdown: makeShutdown({
+        modelMetrics: [makeMetrics({ model: 'model-from-shutdown', requestCount: 99 })],
+      }),
+      assistantMessages: [
+        { ...makeAssistantMessage(100), model: 'model-from-messages' },
+      ],
+    });
+
+    const result = computeModelSpend(session)!;
+
+    expect(result.source).toBe('shutdown');
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]!.model).toBe('model-from-shutdown');
   });
 });
 

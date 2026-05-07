@@ -262,12 +262,13 @@ describe('processEvents', () => {
           totalApiDurationMs: 10000,
           modelMetrics: {
             'claude-sonnet-4-20250514': {
-              inputTokens: 8000,
-              outputTokens: 400,
-              cacheReadTokens: 5000,
-              cacheWriteTokens: 100,
-              requestCount: 5,
-              apiDurationMs: 10000,
+              requests: { count: 5, cost: 3 },
+              usage: {
+                inputTokens: 8000,
+                outputTokens: 400,
+                cacheReadTokens: 5000,
+                cacheWriteTokens: 100,
+              },
             },
           },
           currentTokens: 7000,
@@ -285,6 +286,88 @@ describe('processEvents', () => {
     expect(sb.shutdown!.totalPremiumRequests).toBe(5);
     expect(sb.shutdown!.modelMetrics).toHaveLength(1);
     expect(sb.shutdown!.modelMetrics[0]!.model).toBe('claude-sonnet-4-20250514');
+    expect(sb.shutdown!.modelMetrics[0]!.inputTokens).toBe(8000);
+    expect(sb.shutdown!.modelMetrics[0]!.outputTokens).toBe(400);
+    expect(sb.shutdown!.modelMetrics[0]!.cacheReadTokens).toBe(5000);
+    expect(sb.shutdown!.modelMetrics[0]!.cacheWriteTokens).toBe(100);
+    expect(sb.shutdown!.modelMetrics[0]!.requestCount).toBe(5);
+    expect(sb.shutdown!.modelMetrics[0]!.premiumRequestCost).toBe(3);
+  });
+
+  it('processes session.shutdown with legacy flat modelMetrics format', () => {
+    const events: RawEvent[] = [
+      {
+        type: 'session.shutdown',
+        timestamp: '2025-01-15T10:00:00.000Z',
+        data: {
+          totalPremiumRequests: 2,
+          totalApiDurationMs: 5000,
+          modelMetrics: {
+            'gpt-4o': {
+              inputTokens: 4000,
+              outputTokens: 200,
+              cacheReadTokens: 2000,
+              cacheWriteTokens: 0,
+              requestCount: 2,
+              apiDurationMs: 5000,
+            },
+          },
+          currentTokens: 3000,
+          systemTokens: 1000,
+          conversationTokens: 1500,
+          toolDefinitionsTokens: 500,
+          codeChanges: {},
+        },
+      },
+    ];
+
+    const sb = processEvents(events);
+
+    expect(sb.shutdown).not.toBeNull();
+    expect(sb.shutdown!.modelMetrics).toHaveLength(1);
+    const m = sb.shutdown!.modelMetrics[0]!;
+    expect(m.model).toBe('gpt-4o');
+    expect(m.inputTokens).toBe(4000);
+    expect(m.outputTokens).toBe(200);
+    expect(m.cacheReadTokens).toBe(2000);
+    expect(m.cacheWriteTokens).toBe(0);
+    expect(m.requestCount).toBe(2);
+    expect(m.apiDurationMs).toBe(5000);
+    expect(m.premiumRequestCost).toBe(0);
+  });
+
+  it('handles malformed modelMetrics sub-objects gracefully', () => {
+    const events: RawEvent[] = [
+      {
+        type: 'session.shutdown',
+        timestamp: '2025-01-15T10:00:00.000Z',
+        data: {
+          totalPremiumRequests: 1,
+          totalApiDurationMs: 1000,
+          modelMetrics: {
+            'broken-model': {
+              usage: null,
+              requests: 'bad',
+            },
+          },
+          currentTokens: 0,
+          systemTokens: 0,
+          conversationTokens: 0,
+          toolDefinitionsTokens: 0,
+          codeChanges: {},
+        },
+      },
+    ];
+
+    const sb = processEvents(events);
+
+    expect(sb.shutdown).not.toBeNull();
+    expect(sb.shutdown!.modelMetrics).toHaveLength(1);
+    const m = sb.shutdown!.modelMetrics[0]!;
+    expect(m.model).toBe('broken-model');
+    expect(m.inputTokens).toBe(0);
+    expect(m.outputTokens).toBe(0);
+    expect(m.premiumRequestCost).toBe(0);
   });
 
   it('flushes pending starts without matching completes', () => {

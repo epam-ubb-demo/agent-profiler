@@ -11,6 +11,7 @@ export const modelMetricsSchema = z.object({
   cacheReadTokens: z.number().int().nonnegative(),
   cacheWriteTokens: z.number().int().nonnegative(),
   requestCount: z.number().int().nonnegative(),
+  premiumRequestCost: z.number().nonnegative().default(0),
   apiDurationMs: z.number().int().nonnegative(),
 });
 
