@@ -2,6 +2,7 @@ import { ContextProvider } from '@epam/uui-core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
+import { AppShell } from '@/components/AppShell';
 import { SessionBrowser } from '@/pages/SessionBrowser';
 import { SessionDetail } from '@/pages/SessionDetail';
 
@@ -30,12 +31,12 @@ export function App() {
   return (
     <ContextProvider onInitCompleted={() => {}}>
       <QueryClientProvider client={queryClient}>
-        <div style={{ minHeight: '100vh' }}>
+        <AppShell>
           {route.view === 'list' && <SessionBrowser onSelectSession={handleSelectSession} />}
           {route.view === 'detail' && (
             <SessionDetail sessionId={route.sessionId} onBack={handleBack} />
           )}
-        </div>
+        </AppShell>
       </QueryClientProvider>
     </ContextProvider>
   );
