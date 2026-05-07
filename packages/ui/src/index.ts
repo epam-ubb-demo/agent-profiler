@@ -13,3 +13,6 @@ export * from './panels/index';
 
 // Fan-out tree visualization
 export * from './fanout/index';
+
+// Comparative multi-session view
+export * from './comparative';
