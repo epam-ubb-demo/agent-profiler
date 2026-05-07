@@ -24,3 +24,11 @@ export * from './settings';
 
 // Annotations — tagging, commenting, filtering
 export * from './annotations';
+
+// Auto-update notification
+export { UpdateNotification } from './components/UpdateNotification';
+export type {
+  UpdateNotificationProps,
+  UpdateNotificationState,
+  UpdaterIpc,
+} from './components/UpdateNotification';
