@@ -56,4 +56,5 @@ export const ipcChannels = {
   SESSION_LIST: 'session:list',
   SESSION_OPEN: 'session:open',
   SESSION_SET_ROOT_DIR: 'session:setRootDir',
+  DIALOG_OPEN_DIRECTORY: 'dialog:openDirectory',
 } as const;

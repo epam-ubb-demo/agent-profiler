@@ -9,6 +9,9 @@ const api: ElectronApi = {
     open: (sessionId: string) => ipcRenderer.invoke('session:open', sessionId),
     setRootDir: (dir: string) => ipcRenderer.invoke('session:setRootDir', dir),
   },
+  dialog: {
+    openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
+  },
 };
 
 contextBridge.exposeInMainWorld('electronApi', api);
