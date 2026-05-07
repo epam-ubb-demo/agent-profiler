@@ -1,0 +1,26 @@
+{
+  "name": "@agent-profiler/annotations",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@agent-profiler/tsconfig-base": "workspace:*",
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
