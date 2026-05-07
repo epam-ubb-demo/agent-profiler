@@ -311,11 +311,26 @@ describe('computeHotConsumption', () => {
     expect(result.topNTokens).toBe(200); // top 2 × 100
   });
 
-  it('sets estimatedUsd to null', () => {
+  it('computes estimatedUsd when model is in pricing table', () => {
     const session = makeSession({
       turns: [
         makeTurn({
           assistantMessages: [makeAssistantMessage({ input: 100 })],
+        }),
+      ],
+    });
+    const result = computeHotConsumption(session);
+
+    expect(result.entries[0]!.estimatedUsd).toBeTypeOf('number');
+    expect(result.entries[0]!.estimatedUsd).toBeGreaterThanOrEqual(0);
+  });
+
+  it('sets estimatedUsd to null when model is unknown', () => {
+    const msg = { ...makeAssistantMessage({ input: 100 }), model: 'unknown-model-xyz' };
+    const session = makeSession({
+      turns: [
+        makeTurn({
+          assistantMessages: [msg],
         }),
       ],
     });

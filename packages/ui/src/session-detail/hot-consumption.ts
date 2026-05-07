@@ -12,6 +12,7 @@ import type {
   SubagentInvocation,
   Turn,
 } from '@agent-profiler/core';
+import { DEFAULT_PRICING_TABLE } from '@agent-profiler/pricing';
 
 import { formatDuration, formatTokenCount } from '../comparative/format';
 
@@ -84,8 +85,29 @@ interface RawEntry {
   readonly where: string;
   readonly model: string | null;
   readonly tokens: number;
+  readonly estimatedUsd: number | null;
   readonly detail: string;
   readonly childSessionRef: string | null;
+}
+
+/** Estimate USD cost from token counts and model name using the pricing table. */
+function estimateCostUsd(
+  model: string | null,
+  output: number,
+  input: number,
+  cacheRead: number,
+  cacheWrite: number,
+): number | null {
+  if (!model) return null;
+  const rates = DEFAULT_PRICING_TABLE[model];
+  if (!rates) return null;
+  return (
+    (output * rates.output +
+      input * rates.input +
+      cacheRead * rates.cacheRead +
+      cacheWrite * rates.cacheWrite) /
+    1_000_000
+  );
 }
 
 /** Compute total tokens for a single turn across all assistant messages. */
@@ -178,14 +200,29 @@ export function computeHotConsumption(
   // --- Turns ---
   for (const turn of session.turns) {
     const tokens = turnTokens(turn);
+    const model = turn.assistantMessages.length > 0
+      ? (turn.assistantMessages[0]?.model ?? null)
+      : null;
+
+    // Aggregate per-bucket token totals for cost estimation.
+    let outTok = 0;
+    let inTok = 0;
+    let cacheRdTok = 0;
+    let cacheWrTok = 0;
+    for (const m of turn.assistantMessages) {
+      outTok += m.outputTokens;
+      inTok += m.inputTokens;
+      cacheRdTok += m.cacheReadTokens;
+      cacheWrTok += m.cacheWriteTokens;
+    }
+
     raw.push({
       time: turn.startTs,
       type: 'turn',
       where: `Turn #${turn.turnId}`,
-      model: turn.assistantMessages.length > 0
-        ? (turn.assistantMessages[0]?.model ?? null)
-        : null,
+      model,
       tokens,
+      estimatedUsd: estimateCostUsd(model, outTok, inTok, cacheRdTok, cacheWrTok),
       detail: turnDetail(turn),
       childSessionRef: null,
     });
@@ -199,6 +236,7 @@ export function computeHotConsumption(
       where: `Sub-agent: ${sub.agentName}`,
       model: null,
       tokens: sub.totalTokens,
+      estimatedUsd: null,
       detail: subagentDetail(sub),
       childSessionRef: sub.childSessionRef,
     });
@@ -214,6 +252,7 @@ export function computeHotConsumption(
         where: 'Compaction',
         model: c.model,
         tokens,
+        estimatedUsd: estimateCostUsd(c.model, c.outputTokens, c.inputTokens, c.cacheRead, c.cacheWrite),
         detail: compactionDetail(c),
         childSessionRef: null,
       });
@@ -236,7 +275,7 @@ export function computeHotConsumption(
     where: e.where,
     model: e.model,
     tokens: e.tokens,
-    estimatedUsd: null,
+    estimatedUsd: e.estimatedUsd,
     proportion: maxTokens > 0 ? e.tokens / maxTokens : 0,
     detail: e.detail,
     childSessionRef: e.childSessionRef,

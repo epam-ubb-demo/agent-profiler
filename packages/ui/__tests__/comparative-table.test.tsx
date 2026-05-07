@@ -3,7 +3,6 @@
  */
 
 import type { BenchRunAggregation, SessionSummaryRow, ModelUsageRollup, ToolUsageSummary } from '@agent-profiler/core';
-import { render, screen, fireEvent, cleanup } from './test-utils';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 
 import { ComparativeTable } from '../src/comparative/ComparativeTable';
@@ -11,6 +10,8 @@ import { CostSummary } from '../src/comparative/CostSummary';
 import { ModelBreakdownTable } from '../src/comparative/ModelBreakdownTable';
 import { SessionListTable } from '../src/comparative/SessionListTable';
 import { ToolFanoutMatrix } from '../src/comparative/ToolFanoutMatrix';
+
+import { render, screen, fireEvent, cleanup } from './test-utils';
 
 afterEach(cleanup);
 

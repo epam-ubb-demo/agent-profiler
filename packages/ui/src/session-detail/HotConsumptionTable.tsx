@@ -70,7 +70,7 @@ function HotConsumptionTableInner({
       <table className={styles.dataTable} role="grid">
         <thead>
           <tr>
-            <th scope="col">#</th>
+            <th scope="col" className={styles.numericCell}>#</th>
             <th scope="col">Time</th>
             <th scope="col">Type</th>
             <th scope="col">Where</th>
@@ -84,7 +84,7 @@ function HotConsumptionTableInner({
         <tbody>
           {entries.map((entry) => (
             <tr key={entry.rank}>
-              <td>{entry.rank}</td>
+              <td className={styles.numericCell}>{entry.rank}</td>
               <td>{formatTime(entry.time)}</td>
               <td>
                 <span className={TYPE_BADGE_CLASS[entry.type]}>

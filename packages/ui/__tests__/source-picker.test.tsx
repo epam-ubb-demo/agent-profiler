@@ -2,12 +2,13 @@
  * Tests for the Source Picker UI components.
  */
 
-import { render, screen, fireEvent, cleanup, act, waitFor } from './test-utils';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 
 import { SourceCard } from '../src/settings/SourceCard';
 import { SourcePickerPanel } from '../src/settings/SourcePickerPanel';
 import type { DiscoverFn, DiscoveryStatus, SourceConfig, SourceType } from '../src/settings/types';
+
+import { render, screen, fireEvent, cleanup, act, waitFor } from './test-utils';
 
 // Mock localStorage for jsdom
 const localStorageMock = (() => {

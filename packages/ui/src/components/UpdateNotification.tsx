@@ -1,6 +1,6 @@
+import { Button, FlexRow, Text } from '@epam/uui';
 import React, { useCallback, useEffect, useState } from 'react';
 
-import { Button, FlexRow, Text } from '@epam/uui';
 
 /**
  * State shape received from the main process via IPC.
