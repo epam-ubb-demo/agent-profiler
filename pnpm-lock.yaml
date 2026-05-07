@@ -50,6 +50,9 @@ importers:
       '@agent-profiler/data-source':
         specifier: workspace:*
         version: link:../../packages/data-source
+      '@agent-profiler/export-pdf':
+        specifier: workspace:*
+        version: link:../../packages/export-pdf
       '@agent-profiler/ui':
         specifier: workspace:*
         version: link:../../packages/ui

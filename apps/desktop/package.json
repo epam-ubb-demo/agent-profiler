@@ -21,6 +21,7 @@
   "dependencies": {
     "@agent-profiler/core": "workspace:*",
     "@agent-profiler/data-source": "workspace:*",
+    "@agent-profiler/export-pdf": "workspace:*",
     "@agent-profiler/ui": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-slot": "^1.1.1",

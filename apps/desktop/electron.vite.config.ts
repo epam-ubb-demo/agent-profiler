@@ -6,7 +6,15 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    plugins: [
+      externalizeDepsPlugin({
+        exclude: [
+          '@agent-profiler/core',
+          '@agent-profiler/data-source',
+          '@agent-profiler/export-pdf',
+        ],
+      }),
+    ],
     build: {
       rollupOptions: {
         input: {
