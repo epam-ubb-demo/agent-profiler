@@ -34,7 +34,7 @@ export function App() {
         <AppShell>
           {route.view === 'list' && <SessionBrowser onSelectSession={handleSelectSession} />}
           {route.view === 'detail' && (
-            <SessionDetail sessionId={route.sessionId} onBack={handleBack} />
+            <SessionDetail sessionId={route.sessionId} onBack={handleBack} onSessionNavigate={handleSelectSession} />
           )}
         </AppShell>
       </QueryClientProvider>

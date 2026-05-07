@@ -369,6 +369,26 @@
   background: var(--uui-primary-5);
 }
 
+.drillDownButton {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--uui-primary-50);
+  background: var(--uui-surface-higher);
+  border: 1px solid var(--uui-primary-50);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.drillDownButton:hover {
+  background: var(--uui-primary-50);
+  color: var(--uui-surface-main);
+}
+
 .msgNode {
   composes: node;
   background: var(--uui-surface-higher);

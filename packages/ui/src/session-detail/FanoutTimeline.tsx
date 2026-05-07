@@ -22,6 +22,8 @@ import styles from './session-detail.module.css';
 export interface FanoutTimelineProps {
   readonly session: Session;
   readonly modelColours: Record<string, string>;
+  /** Called when the user wants to drill into a sub-agent's child session. */
+  readonly onSessionNavigate?: (sessionId: string) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -118,7 +120,7 @@ interface InteractionGroup {
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-function FanoutTimelineInner({ session, modelColours }: FanoutTimelineProps) {
+function FanoutTimelineInner({ session, modelColours, onSessionNavigate }: FanoutTimelineProps) {
   /* --- state -------------------------------------------------------- */
   const [expandedInteractions, setExpandedInteractions] = useState<Set<string>>(new Set());
   const [expandedTurns, setExpandedTurns] = useState<Set<string>>(new Set());
@@ -292,6 +294,7 @@ function FanoutTimelineInner({ session, modelColours }: FanoutTimelineProps) {
                 modelColours={modelColours}
                 onToggleInteraction={toggleInteraction}
                 onToggleTurn={toggleTurn}
+                onSessionNavigate={onSessionNavigate}
               />
             );
           })}
@@ -327,6 +330,7 @@ interface InteractionRowsProps {
   readonly modelColours: Record<string, string>;
   readonly onToggleInteraction: (id: string) => void;
   readonly onToggleTurn: (turnId: string) => void;
+  readonly onSessionNavigate?: (sessionId: string) => void;
 }
 
 const InteractionRows = memo(function InteractionRows({
@@ -336,6 +340,7 @@ const InteractionRows = memo(function InteractionRows({
   modelColours,
   onToggleInteraction,
   onToggleTurn,
+  onSessionNavigate,
 }: InteractionRowsProps) {
   return (
     <>
@@ -389,6 +394,7 @@ const InteractionRows = memo(function InteractionRows({
                 firstModel={firstModel}
                 modelColours={modelColours}
                 onToggle={onToggleTurn}
+                onSessionNavigate={onSessionNavigate}
               />
             );
           }
@@ -437,6 +443,7 @@ interface TurnRowsProps {
   readonly firstModel: string | null;
   readonly modelColours: Record<string, string>;
   readonly onToggle: (turnId: string) => void;
+  readonly onSessionNavigate?: (sessionId: string) => void;
 }
 
 const TurnRows = memo(function TurnRows({
@@ -446,6 +453,7 @@ const TurnRows = memo(function TurnRows({
   firstModel,
   modelColours,
   onToggle,
+  onSessionNavigate,
 }: TurnRowsProps) {
   return (
     <>
@@ -487,7 +495,7 @@ const TurnRows = memo(function TurnRows({
       {turnOpen && (
         <tr>
           <td colSpan={10} style={{ padding: 0 }}>
-            <TurnDetail turn={turn} />
+            <TurnDetail turn={turn} onSessionNavigate={onSessionNavigate} />
           </td>
         </tr>
       )}
@@ -502,9 +510,10 @@ TurnRows.displayName = 'TurnRows';
 
 interface TurnDetailProps {
   readonly turn: Turn;
+  readonly onSessionNavigate?: (sessionId: string) => void;
 }
 
-const TurnDetail = memo(function TurnDetail({ turn }: TurnDetailProps) {
+const TurnDetail = memo(function TurnDetail({ turn, onSessionNavigate }: TurnDetailProps) {
   const hasUser = turn.userMessage !== null;
   const hasAssistant = turn.assistantMessages.length > 0;
   const firstAssistant = turn.assistantMessages[0] ?? null;
@@ -587,6 +596,19 @@ const TurnDetail = memo(function TurnDetail({ turn }: TurnDetailProps) {
             <div className={styles.nodeName}>{sub.agentName}</div>
             <div className={styles.nodeMeta}>
               {formatTokenCount(sub.totalTokens)} tokens · {sub.messageCount} msgs
+              {sub.childSessionRef && onSessionNavigate && (
+                <button
+                  type="button"
+                  className={styles.drillDownButton}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSessionNavigate(sub.childSessionRef!);
+                  }}
+                  title={`Open child session ${sub.childSessionRef}`}
+                >
+                  Open session ↗
+                </button>
+              )}
             </div>
           </div>
         </div>

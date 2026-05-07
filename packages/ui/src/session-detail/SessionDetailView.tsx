@@ -41,6 +41,8 @@ import { ToolTokenTable } from './ToolTokenTable';
 export interface SessionDetailViewProps {
   readonly session: Session;
   readonly onBack?: () => void;
+  /** Called when the user wants to drill into a sub-agent's child session. */
+  readonly onSessionNavigate?: (sessionId: string) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -90,7 +92,7 @@ function Section({ title, children }: SectionProps) {
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-function SessionDetailViewInner({ session, onBack }: SessionDetailViewProps) {
+function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionDetailViewProps) {
   /* --- toggle state for hot-consumption compaction filter ----------- */
   const [includeCompactions, setIncludeCompactions] = useState(false);
   const toggleCompactions = useCallback(() => {
@@ -167,7 +169,7 @@ function SessionDetailViewInner({ session, onBack }: SessionDetailViewProps) {
 
       {/* 7. Fan-out timeline */}
       <Section title="Fan-out timeline">
-        <FanoutTimeline session={session} modelColours={modelColours} />
+        <FanoutTimeline session={session} modelColours={modelColours} onSessionNavigate={onSessionNavigate} />
       </Section>
 
       {/* 8. Context utilisation over time */}

@@ -10,9 +10,11 @@ export interface SessionDetailProps {
   readonly sessionId: string;
   /** Called when the user navigates back. */
   readonly onBack: () => void;
+  /** Called when the user drills into a sub-agent's child session. */
+  readonly onSessionNavigate?: (sessionId: string) => void;
 }
 
-export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
+export function SessionDetail({ sessionId, onBack, onSessionNavigate }: SessionDetailProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,5 +66,5 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
     return null;
   }
 
-  return <SessionDetailView session={session} onBack={onBack} />;
+  return <SessionDetailView session={session} onBack={onBack} onSessionNavigate={onSessionNavigate} />;
 }
