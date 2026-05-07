@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [],
+  "linked": [
+    [
+      "@agent-profiler/core",
+      "@agent-profiler/pricing",
+      "@agent-profiler/ui",
+      "@agent-profiler/adapters-*",
+      "@agent-profiler/annotations",
+      "@agent-profiler/data-source",
+      "@agent-profiler/export-html"
+    ]
+  ],
+  "access": "restricted",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": ["@agent-profiler/desktop", "@agent-profiler/docs"]
+}
