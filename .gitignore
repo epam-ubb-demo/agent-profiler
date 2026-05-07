@@ -4,8 +4,9 @@ node_modules/
 
 # Build outputs
 dist/
+dist-release/
 out/
-build/
+!apps/desktop/build/
 release/
 
 # Test and coverage output

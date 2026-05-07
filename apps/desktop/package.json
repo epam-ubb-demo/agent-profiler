@@ -10,7 +10,12 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run --passWithNoTests",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "pack": "electron-builder --dir --config electron-builder.config.ts",
+    "dist": "electron-builder --config electron-builder.config.ts",
+    "dist:mac": "electron-builder --mac --config electron-builder.config.ts",
+    "dist:win": "electron-builder --win --config electron-builder.config.ts",
+    "dist:linux": "electron-builder --linux --config electron-builder.config.ts"
   },
   "dependencies": {
     "@agent-profiler/core": "workspace:*",
@@ -37,6 +42,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",
     "electron": "^33.3.0",
+    "electron-builder": "^25.1.8",
     "electron-vite": "^5.0.0",
     "jsdom": "^25.0.0",
     "tailwindcss": "^4.0.0",
