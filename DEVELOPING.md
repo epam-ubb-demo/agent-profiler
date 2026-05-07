@@ -110,6 +110,63 @@ pnpm test
 pnpm --filter @agent-profiler/core exec vitest
 ```
 
+## Desktop App UI Stack
+
+The desktop app (`apps/desktop`) uses [EPAM UUI](https://uui.epam.com/) with the **Loveship** skin for all UI components and theming.
+
+### Key packages
+
+| Package | Purpose |
+| ------- | ------- |
+| `@epam/uui-core` | Core services, `ContextProvider` |
+| `@epam/uui` | Higher-level components |
+| `@epam/uui-components` | Base component primitives |
+| `@epam/loveship` | Loveship skin (buttons, modals, etc.) |
+| `@epam/assets` | EPAM brand assets (icons, fonts) |
+
+### Application bootstrap
+
+- The app root in `main.tsx` wraps the component tree with `<ContextProvider>` from `@epam/uui-core`.
+- Loveship CSS is imported in `main.tsx` (global styles for the skin).
+- An `AppShell` component provides the EPAM-branded header, logo, and navigation.
+
+### Theming
+
+Dark and light themes are toggled by switching CSS classes on the root element:
+
+| Theme | CSS class |
+| ----- | --------- |
+| Light | `.uui-theme-loveship` |
+| Dark  | `.uui-theme-loveship_dark` |
+
+The selected theme is persisted in `localStorage`.
+
+### Icons
+
+Inline SVG icon components live in `components/icons.tsx`. Each component is typed as the UUI `Icon` type so it can be passed directly to UUI component `icon` props.
+
+## Desktop App Testing Utilities
+
+The desktop app has a custom test-render wrapper that should be used instead of raw `@testing-library/react` `render`:
+
+```ts
+import { render } from './__tests__/test-utils';
+```
+
+### What it does
+
+- Wraps every rendered component in the UUI `ContextProvider` (required for UUI services).
+- Flushes the asynchronous UUI context initialisation before returning.
+
+### Setup file
+
+The Vitest setup file (`vitest.setup.ts`) provides polyfills needed by UUI in a jsdom environment:
+
+- `ResizeObserver` — stubbed globally.
+- `localStorage` — a simple in-memory implementation.
+
+> **Rule of thumb:** always import `render` from the custom test utilities when writing or updating desktop app tests.
+
 ## Architecture Boundaries
 
 ESLint enforces layered architecture rules:
