@@ -46,6 +46,18 @@ export {
   sessionSchema,
 } from './schemas/index';
 
+// Aggregation
+export { aggregateBenchRun } from './aggregation';
+export type {
+  AggregationEntry,
+  AggregationOptions,
+  BenchRunAggregation,
+  CostCalculator,
+  ModelUsageRollup,
+  SessionSummaryRow,
+  ToolUsageSummary,
+} from './aggregation';
+
 // IPC (existing)
 export {
   sessionSummarySchema,
