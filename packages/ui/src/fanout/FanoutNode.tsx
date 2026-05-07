@@ -36,17 +36,30 @@ export const FanoutNode = memo(function FanoutNode({ turn, depth, onNodeClick }:
       {/* Node header */}
       <button
         data-testid="fanout-node-header"
-        className="flex items-center gap-2 rounded px-2 py-1.5 text-left w-full"
         onClick={toggle}
         aria-expanded={expanded}
-        style={{ background: 'transparent' }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          borderRadius: 6,
+          padding: '6px 8px',
+          textAlign: 'left',
+          width: '100%',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+        }}
       >
         {/* Triangle/chevron indicator */}
         <span
-          className={`inline-block transition-transform duration-200 ${
-            expanded ? 'rotate-90' : ''
-          }`}
-          style={{ color: 'var(--uui-text-disabled)', fontSize: '0.75rem' }}
+          style={{
+            display: 'inline-block',
+            transition: 'transform 200ms',
+            transform: expanded ? 'rotate(90deg)' : undefined,
+            color: 'var(--uui-text-disabled)',
+            fontSize: '0.75rem',
+          }}
         >
           ▶
         </span>

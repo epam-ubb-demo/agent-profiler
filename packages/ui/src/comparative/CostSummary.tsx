@@ -3,6 +3,7 @@
  */
 
 import type { BenchRunAggregation } from '@agent-profiler/core';
+import { Panel, Text } from '@epam/uui';
 import { memo, useMemo } from 'react';
 
 import { formatCost, formatWallTime } from './format';
@@ -18,41 +19,43 @@ function CostSummaryInner({ aggregation }: CostSummaryProps) {
   }, [aggregation.totalCost, aggregation.sessionCount]);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-slate-800 mb-4">Cost Summary</h3>
-      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <div>
-          <dt className="text-xs text-slate-500">Total Cost</dt>
-          <dd className="text-2xl font-bold text-slate-900" data-testid="total-cost">
-            {formatCost(aggregation.totalCost)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-slate-500">Sessions</dt>
-          <dd className="text-2xl font-bold text-slate-900" data-testid="session-count">
-            {aggregation.sessionCount}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-slate-500">Variants</dt>
-          <dd className="text-2xl font-bold text-slate-900" data-testid="variant-count">
-            {aggregation.variantCount}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-slate-500">Total Wall Time</dt>
-          <dd className="text-2xl font-bold text-slate-900" data-testid="total-wall-time">
-            {formatWallTime(aggregation.totalWallTimeMs)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-slate-500">Avg Cost / Session</dt>
-          <dd className="text-2xl font-bold text-slate-900" data-testid="avg-cost">
-            {formatCost(avgCost)}
-          </dd>
-        </div>
-      </dl>
-    </div>
+    <Panel shadow>
+      <div style={{ padding: '24px' }}>
+        <h3 style={{ marginBottom: '16px' }}><Text size="24" fontWeight="600" color="primary">Cost Summary</Text></h3>
+        <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
+          <div>
+            <dt><Text size="18" fontSize="12" color="secondary">Total Cost</Text></dt>
+            <dd data-testid="total-cost">
+              <Text size="36" fontWeight="700" color="primary">{formatCost(aggregation.totalCost)}</Text>
+            </dd>
+          </div>
+          <div>
+            <dt><Text size="18" fontSize="12" color="secondary">Sessions</Text></dt>
+            <dd data-testid="session-count">
+              <Text size="36" fontWeight="700" color="primary">{aggregation.sessionCount}</Text>
+            </dd>
+          </div>
+          <div>
+            <dt><Text size="18" fontSize="12" color="secondary">Variants</Text></dt>
+            <dd data-testid="variant-count">
+              <Text size="36" fontWeight="700" color="primary">{aggregation.variantCount}</Text>
+            </dd>
+          </div>
+          <div>
+            <dt><Text size="18" fontSize="12" color="secondary">Total Wall Time</Text></dt>
+            <dd data-testid="total-wall-time">
+              <Text size="36" fontWeight="700" color="primary">{formatWallTime(aggregation.totalWallTimeMs)}</Text>
+            </dd>
+          </div>
+          <div>
+            <dt><Text size="18" fontSize="12" color="secondary">Avg Cost / Session</Text></dt>
+            <dd data-testid="avg-cost">
+              <Text size="36" fontWeight="700" color="primary">{formatCost(avgCost)}</Text>
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </Panel>
   );
 }
 

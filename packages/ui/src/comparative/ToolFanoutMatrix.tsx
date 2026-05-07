@@ -6,6 +6,7 @@ import type { ToolUsageSummary } from '@agent-profiler/core';
 import { Badge, Text } from '@epam/uui';
 import { memo, useMemo } from 'react';
 
+import styles from './comparative-tables.module.css';
 import { formatDuration } from './format';
 
 export interface ToolFanoutMatrixProps {
@@ -25,39 +26,45 @@ function ToolFanoutMatrixInner({ toolUsage }: ToolFanoutMatrixProps) {
   );
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse" role="grid">
+    <div style={{ overflowX: 'auto' }}>
+      <table className={styles.styledTable} role="grid">
         <thead>
-          <tr style={{ background: 'var(--uui-surface-main)' }}>
-            <th scope="col" className="px-4 py-2 text-left"><Text size="24" fontWeight="600" color="secondary">Tool</Text></th>
-            <th scope="col" className="px-4 py-2 text-left"><Text size="24" fontWeight="600" color="secondary">Calls</Text></th>
-            <th scope="col" className="px-4 py-2 text-left"><Text size="24" fontWeight="600" color="secondary">Duration</Text></th>
-            <th scope="col" className="px-4 py-2 text-left"><Text size="24" fontWeight="600" color="secondary">Success Rate</Text></th>
-            <th scope="col" className="px-4 py-2 text-left"><Text size="24" fontWeight="600" color="secondary">Models</Text></th>
+          <tr>
+            <th scope="col">Tool</th>
+            <th scope="col">Calls</th>
+            <th scope="col">Duration</th>
+            <th scope="col">Success Rate</th>
+            <th scope="col">Models</th>
           </tr>
         </thead>
-        <tbody style={{ borderTop: '1px solid var(--uui-neutral-40)' }}>
+        <tbody>
           {sorted.map((row) => {
             const rate = computeSuccessRate(row);
             return (
-              <tr key={row.toolName} style={{ borderBottom: '1px solid var(--uui-neutral-40)' }}>
-                <td className="px-4 py-2"><Text size="24" cx="font-mono">{row.toolName}</Text></td>
-                <td className="px-4 py-2"><Text size="24">{row.callCount}</Text></td>
-                <td className="px-4 py-2"><Text size="24">{formatDuration(row.totalDurationMs)}</Text></td>
-                <td className="px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-16 h-2 rounded-full overflow-hidden" style={{ background: 'var(--uui-neutral-30)' }} role="progressbar" aria-valuenow={rate} aria-valuemin={0} aria-valuemax={100}>
+              <tr key={row.toolName}>
+                <td><Text size="18" cx="font-mono">{row.toolName}</Text></td>
+                <td><Text size="18">{row.callCount}</Text></td>
+                <td><Text size="18">{formatDuration(row.totalDurationMs)}</Text></td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div
+                      style={{ width: '64px', height: '8px', borderRadius: '4px', overflow: 'hidden', background: 'var(--uui-neutral-30)' }}
+                      role="progressbar"
+                      aria-valuenow={rate}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
                       <div
-                        className="h-full rounded-full"
+                        className={styles.proportionBar}
                         style={{ width: `${rate}%`, background: 'var(--uui-success-50)' }}
                       />
                     </div>
-                    <Text size="24">{rate}%</Text>
+                    <Text size="18">{rate}%</Text>
                   </div>
                 </td>
-                <td className="px-4 py-2">
+                <td>
                   {row.models.map((m) => (
-                    <Badge key={m} color="info" fill="outline" size="18" caption={m} cx="mr-1" />
+                    <Badge key={m} color="info" fill="outline" size="18" caption={m} rawProps={{ style: { marginRight: '4px' } }} />
                   ))}
                 </td>
               </tr>

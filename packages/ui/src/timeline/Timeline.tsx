@@ -85,7 +85,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
   ];
 
   return (
-    <div data-testid="timeline" className="flex flex-col w-full" style={{ background: 'var(--uui-surface-main)' }}>
+    <div data-testid="timeline" style={{ display: 'flex', flexDirection: 'column', width: '100%', background: 'var(--uui-surface-main)' }}>
       <TimelineControls zoom={zoom.scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} />
       <FlexRow>
         {/* Fixed gutter with lane labels */}
@@ -114,8 +114,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
         {/* Scrollable timeline area */}
         <div
           ref={containerRef}
-          className="flex-1 overflow-x-auto overflow-y-hidden"
-          style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+          style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden', cursor: isPanning ? 'grabbing' : 'grab' }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}

@@ -27,7 +27,7 @@ export const SessionDetailContent = memo(function SessionDetailContent({
       : null;
 
   return (
-    <div className="flex flex-col gap-6" data-testid="session-detail-content">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }} data-testid="session-detail-content">
       {/* Metadata summary */}
       <Panel background="surface-main">
         <FlexRow padding="12" columnGap="18" rawProps={{ style: { flexWrap: 'wrap' } }}>

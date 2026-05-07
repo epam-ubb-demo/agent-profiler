@@ -2,6 +2,7 @@
  * TimelineControls — zoom buttons for the timeline.
  */
 
+import { Button, FlexRow, Text } from '@epam/uui';
 import { memo } from 'react';
 
 export interface TimelineControlsProps {
@@ -18,34 +19,31 @@ export const TimelineControls = memo(function TimelineControls({
   onReset,
 }: TimelineControlsProps) {
   return (
-    <div data-testid="timeline-controls" className="flex items-center gap-2 py-1 px-2">
-      <button
-        type="button"
+    <FlexRow data-testid="timeline-controls" columnGap="6" alignItems="center" rawProps={{ 'data-testid': 'timeline-controls', style: { padding: '4px 8px' } }}>
+      <Button
+        fill="outline"
+        size="24"
+        caption="−"
         onClick={onZoomOut}
-        aria-label="Zoom out"
-        className="rounded border px-2 py-0.5 text-sm"
-      >
-        −
-      </button>
-      <span className="text-xs font-mono min-w-[3ch] text-center" data-testid="zoom-level">
+        rawProps={{ 'aria-label': 'Zoom out' }}
+      />
+      <Text size="18" rawProps={{ 'data-testid': 'zoom-level', style: { fontFamily: 'monospace', minWidth: '3ch', textAlign: 'center' } }}>
         {zoom.toFixed(1)}x
-      </span>
-      <button
-        type="button"
+      </Text>
+      <Button
+        fill="outline"
+        size="24"
+        caption="+"
         onClick={onZoomIn}
-        aria-label="Zoom in"
-        className="rounded border px-2 py-0.5 text-sm"
-      >
-        +
-      </button>
-      <button
-        type="button"
+        rawProps={{ 'aria-label': 'Zoom in' }}
+      />
+      <Button
+        fill="outline"
+        size="24"
+        caption="1x"
         onClick={onReset}
-        aria-label="Reset zoom"
-        className="rounded border px-2 py-0.5 text-xs"
-      >
-        1x
-      </button>
-    </div>
+        rawProps={{ 'aria-label': 'Reset zoom' }}
+      />
+    </FlexRow>
   );
 });
