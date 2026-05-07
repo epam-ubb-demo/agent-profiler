@@ -391,6 +391,9 @@ importers:
       '@agent-profiler/core':
         specifier: workspace:*
         version: link:../core
+      '@agent-profiler/pricing':
+        specifier: workspace:*
+        version: link:../pricing
       react:
         specifier: ^19.0.0
         version: 19.2.6

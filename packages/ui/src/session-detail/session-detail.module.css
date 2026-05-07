@@ -1,0 +1,414 @@
+/* ==========================================================================
+   Session Detail — CSS Module
+   All colours use var(--uui-*) tokens. Zero hex values.
+   ========================================================================== */
+
+/* --- Page Layout -------------------------------------------------------- */
+
+.pageContainer {
+  padding: 24px 32px;
+  background: var(--uui-surface-main);
+}
+
+.sectionHeading {
+  margin-top: 28px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--uui-divider);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--uui-text-primary);
+}
+
+.sectionDescription {
+  margin: 8px 0 12px;
+  color: var(--uui-text-secondary);
+  font-size: 0.8125rem;
+}
+
+/* --- Header ------------------------------------------------------------- */
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.metadataRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.metadataCode {
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.8125rem;
+  background: var(--uui-surface-section);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.metadataSeparator {
+  color: var(--uui-text-disabled);
+  margin: 0 2px;
+}
+
+/* --- KPI Stats Grid ----------------------------------------------------- */
+
+.statsGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-top: 16px;
+}
+
+.statCard {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--uui-surface-higher);
+  box-shadow: 0 1px 2px var(--uui-neutral-40);
+}
+
+.statValue {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--uui-text-primary);
+  line-height: 1.3;
+}
+
+.statLabel {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--uui-text-secondary);
+  margin-top: 2px;
+}
+
+/* --- Stale Warning ------------------------------------------------------ */
+
+.staleWarning {
+  background: var(--uui-warning-10);
+  border: 1px solid var(--uui-warning-50);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 12px;
+  font-size: 0.8125rem;
+  color: var(--uui-text-primary);
+}
+
+/* --- Data Table --------------------------------------------------------- */
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--uui-surface-higher);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px var(--uui-neutral-40);
+}
+
+.dataTable thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.dataTable th {
+  background: var(--uui-surface-section);
+  border-bottom: 1px solid var(--uui-neutral-50);
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--uui-text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dataTable td {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--uui-neutral-30);
+  font-size: 0.8125rem;
+  vertical-align: middle;
+}
+
+.dataTable tbody tr:hover td {
+  background: var(--uui-surface-section);
+}
+
+.numericCell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.codeCell {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.75rem;
+}
+
+/* --- Proportion Bar ----------------------------------------------------- */
+
+.barCell {
+  width: 80px;
+  padding-right: 16px;
+}
+
+.proportionBar {
+  display: inline-block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--uui-primary-50);
+  transition: width 0.3s ease;
+}
+
+/* --- Model Dot ---------------------------------------------------------- */
+
+.modelDot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.modelName {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* --- Type Badges (Hot Consumption table) -------------------------------- */
+
+.typeBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.typeBadgeTurn {
+  composes: typeBadge;
+  background: var(--uui-info-10);
+  color: var(--uui-info-60);
+}
+
+.typeBadgeSubagent {
+  composes: typeBadge;
+  background: var(--uui-primary-10);
+  color: var(--uui-primary-60);
+}
+
+.typeBadgeCompaction {
+  composes: typeBadge;
+  background: var(--uui-warning-10);
+  color: var(--uui-warning-60);
+}
+
+/* --- Totals Row --------------------------------------------------------- */
+
+.totalsRow td {
+  background: var(--uui-surface-section);
+  font-weight: 600;
+  border-top: 2px solid var(--uui-divider);
+}
+
+/* --- Context Window Bar (SVG) ------------------------------------------- */
+
+.contextBarContainer {
+  margin-top: 12px;
+}
+
+.contextBarSvg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* --- Fan-out Timeline Table --------------------------------------------- */
+
+.fanoutTable {
+  composes: dataTable;
+  margin-top: 12px;
+}
+
+.fanoutInteractionRow td {
+  background: var(--uui-info-10);
+  font-weight: 500;
+}
+
+.fanoutTurnRow {
+  cursor: pointer;
+}
+
+.fanoutTurnRow:hover td {
+  background: var(--uui-surface-section);
+}
+
+.fanoutCaret {
+  display: inline-block;
+  transition: transform 0.2s ease;
+  font-size: 0.75rem;
+  color: var(--uui-text-secondary);
+  width: 16px;
+  text-align: center;
+}
+
+.fanoutCaretOpen {
+  transform: rotate(90deg);
+}
+
+.fanoutDetail {
+  padding: 16px 24px;
+  background: var(--uui-surface-main);
+}
+
+/* --- Turn Panels (expanded fan-out detail) ------------------------------ */
+
+.turnPanelsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.turnPanelSingle {
+  grid-template-columns: 1fr;
+}
+
+.turnPanel {
+  border-radius: 8px;
+  padding: 12px 16px;
+  border: 1px solid var(--uui-neutral-40);
+}
+
+.turnPanelUser {
+  composes: turnPanel;
+  background: var(--uui-info-5);
+  border-color: var(--uui-info-30);
+}
+
+.turnPanelAgent {
+  composes: turnPanel;
+  background: var(--uui-warning-5);
+  border-color: var(--uui-warning-30);
+}
+
+.turnPanelLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--uui-text-secondary);
+  margin-bottom: 8px;
+}
+
+.turnPanelBody {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  color: var(--uui-text-primary);
+}
+
+.reasoning {
+  font-style: italic;
+  border-left: 3px solid var(--uui-warning-40);
+  padding-left: 12px;
+  margin-bottom: 8px;
+  color: var(--uui-text-secondary);
+}
+
+/* --- Nodes (tool calls, sub-agents, messages) --------------------------- */
+
+.node {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-size: 0.8125rem;
+}
+
+.toolNode {
+  composes: node;
+  background: var(--uui-surface-section);
+}
+
+.subAgentNode {
+  composes: node;
+  background: var(--uui-primary-5);
+}
+
+.msgNode {
+  composes: node;
+  background: var(--uui-surface-higher);
+}
+
+.nodeIcon {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.nodeContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.nodeName {
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.nodeArgs {
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.6875rem;
+  color: var(--uui-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 100px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.nodeMeta {
+  font-size: 0.6875rem;
+  color: var(--uui-text-disabled);
+  margin-top: 2px;
+}
+
+.nodeStatusSuccess {
+  color: var(--uui-success-50);
+}
+
+.nodeStatusFailure {
+  color: var(--uui-critical-50);
+}
+
+/* --- Utilisation Chart (SVG) -------------------------------------------- */
+
+.utilisationContainer {
+  margin-top: 12px;
+  background: var(--uui-surface-higher);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 2px var(--uui-neutral-40);
+}
+
+.utilisationSvg {
+  width: 100%;
+  height: auto;
+  display: block;
+}

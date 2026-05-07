@@ -1,6 +1,6 @@
 import type { Session } from '@agent-profiler/core';
-import { FanoutTree, Timeline, TurnList } from '@agent-profiler/ui';
-import { Badge, Button, FlexRow, Panel, Spinner, Text } from '@epam/uui';
+import { SessionDetailView } from '@agent-profiler/ui';
+import { Button, FlexRow, Spinner, Text } from '@epam/uui';
 import { useCallback, useEffect, useState } from 'react';
 
 import { ArrowLeftIcon } from '@/components/icons';
@@ -64,27 +64,5 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
     return null;
   }
 
-  return (
-    <div data-testid="session-detail" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '12px' }}>
-      <FlexRow spacing="6" alignItems="center">
-        <Button fill="ghost" size="30" icon={ArrowLeftIcon} onClick={onBack} rawProps={{ 'aria-label': 'Back' }} />
-        <Text size="42" fontWeight="600">{session.sessionId}</Text>
-        {session.parseStatus.status === 'partial' && (
-          <Badge color="warning" fill="outline" caption="Partial parse" size="18" />
-        )}
-      </FlexRow>
-
-      {error && (
-        <Panel cx="session-detail-error-panel">
-          <FlexRow padding="12">
-            <Text size="24" color="critical">{error}</Text>
-          </FlexRow>
-        </Panel>
-      )}
-
-      <Timeline session={session} />
-      <TurnList session={session} />
-      <FanoutTree session={session} />
-    </div>
-  );
+  return <SessionDetailView session={session} onBack={onBack} />;
 }
