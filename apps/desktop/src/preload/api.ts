@@ -22,6 +22,33 @@ export interface ElectronApi {
     /** Opens a native directory picker. Returns the selected path, or null if cancelled. */
     openDirectory: () => Promise<string | null>;
   };
+
+  pdf: {
+    /** Opens a native "Save As" dialog for PDF export. Returns path or null. */
+    selectOutputPath: () => Promise<string | null>;
+    /** Exports the current view as a PDF. */
+    exportCurrentView: (options: PdfExportOptionsIpc) => Promise<PdfExportResult>;
+    /** Exports a session as a formatted PDF. */
+    exportSession: (session: unknown, options: PdfExportOptionsIpc) => Promise<PdfExportResult>;
+  };
+}
+
+export interface PdfExportOptionsIpc {
+  outputPath: string;
+  landscape?: boolean;
+  pageSize?: 'A4' | 'Letter' | 'A3';
+  printBackground?: boolean;
+  displayHeaderFooter?: boolean;
+  headerTemplate?: string;
+  footerTemplate?: string;
+  margins?: { top?: number; bottom?: number; left?: number; right?: number };
+  title?: string;
+}
+
+export interface PdfExportResult {
+  success: boolean;
+  outputPath?: string;
+  error?: string;
 }
 
 export interface SessionListItemIpc {

@@ -12,6 +12,12 @@ const api: ElectronApi = {
   dialog: {
     openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
   },
+  pdf: {
+    selectOutputPath: () => ipcRenderer.invoke('pdf:select-output-path'),
+    exportCurrentView: (options) => ipcRenderer.invoke('pdf:export-current-view', options),
+    exportSession: (session, options) =>
+      ipcRenderer.invoke('pdf:export-session', { session, options }),
+  },
 };
 
 contextBridge.exposeInMainWorld('electronApi', api);

@@ -5,6 +5,7 @@ import { ipcChannels, sessionListItemSchema } from '@agent-profiler/core';
 import { LocalFsDataSource } from '@agent-profiler/data-source';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 
+import { registerPdfExportHandlers, registerPdfDialogHandler } from './pdf-export';
 import { AppUpdater } from './auto-updater';
 
 /** Default directory for Copilot CLI session state. */
@@ -92,6 +93,10 @@ ipcMain.handle(ipcChannels.DIALOG_OPEN_DIRECTORY, async () => {
 });
 
 app.whenReady().then(async () => {
+  // Register PDF export handlers
+  registerPdfExportHandlers();
+  registerPdfDialogHandler();
+
   // Auto-discover sessions at default location on startup
   const available = await dataSource.isAvailable();
   if (available) {
