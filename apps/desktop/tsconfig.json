@@ -1,8 +1,7 @@
 {
-  "extends": "../../tooling/tsconfig-base/tsconfig.json",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "jsx": "react-jsx"
-  },
-  "include": ["src"]
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.node.json" },
+    { "path": "./tsconfig.web.json" }
+  ]
 }
