@@ -8,12 +8,20 @@ import { memo } from 'react';
 import { formatTokenCount } from '../comparative/format';
 
 import styles from './session-detail.module.css';
+import { SortableHeader } from './SortableHeader';
+import { TableFilter } from './TableFilter';
+import { useFilterableData } from './useFilterableData';
+import { useSortableData } from './useSortableData';
 
 export interface SubagentTableProps {
   readonly subagents: readonly SubagentInvocation[];
   /** Called when the user wants to drill into a sub-agent's child session. */
   readonly onSessionNavigate?: (sessionId: string) => void;
 }
+
+const FILTER_KEYS = ['agentName', 'agentType'] as const;
+
+const DEFAULT_SORT = { key: 'totalTokens' as const, direction: 'desc' as const };
 
 /** Format an ISO timestamp to a time-only string, or return an em-dash. */
 function formatTime(ts: string | null): string {
@@ -29,51 +37,56 @@ function formatTime(ts: string | null): string {
   }
 }
 
-function SubagentTableInner({ subagents, onSessionNavigate }: SubagentTableProps) {
-  return (
-    <table className={styles.dataTable} role="grid">
-      <thead>
-        <tr>
-          <th scope="col">Agent</th>
-          <th scope="col">Type</th>
-          <th scope="col">Time</th>
-          <th scope="col" className={styles.numericCell}>Tokens</th>
-          <th scope="col" className={styles.numericCell}>Messages</th>
-          <th scope="col" className={styles.numericCell}>Tool calls</th>
-          {onSessionNavigate && <th scope="col" />}
-        </tr>
-      </thead>
-      <tbody>
-        {subagents.map((sub, idx) => (
-          <tr key={sub.eventId ?? idx}>
-            <td>
-              <code className={styles.codeCell}>{sub.agentName}</code>
-            </td>
-            <td>{sub.agentType}</td>
-            <td>{formatTime(sub.timestamp)}</td>
-            <td className={styles.numericCell}>{formatTokenCount(sub.totalTokens)}</td>
-            <td className={styles.numericCell}>{sub.messageCount}</td>
-            <td className={styles.numericCell}>{sub.toolCallCount}</td>
-            {onSessionNavigate && (
-              <td>
-                {sub.childSessionRef && (
-                  <button
-                    type="button"
-                    className={styles.drillDownButton}
-                    onClick={() => onSessionNavigate(sub.childSessionRef!)}
-                    title={`Open child session ${sub.childSessionRef}`}
-                  >
-                    Open session ↗
-                  </button>
-                )}
-              </td>
-            )}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
+export const SubagentTable = memo(function SubagentTable({ subagents, onSessionNavigate }: SubagentTableProps) {
+  const { filteredData, filterText, setFilterText } = useFilterableData(subagents, FILTER_KEYS as unknown as string[]);
+  const { sortedData, requestSort, getSortDirection } = useSortableData(filteredData, DEFAULT_SORT);
 
-export const SubagentTable = memo(SubagentTableInner);
+  return (
+    <>
+      <TableFilter value={filterText} onChange={setFilterText} placeholder="Filter agents\u2026" />
+
+      <table className={styles.dataTable} role="grid">
+        <thead>
+          <tr>
+            <SortableHeader label="Agent" sortKey="agentName" direction={getSortDirection('agentName')} onSort={requestSort} />
+            <SortableHeader label="Type" sortKey="agentType" direction={getSortDirection('agentType')} onSort={requestSort} />
+            <th scope="col">Time</th>
+            <SortableHeader label="Tokens" sortKey="totalTokens" direction={getSortDirection('totalTokens')} onSort={requestSort} numeric />
+            <SortableHeader label="Messages" sortKey="messageCount" direction={getSortDirection('messageCount')} onSort={requestSort} numeric />
+            <SortableHeader label="Tool calls" sortKey="toolCallCount" direction={getSortDirection('toolCallCount')} onSort={requestSort} numeric />
+            {onSessionNavigate && <th scope="col" />}
+          </tr>
+        </thead>
+        <tbody>
+          {sortedData.map((sub, idx) => (
+            <tr key={sub.eventId ?? idx}>
+              <td>
+                <code className={styles.codeCell}>{sub.agentName}</code>
+              </td>
+              <td>{sub.agentType}</td>
+              <td>{formatTime(sub.timestamp)}</td>
+              <td className={styles.numericCell}>{formatTokenCount(sub.totalTokens)}</td>
+              <td className={styles.numericCell}>{sub.messageCount}</td>
+              <td className={styles.numericCell}>{sub.toolCallCount}</td>
+              {onSessionNavigate && (
+                <td>
+                  {sub.childSessionRef && (
+                    <button
+                      type="button"
+                      className={styles.drillDownButton}
+                      onClick={() => onSessionNavigate(sub.childSessionRef!)}
+                      title={`Open child session ${sub.childSessionRef}`}
+                    >
+                      Open session ↗
+                    </button>
+                  )}
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  );
+});
 SubagentTable.displayName = 'SubagentTable';

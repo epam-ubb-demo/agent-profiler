@@ -5,10 +5,9 @@
  * Must be a class component because React hooks cannot catch render errors.
  */
 
-import type { ErrorInfo, ReactNode } from 'react';
-
-import { Button, FlexRow, Panel, Text } from '@epam/uui';
 import errorIcon from '@epam/assets/icons/common/notification-error-fill-24.svg';
+import { Button, FlexRow, Panel, Text } from '@epam/uui';
+import type { ErrorInfo, ReactNode } from 'react';
 import { Component } from 'react';
 
 import styles from './ErrorBoundary.module.css';
@@ -55,7 +54,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
     // Log the error for debugging; production logging can be added here.
-    // eslint-disable-next-line no-console
+     
     console.error('[ErrorBoundary] Caught render error:', error, info.componentStack);
   }
 

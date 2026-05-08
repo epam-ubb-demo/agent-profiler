@@ -12,6 +12,7 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 ### Added
 
+- Interactive sorting and filtering for all data tables in session detail view — click column headers to sort (asc/desc/reset), use filter input to search rows by text
 - Two-layer `ErrorBoundary` — granular boundary on the session detail view recovers from render errors with a "Back to sessions" action; a catch-all boundary at the app level prevents full white-screen crashes. Both layers display errors via the UUI `Alert` component with an expandable stack trace.
 - Session data quality alerts — inline UUI `Alert` banners in the session detail view surface parse warnings, schema mismatches, and missing shutdown events with appropriate severity (error/warning/info) and dismissible close buttons
 - `reasoningTokens` field is now extracted from shutdown metrics (previously silently dropped).

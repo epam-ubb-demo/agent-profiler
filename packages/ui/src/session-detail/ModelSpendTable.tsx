@@ -10,6 +10,10 @@ import { formatCost, formatTokenCount } from '../comparative/format';
 
 import type { ModelSpendResult } from './model-spend';
 import styles from './session-detail.module.css';
+import { SortableHeader } from './SortableHeader';
+import { TableFilter } from './TableFilter';
+import { useFilterableData } from './useFilterableData';
+import { useSortableData } from './useSortableData';
 
 export interface ModelSpendTableProps {
   readonly result: ModelSpendResult;
@@ -17,8 +21,15 @@ export interface ModelSpendTableProps {
   readonly isLive?: boolean;
 }
 
-function ModelSpendTableInner({ result, modelColours, isLive }: ModelSpendTableProps) {
+const FILTER_KEYS = ['model'] as const;
+
+const DEFAULT_SORT = { key: 'estimatedUsd' as const, direction: 'desc' as const };
+
+export const ModelSpendTable = memo(function ModelSpendTable({ result, modelColours, isLive }: ModelSpendTableProps) {
   const { rows, totals, confidence } = result;
+
+  const { filteredData, filterText, setFilterText } = useFilterableData(rows, FILTER_KEYS as unknown as string[]);
+  const { sortedData, requestSort, getSortDirection } = useSortableData(filteredData, DEFAULT_SORT);
 
   return (
     <>
@@ -30,21 +41,23 @@ function ModelSpendTableInner({ result, modelColours, isLive }: ModelSpendTableP
         Confidence: {confidence}
       </p>
 
+      <TableFilter value={filterText} onChange={setFilterText} placeholder="Filter models\u2026" />
+
       <table className={styles.dataTable} role="grid">
         <thead>
           <tr>
-            <th scope="col">Model</th>
-            <th scope="col" className={styles.numericCell}>Requests</th>
-            <th scope="col" className={styles.numericCell}>Premium cost</th>
-            <th scope="col" className={styles.numericCell}>Input tok</th>
-            <th scope="col" className={styles.numericCell}>Output tok</th>
-            <th scope="col" className={styles.numericCell}>Cache read</th>
-            <th scope="col" className={styles.numericCell}>Cache write</th>
-            <th scope="col" className={styles.numericCell}>Est. USD</th>
+            <SortableHeader label="Model" sortKey="model" direction={getSortDirection('model')} onSort={requestSort} />
+            <SortableHeader label="Requests" sortKey="requestCount" direction={getSortDirection('requestCount')} onSort={requestSort} numeric />
+            <SortableHeader label="Premium cost" sortKey="premiumCostUsd" direction={getSortDirection('premiumCostUsd')} onSort={requestSort} numeric />
+            <SortableHeader label="Input tok" sortKey="inputTokens" direction={getSortDirection('inputTokens')} onSort={requestSort} numeric />
+            <SortableHeader label="Output tok" sortKey="outputTokens" direction={getSortDirection('outputTokens')} onSort={requestSort} numeric />
+            <SortableHeader label="Cache read" sortKey="cacheReadTokens" direction={getSortDirection('cacheReadTokens')} onSort={requestSort} numeric />
+            <SortableHeader label="Cache write" sortKey="cacheWriteTokens" direction={getSortDirection('cacheWriteTokens')} onSort={requestSort} numeric />
+            <SortableHeader label="Est. USD" sortKey="estimatedUsd" direction={getSortDirection('estimatedUsd')} onSort={requestSort} numeric />
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {sortedData.map((row) => (
             <tr key={row.model}>
               <td>
                 <span
@@ -132,7 +145,5 @@ function ModelSpendTableInner({ result, modelColours, isLive }: ModelSpendTableP
       </table>
     </>
   );
-}
-
-export const ModelSpendTable = memo(ModelSpendTableInner);
+});
 ModelSpendTable.displayName = 'ModelSpendTable';

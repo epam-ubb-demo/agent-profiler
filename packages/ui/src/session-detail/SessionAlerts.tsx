@@ -10,7 +10,6 @@
  */
 
 import type { Session } from '@agent-profiler/core';
-
 import { Alert } from '@epam/uui';
 import { memo, useCallback, useState } from 'react';
 

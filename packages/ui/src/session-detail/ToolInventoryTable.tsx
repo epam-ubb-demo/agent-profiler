@@ -12,7 +12,11 @@ import { memo, useCallback, useState } from 'react';
 import { formatDuration, formatTokenCount } from '../comparative/format';
 
 import styles from './session-detail.module.css';
+import { SortableHeader } from './SortableHeader';
+import { TableFilter } from './TableFilter';
 import type { ToolCategoryRow, ToolInventoryResult } from './tool-inventory';
+import { useFilterableData } from './useFilterableData';
+import { useSortableData } from './useSortableData';
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -21,6 +25,14 @@ import type { ToolCategoryRow, ToolInventoryResult } from './tool-inventory';
 export interface ToolInventoryTableProps {
   readonly result: ToolInventoryResult;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
+
+const FILTER_KEYS = ['category'] as const;
+
+const DEFAULT_SORT = { key: 'totalCalls' as const, direction: 'desc' as const };
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -111,7 +123,7 @@ function CategoryRows({ row, isOpen, onToggle }: CategoryRowsProps) {
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
 
-function ToolInventoryTableInner({ result }: ToolInventoryTableProps) {
+export const ToolInventoryTable = memo(function ToolInventoryTable({ result }: ToolInventoryTableProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const toggleCategory = useCallback((category: string) => {
@@ -126,6 +138,9 @@ function ToolInventoryTableInner({ result }: ToolInventoryTableProps) {
     });
   }, []);
 
+  const { filteredData, filterText, setFilterText } = useFilterableData(result.categories, FILTER_KEYS as unknown as string[]);
+  const { sortedData, requestSort, getSortDirection } = useSortableData(filteredData, DEFAULT_SORT);
+
   return (
     <>
       {/* Summary caption */}
@@ -136,20 +151,22 @@ function ToolInventoryTableInner({ result }: ToolInventoryTableProps) {
         </p>
       )}
 
+      <TableFilter value={filterText} onChange={setFilterText} placeholder="Filter categories\u2026" />
+
       <table className={styles.dataTable} role="grid" data-testid="tool-inventory">
         <thead>
           <tr>
             <th scope="col" style={{ width: 32 }} />
-            <th scope="col">Category / Tool</th>
-            <th scope="col" className={styles.numericCell}>Tools</th>
-            <th scope="col" className={styles.numericCell}>Calls</th>
-            <th scope="col" className={styles.numericCell}>Success</th>
-            <th scope="col" className={styles.numericCell}>Avg duration</th>
+            <SortableHeader label="Category / Tool" sortKey="category" direction={getSortDirection('category')} onSort={requestSort} />
+            <SortableHeader label="Tools" sortKey="toolCount" direction={getSortDirection('toolCount')} onSort={requestSort} numeric />
+            <SortableHeader label="Calls" sortKey="totalCalls" direction={getSortDirection('totalCalls')} onSort={requestSort} numeric />
+            <SortableHeader label="Success" sortKey="successRate" direction={getSortDirection('successRate')} onSort={requestSort} numeric />
+            <SortableHeader label="Avg duration" sortKey="avgDurationMs" direction={getSortDirection('avgDurationMs')} onSort={requestSort} numeric />
           </tr>
         </thead>
 
         <tbody>
-          {result.categories.map((cat) => (
+          {sortedData.map((cat) => (
             <CategoryRows
               key={cat.category}
               row={cat}
@@ -172,7 +189,5 @@ function ToolInventoryTableInner({ result }: ToolInventoryTableProps) {
       </table>
     </>
   );
-}
-
-export const ToolInventoryTable = memo(ToolInventoryTableInner);
+});
 ToolInventoryTable.displayName = 'ToolInventoryTable';

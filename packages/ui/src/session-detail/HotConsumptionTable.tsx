@@ -10,6 +10,10 @@ import { formatCost, formatTokenCount } from '../comparative/format';
 
 import type { HotConsumptionEntry, HotConsumptionResult } from './hot-consumption';
 import styles from './session-detail.module.css';
+import { SortableHeader } from './SortableHeader';
+import { TableFilter } from './TableFilter';
+import { useFilterableData } from './useFilterableData';
+import { useSortableData } from './useSortableData';
 
 export interface HotConsumptionTableProps {
   readonly result: HotConsumptionResult;
@@ -26,6 +30,10 @@ const TYPE_BADGE_CLASS: Record<HotConsumptionEntry['type'], string> = {
   compaction: styles.typeBadgeCompaction,
 };
 
+const FILTER_KEYS = ['type', 'model', 'where', 'detail'] as const;
+
+const DEFAULT_SORT = { key: 'rank' as const, direction: 'asc' as const };
+
 /** Extract HH:MM:SS from an ISO-8601 timestamp. */
 function formatTime(iso: string | null): string {
   if (iso === null) return '—';
@@ -39,7 +47,7 @@ function formatTime(iso: string | null): string {
   });
 }
 
-function HotConsumptionTableInner({
+export const HotConsumptionTable = memo(function HotConsumptionTable({
   result,
   includeCompactions,
   onToggleCompactions,
@@ -47,6 +55,9 @@ function HotConsumptionTableInner({
   onSessionNavigate,
 }: HotConsumptionTableProps) {
   const { entries, totalEntries, topNTokens } = result;
+
+  const { filteredData, filterText, setFilterText } = useFilterableData(entries, FILTER_KEYS as unknown as string[]);
+  const { sortedData, requestSort, getSortDirection } = useSortableData(filteredData, DEFAULT_SORT);
 
   return (
     <>
@@ -66,23 +77,25 @@ function HotConsumptionTableInner({
         {formatTokenCount(topNTokens)} tokens
       </p>
 
+      <TableFilter value={filterText} onChange={setFilterText} placeholder="Filter hotspots\u2026" />
+
       {/* ---- Table ------------------------------------------------------ */}
       <table className={styles.dataTable} role="grid">
         <thead>
           <tr>
-            <th scope="col" className={styles.numericCell}>#</th>
+            <SortableHeader label="#" sortKey="rank" direction={getSortDirection('rank')} onSort={requestSort} numeric />
             <th scope="col">Time</th>
-            <th scope="col">Type</th>
+            <SortableHeader label="Type" sortKey="type" direction={getSortDirection('type')} onSort={requestSort} />
             <th scope="col">Where</th>
             <th scope="col">Model</th>
-            <th scope="col" className={styles.numericCell}>Tokens</th>
-            <th scope="col" className={styles.numericCell}>Est. USD</th>
+            <SortableHeader label="Tokens" sortKey="tokens" direction={getSortDirection('tokens')} onSort={requestSort} numeric />
+            <SortableHeader label="Est. USD" sortKey="estimatedUsd" direction={getSortDirection('estimatedUsd')} onSort={requestSort} numeric />
             <th scope="col" className={styles.barCell} />
             <th scope="col">Detail</th>
           </tr>
         </thead>
         <tbody>
-          {entries.map((entry) => (
+          {sortedData.map((entry) => (
             <tr key={entry.rank}>
               <td className={styles.numericCell}>{entry.rank}</td>
               <td>{formatTime(entry.time)}</td>
@@ -142,7 +155,5 @@ function HotConsumptionTableInner({
       </table>
     </>
   );
-}
-
-export const HotConsumptionTable = memo(HotConsumptionTableInner);
+});
 HotConsumptionTable.displayName = 'HotConsumptionTable';

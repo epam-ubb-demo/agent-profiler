@@ -488,3 +488,34 @@
 .statCardPending {
   opacity: 0.6;
 }
+
+/* --- Sortable Table Headers --------------------------------------------- */
+
+.sortableHeader {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.sortableHeader:hover {
+  background: var(--uui-neutral-10);
+}
+
+.sortIndicator {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 0.65rem;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+}
+
+.sortIndicatorActive {
+  opacity: 1;
+}
+
+/* --- Table Filter Input ------------------------------------------------- */
+
+.tableFilter {
+  margin-bottom: 8px;
+  max-width: 260px;
+}
