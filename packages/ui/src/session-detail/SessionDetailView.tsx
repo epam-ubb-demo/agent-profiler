@@ -8,7 +8,8 @@
  */
 
 import type { Session } from '@agent-profiler/core';
-import { Text } from '@epam/uui';
+import { Alert, Text } from '@epam/uui';
+import infoIcon from '@epam/assets/icons/common/notification-info-fill-24.svg';
 import { memo, useCallback, useMemo, useState } from 'react';
 
 import { Timeline } from '../timeline/Timeline';
@@ -102,10 +103,14 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
     setIncludeCompactions((prev) => !prev);
   }, []);
 
+  /* --- live session detection --------------------------------------- */
+  const isLive = session.shutdown === null && session.startTs !== null;
+  const [liveAlertDismissed, setLiveAlertDismissed] = useState(false);
+
   /* --- derived data ------------------------------------------------ */
   const modelColours = useMemo(() => buildModelColours(session), [session]);
 
-  const stats = useMemo(() => computeSessionStats(session), [session]);
+  const stats = useMemo(() => computeSessionStats(session, { isLive }), [session, isLive]);
 
   const modelSpend = useMemo(
     () => computeModelSpend(session),
@@ -138,8 +143,23 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
         selectedModel={session.selectedModel}
         reasoningEffort={session.reasoningEffort}
         parseStatus={session.parseStatus.status}
+        isLive={isLive}
         {...(onBack ? { onBack } : {})}
       />
+
+      {/* 1b. Live session alert */}
+      {isLive && !liveAlertDismissed && (
+        <div className={styles.liveAlert} data-testid="live-session-alert">
+          <Alert
+            color="info"
+            icon={infoIcon}
+            onClose={() => setLiveAlertDismissed(true)}
+            rawProps={{ 'aria-live': 'polite' }}
+          >
+            This session is still active — some metrics will update when it completes.
+          </Alert>
+        </div>
+      )}
 
       {/* 2. Parse / data-quality alerts */}
       <SessionAlerts
@@ -153,7 +173,7 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
       {/* 3. Per-model spend */}
       {modelSpend && (
         <Section title="Per-model spend">
-          <ModelSpendTable result={modelSpend} modelColours={modelColours} />
+          <ModelSpendTable result={modelSpend} modelColours={modelColours} isLive={isLive} />
         </Section>
       )}
 

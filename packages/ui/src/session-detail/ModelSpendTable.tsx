@@ -14,9 +14,10 @@ import styles from './session-detail.module.css';
 export interface ModelSpendTableProps {
   readonly result: ModelSpendResult;
   readonly modelColours: Record<string, string>;
+  readonly isLive?: boolean;
 }
 
-function ModelSpendTableInner({ result, modelColours }: ModelSpendTableProps) {
+function ModelSpendTableInner({ result, modelColours, isLive }: ModelSpendTableProps) {
   const { rows, totals, confidence } = result;
 
   return (
@@ -119,6 +120,15 @@ function ModelSpendTableInner({ result, modelColours }: ModelSpendTableProps) {
             </td>
           </tr>
         </tfoot>
+        {isLive && (
+          <tfoot>
+            <tr className={styles.liveNoticeRow} data-testid="model-spend-live-notice">
+              <td colSpan={8}>
+                <Text size="18">ℹ Totals are partial — session is still generating events.</Text>
+              </td>
+            </tr>
+          </tfoot>
+        )}
       </table>
     </>
   );

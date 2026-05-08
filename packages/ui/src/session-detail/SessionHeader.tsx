@@ -17,6 +17,7 @@ export interface SessionHeaderProps {
   readonly selectedModel: string;
   readonly reasoningEffort: string;
   readonly parseStatus: 'ok' | 'partial' | 'failed';
+  readonly isLive?: boolean;
   readonly onBack?: () => void;
 }
 
@@ -28,6 +29,7 @@ function SessionHeaderInner({
   selectedModel,
   reasoningEffort,
   parseStatus,
+  isLive,
   onBack,
 }: SessionHeaderProps) {
   return (
@@ -53,6 +55,19 @@ function SessionHeaderInner({
         )}
         {parseStatus === 'failed' && (
           <Badge color="critical" fill="solid" size="18" caption="Failed" />
+        )}
+        {isLive && (
+          <Badge
+            color="info"
+            fill="outline"
+            size="18"
+            caption="Live"
+            cx={styles.liveBadge}
+            rawProps={{
+              'data-testid': 'live-badge',
+              'aria-label': 'Session is live',
+            }}
+          />
         )}
       </div>
 

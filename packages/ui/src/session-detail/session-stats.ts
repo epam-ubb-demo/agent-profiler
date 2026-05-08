@@ -20,6 +20,8 @@ export interface StatEntry {
   readonly value: number | null;
   readonly display: string;
   readonly label: string;
+  /** When true, the stat requires shutdown data that is not yet available. */
+  readonly pending?: boolean;
 }
 
 /**
@@ -131,9 +133,15 @@ function totalOutputTokensFromMessages(
  * The function is pure — it performs no I/O and has no side effects.
  * All nullable fields degrade gracefully: `value` becomes `null` and
  * `display` becomes "—".
+ *
+ * When `isLive` is true, stats requiring shutdown data are marked as
+ * `pending` and stats representing elapsed time are prefixed with "~".
  */
-export function computeSessionStats(session: Session): SessionStats {
-  const durationMs = computeDurationMs(session.startTs, session.endTs);
+export function computeSessionStats(session: Session, options?: { isLive?: boolean }): SessionStats {
+  const isLive = options?.isLive ?? false;
+  const durationMs = isLive
+    ? (session.startTs !== null ? Date.now() - new Date(session.startTs).getTime() : null)
+    : computeDurationMs(session.startTs, session.endTs);
 
   const shutdown = session.shutdown;
 
@@ -162,7 +170,9 @@ export function computeSessionStats(session: Session): SessionStats {
   return {
     duration: {
       value: durationMs,
-      display: durationMs !== null ? formatDuration(durationMs) : NO_DATA,
+      display: durationMs !== null
+        ? (isLive ? `~${formatDuration(durationMs)}` : formatDuration(durationMs))
+        : NO_DATA,
       label: 'Duration',
     },
     toolCallCount: {
@@ -191,9 +201,10 @@ export function computeSessionStats(session: Session): SessionStats {
       label: 'Sub-agents',
     },
     estimatedCost: {
-      value: costBreakdown !== null ? costBreakdown.totalUsd : null,
-      display: formatCost(costBreakdown !== null ? costBreakdown.totalUsd : null),
+      value: isLive ? null : (costBreakdown !== null ? costBreakdown.totalUsd : null),
+      display: isLive ? NO_DATA : formatCost(costBreakdown !== null ? costBreakdown.totalUsd : null),
       label: 'Estimated Cost',
+      pending: isLive,
     },
     avgTokensPerToolCall: {
       value: avgTokens !== null ? avgTokens : null,
@@ -218,10 +229,10 @@ export function computeSessionStats(session: Session): SessionStats {
       label: 'API Time',
     },
     taskSuccess: {
-      value:
-        session.success === null ? null : session.success ? 1 : 0,
-      display: formatSuccess(session.success),
+      value: isLive ? null : (session.success === null ? null : session.success ? 1 : 0),
+      display: isLive ? NO_DATA : formatSuccess(session.success),
       label: 'Task Success',
+      pending: isLive,
     },
   };
 }

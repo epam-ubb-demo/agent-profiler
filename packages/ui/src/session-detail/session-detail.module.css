@@ -439,3 +439,52 @@
   height: auto;
   display: block;
 }
+
+/* --- Live Session Badge ------------------------------------------------- */
+
+.liveBadge {
+  position: relative;
+  padding-left: 20px !important;
+}
+
+.liveBadge::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--uui-info-50);
+  animation: livePulse 2s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: translateY(-50%) scale(1); }
+  50%      { opacity: 0.4; transform: translateY(-50%) scale(0.75); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liveBadge::before { animation: none; }
+}
+
+/* --- Live Session Alert ------------------------------------------------- */
+
+.liveAlert {
+  margin-top: 8px;
+}
+
+/* --- Live Notice Row (ModelSpendTable) ---------------------------------- */
+
+.liveNoticeRow td {
+  padding: 8px 12px;
+  background: var(--uui-info-5);
+  border-top: 1px solid var(--uui-info-20);
+}
+
+/* --- Pending Stat Card -------------------------------------------------- */
+
+.statCardPending {
+  opacity: 0.6;
+}

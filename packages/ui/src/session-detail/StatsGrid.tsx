@@ -37,8 +37,11 @@ function StatsGridInner({ stats }: StatsGridProps) {
     <div className={styles.statsGrid}>
       {STAT_ORDER.map((key) => {
         const stat: StatEntry = stats[key];
+        const cardClass = stat.pending
+          ? `${styles.statCard} ${styles.statCardPending}`
+          : styles.statCard;
         return (
-          <div className={styles.statCard} key={key} data-testid={`stat-${key}`}>
+          <div className={cardClass} key={key} data-testid={`stat-${key}`}>
             <div className={styles.statValue}>{stat.display}</div>
             <div className={styles.statLabel}>{stat.label}</div>
           </div>
