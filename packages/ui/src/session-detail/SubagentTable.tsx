@@ -54,34 +54,31 @@ export const SubagentTable = memo(function SubagentTable({ subagents, onSessionN
             <SortableHeader label="Tokens" sortKey="totalTokens" direction={getSortDirection('totalTokens')} onSort={requestSort} numeric />
             <SortableHeader label="Messages" sortKey="messageCount" direction={getSortDirection('messageCount')} onSort={requestSort} numeric />
             <SortableHeader label="Tool calls" sortKey="toolCallCount" direction={getSortDirection('toolCallCount')} onSort={requestSort} numeric />
-            {onSessionNavigate && <th scope="col" />}
           </tr>
         </thead>
         <tbody>
           {sortedData.map((sub, idx) => (
             <tr key={sub.eventId ?? idx}>
               <td>
-                <code className={styles.codeCell}>{sub.agentName}</code>
+                {sub.childSessionRef && onSessionNavigate ? (
+                  <button
+                    type="button"
+                    className={styles.drillDownLink}
+                    onClick={() => onSessionNavigate(sub.childSessionRef!)}
+                    title={`Open session ${sub.childSessionRef}`}
+                  >
+                    <code className={styles.codeCell}>{sub.agentName}</code>
+                    <span className={styles.drillDownArrow}> ↗</span>
+                  </button>
+                ) : (
+                  <code className={styles.codeCell}>{sub.agentName}</code>
+                )}
               </td>
               <td>{sub.agentType}</td>
               <td>{formatTime(sub.timestamp)}</td>
               <td className={styles.numericCell}>{formatTokenCount(sub.totalTokens)}</td>
               <td className={styles.numericCell}>{sub.messageCount}</td>
               <td className={styles.numericCell}>{sub.toolCallCount}</td>
-              {onSessionNavigate && (
-                <td>
-                  {sub.childSessionRef && (
-                    <button
-                      type="button"
-                      className={styles.drillDownButton}
-                      onClick={() => onSessionNavigate(sub.childSessionRef!)}
-                      title={`Open child session ${sub.childSessionRef}`}
-                    >
-                      Open session ↗
-                    </button>
-                  )}
-                </td>
-              )}
             </tr>
           ))}
         </tbody>

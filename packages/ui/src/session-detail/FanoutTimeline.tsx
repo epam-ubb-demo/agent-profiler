@@ -593,22 +593,24 @@ const TurnDetail = memo(function TurnDetail({ turn, onSessionNavigate }: TurnDet
         <div key={`subagent-${String(idx)}`} className={styles.subAgentNode}>
           <span className={styles.nodeIcon}>🤖</span>
           <div className={styles.nodeContent}>
-            <div className={styles.nodeName}>{sub.agentName}</div>
+            {sub.childSessionRef && onSessionNavigate ? (
+              <button
+                type="button"
+                className={styles.drillDownLink}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSessionNavigate(sub.childSessionRef!);
+                }}
+                title={`Open session ${sub.childSessionRef}`}
+              >
+                <div className={styles.nodeName}>{sub.agentName}</div>
+                <span className={styles.drillDownArrow}> ↗</span>
+              </button>
+            ) : (
+              <div className={styles.nodeName}>{sub.agentName}</div>
+            )}
             <div className={styles.nodeMeta}>
               {formatTokenCount(sub.totalTokens)} tokens · {sub.messageCount} msgs
-              {sub.childSessionRef && onSessionNavigate && (
-                <button
-                  type="button"
-                  className={styles.drillDownButton}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSessionNavigate(sub.childSessionRef!);
-                  }}
-                  title={`Open child session ${sub.childSessionRef}`}
-                >
-                  Open session ↗
-                </button>
-              )}
             </div>
           </div>
         </div>

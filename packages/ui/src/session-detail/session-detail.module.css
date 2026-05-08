@@ -357,6 +357,38 @@
   background: var(--uui-primary-5);
 }
 
+.drillDownLink {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  transition: background 0.15s;
+}
+
+.drillDownLink:hover {
+  background: var(--uui-neutral-10);
+}
+
+.drillDownLink:focus-visible {
+  outline: 2px solid var(--uui-info-50);
+  outline-offset: 1px;
+}
+
+.drillDownArrow {
+  font-size: 0.75rem;
+  color: var(--uui-info-50);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.drillDownLink:hover .drillDownArrow {
+  opacity: 1;
+}
+
 .drillDownButton {
   display: inline-flex;
   align-items: center;
