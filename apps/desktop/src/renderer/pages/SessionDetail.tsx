@@ -11,9 +11,10 @@ interface SessionErrorFallbackProps {
   readonly error: Error;
   readonly reset: () => void;
   readonly onBack: () => void;
+  readonly sessionId: string;
 }
 
-function SessionErrorFallback({ error, onBack }: SessionErrorFallbackProps) {
+function SessionErrorFallback({ error, onBack, sessionId }: SessionErrorFallbackProps) {
   const [showDetails, setShowDetails] = useState(false);
 
   return (
@@ -69,6 +70,18 @@ function SessionErrorFallback({ error, onBack }: SessionErrorFallbackProps) {
           {/* Expandable error details */}
           {showDetails && (
             <div className={styles['session-error-details']} role="region" aria-label="Error details">
+              <div>
+                <Text size="14" color="secondary">Session</Text>{' '}
+                <code style={{ fontFamily: 'var(--uui-font-mono, monospace)', fontSize: '13px' }}>
+                  {sessionId}
+                </code>
+              </div>
+              <div>
+                <Text size="14" color="secondary">Path</Text>{' '}
+                <code style={{ fontFamily: 'var(--uui-font-mono, monospace)', fontSize: '13px' }}>
+                  ~/.copilot/session-state/{sessionId}
+                </code>
+              </div>
               <Text size="14" fontWeight="600">
                 {error.message}
               </Text>
@@ -147,7 +160,7 @@ export function SessionDetail({ sessionId, onBack, onSessionNavigate }: SessionD
   return (
     <ErrorBoundary
       onReset={onBack}
-      fallbackRender={({ error, reset }) => <SessionErrorFallback error={error} reset={reset} onBack={onBack} />}
+      fallbackRender={({ error, reset }) => <SessionErrorFallback error={error} reset={reset} onBack={onBack} sessionId={sessionId} />}
     >
       <SessionDetailView session={session} onBack={onBack} onSessionNavigate={onSessionNavigate} />
     </ErrorBoundary>

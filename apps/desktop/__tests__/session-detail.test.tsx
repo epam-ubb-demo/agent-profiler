@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ElectronApi } from '../src/preload/api';
 import { SessionDetail } from '../src/renderer/pages/SessionDetail';
 
-import { cleanup, render, screen, waitFor } from './test-utils';
+import { cleanup, fireEvent, render, screen, waitFor } from './test-utils';
 
 // Minimal mock session data
 function createMockSession(overrides: Record<string, unknown> = {}) {
@@ -34,19 +34,20 @@ function createMockSession(overrides: Record<string, unknown> = {}) {
 }
 
 // Mock @agent-profiler/ui components
-vi.mock('@agent-profiler/ui', () => ({
-  Timeline: ({ session }: { session: unknown }) => (
-    <div data-testid="timeline">Timeline: {(session as { sessionId: string }).sessionId}</div>
-  ),
-  TurnList: ({ session }: { session: unknown }) => (
-    <div data-testid="turn-list">TurnList: {(session as { sessionId: string }).sessionId}</div>
-  ),
-  FanoutTree: ({ session }: { session: unknown }) => {
-    const s = session as { fanoutTurns: unknown[] };
-    if (s.fanoutTurns.length === 0) return null;
-    return <div data-testid="fanout-tree">FanoutTree</div>;
-  },
-}));
+vi.mock('@agent-profiler/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@agent-profiler/ui')>();
+  return {
+    ...actual,
+    SessionDetailView: ({ session, onBack }: { session: { sessionId: string; parseStatus: { status: string; error: string | null } }; onBack: () => void }) => (
+      <div data-testid="session-detail">
+        <button aria-label="Back" onClick={onBack}>Back</button>
+        <div data-testid="timeline">Timeline: {session.sessionId}</div>
+        <div data-testid="turn-list">TurnList: {session.sessionId}</div>
+        {session.parseStatus.status === 'failed' && <div>{session.parseStatus.error}</div>}
+      </div>
+    ),
+  };
+});
 
 const mockElectronApi = {
   getVersion: vi.fn<() => Promise<string>>().mockResolvedValue('0.0.0'),
@@ -139,5 +140,50 @@ describe('SessionDetail', () => {
 
     screen.getByLabelText('Back').click();
     expect(onBack).toHaveBeenCalledOnce();
+  });
+});
+
+describe('SessionErrorFallback', () => {
+  it('displays session ID and path in error details when show details is clicked', async () => {
+    // Make the mock SessionDetailView throw to trigger the ErrorBoundary fallback
+    vi.doMock('@agent-profiler/ui', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@agent-profiler/ui')>();
+      return {
+        ...actual,
+        SessionDetailView: () => { throw new Error('Test render crash'); },
+      };
+    });
+
+    // Re-import to pick up the throwing mock
+    vi.resetModules();
+    const { SessionDetail: SessionDetailFresh } = await import('../src/renderer/pages/SessionDetail');
+
+    // Suppress React error boundary console noise
+    const originalConsoleError = console.error;
+    console.error = vi.fn();
+
+    try {
+      vi.mocked(mockElectronApi.session.open).mockResolvedValue(createMockSession({ sessionId: 'abc-123-def' }));
+
+      await render(<SessionDetailFresh sessionId="abc-123-def" onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('session-detail-render-error')).toBeDefined();
+      });
+
+      // Click "Show details"
+      const showDetailsBtn = screen.getByRole('button', { name: /show details/i });
+      fireEvent.click(showDetailsBtn);
+
+      // Verify session ID is displayed
+      expect(screen.getByText('abc-123-def')).toBeDefined();
+      // Verify session path is displayed
+      expect(screen.getByText('~/.copilot/session-state/abc-123-def')).toBeDefined();
+      // Verify labels are present
+      expect(screen.getByText('Session')).toBeDefined();
+      expect(screen.getByText('Path')).toBeDefined();
+    } finally {
+      console.error = originalConsoleError;
+    }
   });
 });
