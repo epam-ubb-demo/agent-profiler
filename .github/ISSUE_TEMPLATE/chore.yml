@@ -1,0 +1,45 @@
+name: Chore
+description: "Maintenance, housekeeping, or internal improvement \u2014 no user-facing behaviour change."
+title: "[CHORE] "
+labels: ["type:chore"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What maintenance or improvement is needed?
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: "Why is this worth doing now? What\u2019s the cost of deferring?"
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Which files, packages, or systems are affected?
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Select the affected area(s).
+      multiple: true
+      options:
+        - core
+        - ui
+        - desktop
+        - adapters
+        - pricing
+        - docs
+        - ci
+        - packaging
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: How do we know this is done?
+      placeholder: "- [ ] ..."
