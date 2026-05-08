@@ -16,6 +16,14 @@ import { render } from './test-utils';
 vi.mock('@epam/assets/icons/common/notification-error-fill-24.svg', () => ({ default: () => null }));
 
 /* ------------------------------------------------------------------ */
+/*  Mock CSS modules — jsdom doesn't process CSS modules               */
+/* ------------------------------------------------------------------ */
+
+vi.mock('../src/ErrorBoundary.module.css', () => ({
+  default: new Proxy({}, { get: (_target, prop) => String(prop) }),
+}));
+
+/* ------------------------------------------------------------------ */
 /*  Suppress React error-boundary console noise                        */
 /* ------------------------------------------------------------------ */
 
@@ -82,6 +90,18 @@ describe('ErrorBoundary', () => {
     expect(screen.getByText('Something broke badly')).toBeInTheDocument();
   });
 
+  it('has role="alert" and aria-live="assertive" for accessibility', () => {
+    render(
+      <ErrorBoundary>
+        <ThrowingChild />
+      </ErrorBoundary>,
+    );
+
+    const fallback = screen.getByTestId('error-boundary-fallback');
+    expect(fallback).toHaveAttribute('role', 'alert');
+    expect(fallback).toHaveAttribute('aria-live', 'assertive');
+  });
+
   it('calls onReset when the "Try again" button is clicked', () => {
     const onReset = vi.fn();
 
@@ -95,6 +115,30 @@ describe('ErrorBoundary', () => {
     fireEvent.click(tryAgainButton);
 
     expect(onReset).toHaveBeenCalledOnce();
+  });
+
+  it('toggles stack trace visibility via "Show stack trace" button', () => {
+    render(
+      <ErrorBoundary>
+        <ThrowingChild />
+      </ErrorBoundary>,
+    );
+
+    // Stack trace is hidden by default
+    expect(screen.queryByTestId('error-boundary-stack')).not.toBeInTheDocument();
+
+    // Click to expand
+    const toggleButton = screen.getByText('Show stack trace');
+    fireEvent.click(toggleButton);
+
+    expect(screen.getByTestId('error-boundary-stack')).toBeInTheDocument();
+
+    // Button text changes
+    expect(screen.getByText('Hide stack trace')).toBeInTheDocument();
+
+    // Click to collapse
+    fireEvent.click(screen.getByText('Hide stack trace'));
+    expect(screen.queryByTestId('error-boundary-stack')).not.toBeInTheDocument();
   });
 
   it('uses custom fallback when provided', () => {

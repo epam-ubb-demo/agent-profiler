@@ -1,9 +1,87 @@
 import type { Session } from '@agent-profiler/core';
 import { ErrorBoundary, SessionDetailView } from '@agent-profiler/ui';
-import { Button, FlexRow, Spinner, Text } from '@epam/uui';
+import { Button, FlexRow, Panel, Spinner, Text } from '@epam/uui';
 import { useCallback, useEffect, useState } from 'react';
 
 import { ArrowLeftIcon } from '@/components/icons';
+
+import styles from './SessionError.module.css';
+
+interface SessionErrorFallbackProps {
+  readonly error: Error;
+  readonly reset: () => void;
+  readonly onBack: () => void;
+}
+
+function SessionErrorFallback({ error, onBack }: SessionErrorFallbackProps) {
+  const [showDetails, setShowDetails] = useState(false);
+
+  return (
+    <FlexRow
+      justifyContent="center"
+      padding="24"
+      rawProps={{ 'data-testid': 'session-detail-render-error' }}
+    >
+      <Panel shadow cx={styles['session-error-panel']}>
+        <div className={styles['session-error-content']}>
+          {/* Prominent error icon */}
+          <div className={styles['session-error-icon-container']}>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+            </svg>
+          </div>
+
+          {/* Headline */}
+          <Text size="30" fontWeight="600" cx={styles['session-error-title']}>
+            Rendering error
+          </Text>
+
+          {/* Description */}
+          <Text size="18" color="secondary" cx={styles['session-error-desc']}>
+            A rendering error occurred while displaying this session.
+          </Text>
+
+          {/* Actions */}
+          <FlexRow spacing="12" justifyContent="center" cx={styles['session-error-actions']}>
+            <Button
+              fill="solid"
+              size="36"
+              color="primary"
+              icon={ArrowLeftIcon}
+              caption="Back to sessions"
+              onClick={onBack}
+            />
+            <Button
+              fill="outline"
+              size="36"
+              caption={showDetails ? 'Hide details' : 'Show details'}
+              onClick={() => setShowDetails(!showDetails)}
+              rawProps={{ 'aria-expanded': showDetails }}
+            />
+          </FlexRow>
+
+          {/* Expandable error details */}
+          {showDetails && (
+            <div className={styles['session-error-details']} role="region" aria-label="Error details">
+              <Text size="14" fontWeight="600">
+                {error.message}
+              </Text>
+              <pre className={styles['session-error-stack']}>
+                {error.stack ?? 'No stack trace available.'}
+              </pre>
+            </div>
+          )}
+        </div>
+      </Panel>
+    </FlexRow>
+  );
+}
 
 export interface SessionDetailProps {
   /** The session ID to display. */
@@ -69,36 +147,7 @@ export function SessionDetail({ sessionId, onBack, onSessionNavigate }: SessionD
   return (
     <ErrorBoundary
       onReset={onBack}
-      fallbackRender={({ error }) => (
-        <FlexRow justifyContent="center" padding="24" rawProps={{ 'data-testid': 'session-detail-render-error' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-            <Text size="24" color="critical">A rendering error occurred while displaying this session.</Text>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <Button fill="outline" size="30" icon={ArrowLeftIcon} caption="Back to sessions" onClick={onBack} />
-            </div>
-            <details style={{ width: '100%', maxWidth: 600, marginTop: 8 }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 500 }}>Show error details</summary>
-              <div style={{ marginTop: 8, textAlign: 'left' }}>
-                <code style={{ display: 'block', marginBottom: 8 }}>{error.message}</code>
-                <pre
-                  style={{
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    fontSize: 12,
-                    maxHeight: 300,
-                    overflow: 'auto',
-                    background: 'var(--uui-surface-higher, #f5f5f5)',
-                    padding: 12,
-                    borderRadius: 4,
-                  }}
-                >
-                  {error.stack ?? 'No stack trace available.'}
-                </pre>
-              </div>
-            </details>
-          </div>
-        </FlexRow>
-      )}
+      fallbackRender={({ error, reset }) => <SessionErrorFallback error={error} reset={reset} onBack={onBack} />}
     >
       <SessionDetailView session={session} onBack={onBack} onSessionNavigate={onSessionNavigate} />
     </ErrorBoundary>

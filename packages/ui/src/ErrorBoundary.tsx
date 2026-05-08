@@ -7,9 +7,11 @@
 
 import type { ErrorInfo, ReactNode } from 'react';
 
-import { Alert, Button } from '@epam/uui';
+import { Button, FlexRow, Panel, Text } from '@epam/uui';
 import errorIcon from '@epam/assets/icons/common/notification-error-fill-24.svg';
 import { Component } from 'react';
+
+import styles from './ErrorBoundary.module.css';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -28,7 +30,14 @@ export interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   readonly hasError: boolean;
   readonly error: Error | null;
+  readonly expanded: boolean;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Icon helper                                                        */
+/* ------------------------------------------------------------------ */
+
+const ErrorIcon = errorIcon as React.FC<React.SVGProps<SVGSVGElement>>;
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -37,10 +46,10 @@ interface ErrorBoundaryState {
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, expanded: false };
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     return { hasError: true, error };
   }
 
@@ -51,7 +60,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   private handleReset = (): void => {
-    this.setState({ hasError: false, error: null });
+    this.setState({ hasError: false, error: null, expanded: false });
     this.props.onReset?.();
   };
 
@@ -70,46 +79,67 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return this.props.fallback;
     }
 
-    const { error } = this.state;
+    const { error, expanded } = this.state;
 
     return (
-      <div data-testid="error-boundary-fallback" style={{ padding: 24 }}>
-        <Alert
-          color="error"
-          icon={errorIcon}
-          rawProps={{ 'aria-live': 'assertive' }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <strong>Something went wrong</strong>
-            <span>{error?.message ?? 'An unexpected error occurred.'}</span>
+      <div
+        className={styles['error-boundary-fallback']}
+        data-testid="error-boundary-fallback"
+        role="alert"
+        aria-live="assertive"
+      >
+        <Panel shadow cx={styles['error-boundary-panel']}>
+          <div className={styles['error-boundary-content']}>
+            {/* Header: icon + messaging */}
+            <FlexRow spacing="12" alignItems="top" cx={styles['error-boundary-header']}>
+              <div className={styles['error-boundary-icon-container']}>
+                <ErrorIcon width={24} height={24} />
+              </div>
+              <div className={styles['error-boundary-text']}>
+                <Text size="24" fontWeight="600">
+                  Something went wrong
+                </Text>
+                <Text size="18" color="secondary">
+                  {error?.message ?? 'An unexpected error occurred.'}
+                </Text>
+              </div>
+            </FlexRow>
 
-            <details style={{ marginTop: 4 }}>
-              <summary style={{ cursor: 'pointer' }}>Stack trace</summary>
-              <pre
-                data-testid="error-boundary-stack"
-                style={{
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  fontSize: 12,
-                  marginTop: 8,
-                  maxHeight: 300,
-                  overflow: 'auto',
-                }}
-              >
-                {error?.stack ?? 'No stack trace available.'}
-              </pre>
-            </details>
+            {/* Expandable stack trace */}
+            {error?.stack && (
+              <div className={styles['error-boundary-details']}>
+                <Button
+                  fill="ghost"
+                  size="30"
+                  caption={expanded ? 'Hide stack trace' : 'Show stack trace'}
+                  onClick={() => this.setState({ expanded: !expanded })}
+                  rawProps={{ 'aria-expanded': expanded }}
+                />
+                {expanded && (
+                  <div className={styles['error-boundary-stack-panel']}>
+                    <pre
+                      className={styles['error-boundary-stack-trace']}
+                      data-testid="error-boundary-stack"
+                    >
+                      {error.stack}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            )}
 
-            <div>
+            {/* Actions */}
+            <FlexRow spacing="12" cx={styles['error-boundary-actions']}>
               <Button
                 caption="Try again"
                 onClick={this.handleReset}
-                size="30"
+                size="36"
                 fill="outline"
+                color="primary"
               />
-            </div>
+            </FlexRow>
           </div>
-        </Alert>
+        </Panel>
       </div>
     );
   }
