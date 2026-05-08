@@ -157,7 +157,14 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
         </Section>
       )}
 
-      {/* 4. Hottest token consumption */}
+      {/* 4. Sub-agent fan-outs */}
+      {session.subagents.length > 0 && (
+        <Section title="Sub-agent fan-outs">
+          <SubagentTable subagents={session.subagents} onSessionNavigate={onSessionNavigate} />
+        </Section>
+      )}
+
+      {/* 5. Hottest token consumption */}
       <Section title="Hottest token consumption points">
         <HotConsumptionTable
           result={hotConsumption}
@@ -168,47 +175,40 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
         />
       </Section>
 
-      {/* 5. Context window composition */}
+      {/* 6. Context window composition */}
       <Section title="Context window composition">
         <ContextWindowBar data={contextWindow} />
       </Section>
 
-      {/* 6. Timeline */}
+      {/* 7. Timeline */}
       <Section title="Timeline">
         <Timeline session={session} />
       </Section>
 
-      {/* 7. Fan-out timeline */}
+      {/* 8. Fan-out timeline */}
       <Section title="Fan-out timeline">
         <FanoutTimeline session={session} modelColours={modelColours} onSessionNavigate={onSessionNavigate} />
       </Section>
 
-      {/* 8. Context utilisation over time */}
+      {/* 9. Context utilisation over time */}
       <Section title="Context utilisation over time">
         <ContextUtilisationChart samples={session.utilisation} />
       </Section>
 
-      {/* 9. Token consumption per tool call */}
+      {/* 10. Token consumption per tool call */}
       <Section title="Token consumption per tool call">
         <ToolTokenTable result={toolStats} modelColours={modelColours} />
       </Section>
 
-      {/* 10. Tool-call frequency (top 15) */}
+      {/* 11. Tool-call frequency (top 15) */}
       <Section title="Tool-call frequency (top 15)">
         <ToolFrequencyTable rows={toolStats.frequencyStats} />
       </Section>
 
-      {/* 11. Tool usage by category */}
+      {/* 12. Tool usage by category */}
       <Section title="Tool usage by category">
         <ToolInventoryTable result={toolInventory} />
       </Section>
-
-      {/* 12. Sub-agent fan-outs */}
-      {session.subagents.length > 0 && (
-        <Section title="Sub-agent fan-outs">
-          <SubagentTable subagents={session.subagents} onSessionNavigate={onSessionNavigate} />
-        </Section>
-      )}
 
       {/* 13. Compactions */}
       {session.compactions.length > 0 && (
