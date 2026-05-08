@@ -16,7 +16,9 @@ import { Component } from 'react';
 /* ------------------------------------------------------------------ */
 
 export interface ErrorBoundaryProps {
-  /** Optional custom fallback to render when an error is caught. */
+  /** Optional render function invoked with error details when an error is caught. */
+  readonly fallbackRender?: (props: { error: Error; reset: () => void }) => ReactNode;
+  /** Optional custom fallback to render when an error is caught (static). */
   readonly fallback?: ReactNode;
   /** Called when the user triggers a reset (e.g. "Try again" or navigation). */
   readonly onReset?: () => void;
@@ -58,7 +60,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return this.props.children;
     }
 
-    // Use custom fallback if provided.
+    // Use fallbackRender if provided — allows access to error details.
+    if (this.props.fallbackRender) {
+      return this.props.fallbackRender({ error: this.state.error!, reset: this.handleReset });
+    }
+
+    // Use static fallback if provided.
     if (this.props.fallback !== undefined) {
       return this.props.fallback;
     }

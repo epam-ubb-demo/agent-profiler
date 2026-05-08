@@ -69,14 +69,36 @@ export function SessionDetail({ sessionId, onBack, onSessionNavigate }: SessionD
   return (
     <ErrorBoundary
       onReset={onBack}
-      fallback={
+      fallbackRender={({ error }) => (
         <FlexRow justifyContent="center" padding="24" rawProps={{ 'data-testid': 'session-detail-render-error' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
             <Text size="24" color="critical">A rendering error occurred while displaying this session.</Text>
-            <Button fill="outline" size="30" icon={ArrowLeftIcon} caption="Back to sessions" onClick={onBack} />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Button fill="outline" size="30" icon={ArrowLeftIcon} caption="Back to sessions" onClick={onBack} />
+            </div>
+            <details style={{ width: '100%', maxWidth: 600, marginTop: 8 }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 500 }}>Show error details</summary>
+              <div style={{ marginTop: 8, textAlign: 'left' }}>
+                <code style={{ display: 'block', marginBottom: 8 }}>{error.message}</code>
+                <pre
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    fontSize: 12,
+                    maxHeight: 300,
+                    overflow: 'auto',
+                    background: 'var(--uui-surface-higher, #f5f5f5)',
+                    padding: 12,
+                    borderRadius: 4,
+                  }}
+                >
+                  {error.stack ?? 'No stack trace available.'}
+                </pre>
+              </div>
+            </details>
           </div>
         </FlexRow>
-      }
+      )}
     >
       <SessionDetailView session={session} onBack={onBack} onSessionNavigate={onSessionNavigate} />
     </ErrorBoundary>
