@@ -26,6 +26,7 @@ import { HotConsumptionTable } from './HotConsumptionTable';
 import { computeModelSpend } from './model-spend';
 import { ModelSpendTable } from './ModelSpendTable';
 import styles from './session-detail.module.css';
+import { SessionAlerts } from './SessionAlerts';
 import { computeSessionStats } from './session-stats';
 import { SessionHeader } from './SessionHeader';
 import { StatsGrid } from './StatsGrid';
@@ -140,7 +141,13 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
         {...(onBack ? { onBack } : {})}
       />
 
-      {/* 2. KPI stats grid */}
+      {/* 2. Parse / data-quality alerts */}
+      <SessionAlerts
+        parseStatus={session.parseStatus}
+        hasShutdown={session.shutdown !== null}
+      />
+
+      {/* 3. KPI stats grid */}
       <StatsGrid stats={stats} />
 
       {/* 3. Per-model spend */}

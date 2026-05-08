@@ -76,13 +76,6 @@ function SessionHeaderInner({
         </Text>
       </div>
 
-      {/* ---- Stale-data warning (partial parse only) -------------------- */}
-      {parseStatus === 'partial' && (
-        <div className={styles.staleWarning}>
-          ⚠ Header values come from the latest session.shutdown snapshot; some
-          events recorded after shutdown may not be reflected.
-        </div>
-      )}
     </>
   );
 }

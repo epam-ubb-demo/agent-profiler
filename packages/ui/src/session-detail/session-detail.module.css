@@ -86,18 +86,6 @@
   margin-top: 2px;
 }
 
-/* --- Stale Warning ------------------------------------------------------ */
-
-.staleWarning {
-  background: var(--uui-warning-10);
-  border: 1px solid var(--uui-warning-50);
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin-top: 12px;
-  font-size: 0.8125rem;
-  color: var(--uui-text-primary);
-}
-
 /* --- Data Table --------------------------------------------------------- */
 
 .dataTable {

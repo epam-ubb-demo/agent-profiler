@@ -12,6 +12,7 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 ### Added
 
+- Session data quality alerts — inline UUI `Alert` banners in the session detail view surface parse warnings, schema mismatches, and missing shutdown events with appropriate severity (error/warning/info) and dismissible close buttons
 - `reasoningTokens` field is now extracted from shutdown metrics (previously silently dropped).
 - Model metrics normalisation extracted into a dedicated module (`normalise-model-metrics.ts`) to isolate Copilot CLI format-specific logic.
 - `tooling/validate-sessions.py` script for validating local sessions against the parser.
