@@ -1,5 +1,5 @@
 import type { Session } from '@agent-profiler/core';
-import { SessionDetailView } from '@agent-profiler/ui';
+import { ErrorBoundary, SessionDetailView } from '@agent-profiler/ui';
 import { Button, FlexRow, Spinner, Text } from '@epam/uui';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -66,5 +66,19 @@ export function SessionDetail({ sessionId, onBack, onSessionNavigate }: SessionD
     return null;
   }
 
-  return <SessionDetailView session={session} onBack={onBack} onSessionNavigate={onSessionNavigate} />;
+  return (
+    <ErrorBoundary
+      onReset={onBack}
+      fallback={
+        <FlexRow justifyContent="center" padding="24" rawProps={{ 'data-testid': 'session-detail-render-error' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+            <Text size="24" color="critical">A rendering error occurred while displaying this session.</Text>
+            <Button fill="outline" size="30" icon={ArrowLeftIcon} caption="Back to sessions" onClick={onBack} />
+          </div>
+        </FlexRow>
+      }
+    >
+      <SessionDetailView session={session} onBack={onBack} onSessionNavigate={onSessionNavigate} />
+    </ErrorBoundary>
+  );
 }

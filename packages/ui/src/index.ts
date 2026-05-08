@@ -28,6 +28,10 @@ export * from './annotations';
 // Session detail view
 export * from './session-detail';
 
+// Error boundary
+export { ErrorBoundary } from './ErrorBoundary';
+export type { ErrorBoundaryProps } from './ErrorBoundary';
+
 // PDF export button
 export { PdfExportButton } from './pdf/PdfExportButton';
 

@@ -2,6 +2,7 @@ import { ContextProvider } from '@epam/uui-core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
+import { ErrorBoundary } from '@agent-profiler/ui';
 import { AppShell } from '@/components/AppShell';
 import { SessionBrowser } from '@/pages/SessionBrowser';
 import { SessionDetail } from '@/pages/SessionDetail';
@@ -32,10 +33,12 @@ export function App() {
     <ContextProvider onInitCompleted={() => {}}>
       <QueryClientProvider client={queryClient}>
         <AppShell>
-          {route.view === 'list' && <SessionBrowser onSelectSession={handleSelectSession} />}
-          {route.view === 'detail' && (
-            <SessionDetail sessionId={route.sessionId} onBack={handleBack} onSessionNavigate={handleSelectSession} />
-          )}
+          <ErrorBoundary>
+            {route.view === 'list' && <SessionBrowser onSelectSession={handleSelectSession} />}
+            {route.view === 'detail' && (
+              <SessionDetail sessionId={route.sessionId} onBack={handleBack} onSessionNavigate={handleSelectSession} />
+            )}
+          </ErrorBoundary>
         </AppShell>
       </QueryClientProvider>
     </ContextProvider>
