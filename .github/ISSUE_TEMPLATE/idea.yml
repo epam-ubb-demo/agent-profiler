@@ -1,0 +1,44 @@
+name: Idea
+description: Propose a product idea for the backlog — not yet refined or committed.
+title: "[IDEA] "
+labels: ["idea"]
+body:
+  - type: textarea
+    id: problem-or-opportunity
+    attributes:
+      label: Problem or opportunity
+      description: What problem does this solve or what opportunity does it unlock?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-approach
+    attributes:
+      label: Proposed approach
+      description: High-level description of how this might work. No implementation detail needed.
+  - type: textarea
+    id: value
+    attributes:
+      label: Value
+      description: Why is this worth doing? Who benefits?
+    validations:
+      required: true
+  - type: textarea
+    id: open-questions
+    attributes:
+      label: Open questions
+      description: Unresolved questions, unknowns, or risks.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which areas of the codebase are likely affected?
+      multiple: true
+      options:
+        - core
+        - ui
+        - desktop
+        - adapters
+        - pricing
+        - docs
+        - ci
+        - packaging
