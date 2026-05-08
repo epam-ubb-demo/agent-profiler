@@ -50,7 +50,7 @@ export const SubagentTable = memo(function SubagentTable({ subagents, onSessionN
           <tr>
             <SortableHeader label="Agent" sortKey="agentName" direction={getSortDirection('agentName')} onSort={requestSort} />
             <SortableHeader label="Type" sortKey="agentType" direction={getSortDirection('agentType')} onSort={requestSort} />
-            <th scope="col">Time</th>
+            <SortableHeader label="Time" sortKey="timestamp" direction={getSortDirection('timestamp')} onSort={requestSort} />
             <SortableHeader label="Tokens" sortKey="totalTokens" direction={getSortDirection('totalTokens')} onSort={requestSort} numeric />
             <SortableHeader label="Messages" sortKey="messageCount" direction={getSortDirection('messageCount')} onSort={requestSort} numeric />
             <SortableHeader label="Tool calls" sortKey="toolCallCount" direction={getSortDirection('toolCallCount')} onSort={requestSort} numeric />
