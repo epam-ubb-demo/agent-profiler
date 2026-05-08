@@ -58,6 +58,7 @@ function SortableHeaderInner({
           cursor: 'pointer',
           display: 'inline-flex',
           alignItems: 'center',
+          justifyContent: numeric ? 'flex-end' : undefined,
           width: '100%',
         }}
       >
