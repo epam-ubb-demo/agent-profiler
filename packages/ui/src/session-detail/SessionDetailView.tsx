@@ -9,7 +9,6 @@
 
 import type { Session } from '@agent-profiler/core';
 import { Alert, Text } from '@epam/uui';
-import infoIcon from '@epam/assets/icons/common/notification-info-fill-24.svg';
 import { memo, useCallback, useMemo, useState } from 'react';
 
 import { Timeline } from '../timeline/Timeline';
@@ -152,7 +151,6 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
         <div className={styles.liveAlert} data-testid="live-session-alert">
           <Alert
             color="info"
-            icon={infoIcon}
             onClose={() => setLiveAlertDismissed(true)}
             rawProps={{ 'aria-live': 'polite' }}
           >

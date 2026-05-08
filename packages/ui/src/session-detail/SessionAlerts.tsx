@@ -12,9 +12,6 @@
 import type { Session } from '@agent-profiler/core';
 
 import { Alert } from '@epam/uui';
-import infoIcon from '@epam/assets/icons/common/notification-info-fill-24.svg';
-import warningIcon from '@epam/assets/icons/common/notification-warning-outline-24.svg';
-import errorIcon from '@epam/assets/icons/common/notification-error-fill-24.svg';
 import { memo, useCallback, useState } from 'react';
 
 /* ------------------------------------------------------------------ */
@@ -39,12 +36,6 @@ const SEVERITY_ORDER: Record<AlertItem['severity'], number> = {
   error: 0,
   warning: 1,
   info: 2,
-};
-
-const ICON_MAP: Record<AlertItem['severity'], React.FC> = {
-  error: errorIcon,
-  warning: warningIcon,
-  info: infoIcon,
 };
 
 const COLOUR_MAP: Record<AlertItem['severity'], 'error' | 'warning' | 'info'> = {
@@ -117,7 +108,6 @@ function SessionAlertsInner({ parseStatus, hasShutdown }: SessionAlertsProps) {
           <Alert
             key={index}
             color={COLOUR_MAP[alert.severity]}
-            icon={ICON_MAP[alert.severity]}
             onClose={() => handleDismiss(index)}
             rawProps={{
               'data-testid': `session-alert-${alert.severity}`,
