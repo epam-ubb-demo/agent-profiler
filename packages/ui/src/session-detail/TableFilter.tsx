@@ -24,7 +24,7 @@ function TableFilterInner({ value, onChange, placeholder, className }: TableFilt
       <TextInput
         value={value}
         onValueChange={onChange}
-        placeholder={placeholder ?? 'Filter\u2026'}
+        placeholder={placeholder ?? 'Filter…'}
         size="24"
         onCancel={value ? () => onChange('') : undefined}
         rawProps={{ 'aria-label': 'Filter table' }}
