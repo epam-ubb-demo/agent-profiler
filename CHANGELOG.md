@@ -8,6 +8,7 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 ### Improved
 
+- **Session detail page redesigned** — the 14-section vertical scroll layout is replaced by a sticky header with compact KPI strip and four themed tabs (Overview, Cost & Models, Tools, Timeline). Key stats are always visible, problem-severity colouring highlights anomalies (high cost, task failures, excessive compactions), and tab notification dots surface issues at a glance. Within-tab two-column layouts reduce scrolling further.
 - Per-model token breakdown and estimated USD cost now display for all sessions. When shutdown metrics are unavailable, values are aggregated from per-request assistant message data using the existing pricing engine.
 
 ### Added

@@ -269,6 +269,9 @@ describe('SessionDetailView — live session indicators', () => {
     const session = makeLiveSession();
     render(<SessionDetailView session={session} />);
 
+    // Navigate to "Cost & Models" tab where the model-spend table lives
+    fireEvent.click(screen.getByText('Cost & Models'));
+
     expect(screen.getByTestId('model-spend-live-notice')).toBeInTheDocument();
   });
 
@@ -304,6 +307,9 @@ describe('SessionDetailView — completed session (no live indicators)', () => {
   it('does NOT render the model-spend-live-notice', () => {
     const session = makeSession();
     render(<SessionDetailView session={session} />);
+
+    // Navigate to "Cost & Models" tab where the model-spend table lives
+    fireEvent.click(screen.getByText('Cost & Models'));
 
     expect(screen.queryByTestId('model-spend-live-notice')).not.toBeInTheDocument();
   });

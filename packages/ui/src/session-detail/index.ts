@@ -66,3 +66,25 @@ export type { FanoutTimelineProps } from './FanoutTimeline';
 
 export { SessionDetailView } from './SessionDetailView';
 export type { SessionDetailViewProps } from './SessionDetailView';
+
+// New tabbed layout components
+export { Section } from './Section';
+export type { SectionProps } from './Section';
+
+export { CompactKpiStrip } from './CompactKpiStrip';
+export type { CompactKpiStripProps } from './CompactKpiStrip';
+
+export { SessionTabs, TAB_IDS } from './SessionTabs';
+export type { SessionTabsProps, TabId } from './SessionTabs';
+
+export { TabOverview } from './TabOverview';
+export type { TabOverviewProps } from './TabOverview';
+
+export { TabCostModels } from './TabCostModels';
+export type { TabCostModelsProps } from './TabCostModels';
+
+export { TabTools } from './TabTools';
+export type { TabToolsProps } from './TabTools';
+
+export { TabTimeline } from './TabTimeline';
+export type { TabTimelineProps } from './TabTimeline';

@@ -1,41 +1,35 @@
 /**
- * SessionDetailView — orchestrator component that renders all 13 sections
- * of the session detail report in mock-up order.
+ * SessionDetailView — orchestrator component rendering the session detail
+ * report as a sticky header with compact KPIs + tabbed content panels.
  *
  * Computation is performed once via useMemo and threaded down as pre-computed
- * props. The component owns the "include compactions" toggle state for the
- * hot-consumption table.
+ * props to the active tab panel. The component owns tab state and the
+ * "include compactions" toggle state for the hot-consumption table.
  */
 
 import type { Session } from '@agent-profiler/core';
-import { Alert, Text } from '@epam/uui';
+import { Alert } from '@epam/uui';
 import { memo, useCallback, useMemo, useState } from 'react';
 
-import { Timeline } from '../timeline/Timeline';
 import { modelColour } from '../timeline/utils';
 
-import { CompactionsTable } from './CompactionsTable';
+import { CompactKpiStrip } from './CompactKpiStrip';
 import { computeContextWindow } from './context-window';
-import { ContextUtilisationChart } from './ContextUtilisationChart';
-import { ContextWindowBar } from './ContextWindowBar';
 import { computeEventTypeStats } from './event-type-stats';
-import { EventTypesTable } from './EventTypesTable';
-import { FanoutTimeline } from './FanoutTimeline';
 import { computeHotConsumption } from './hot-consumption';
-import { HotConsumptionTable } from './HotConsumptionTable';
 import { computeModelSpend } from './model-spend';
-import { ModelSpendTable } from './ModelSpendTable';
 import styles from './session-detail.module.css';
 import { computeSessionStats } from './session-stats';
 import { SessionAlerts } from './SessionAlerts';
 import { SessionHeader } from './SessionHeader';
-import { StatsGrid } from './StatsGrid';
-import { SubagentTable } from './SubagentTable';
+import type { TabId } from './SessionTabs';
+import { SessionTabs } from './SessionTabs';
+import { TabCostModels } from './TabCostModels';
+import { TabOverview } from './TabOverview';
+import { TabTimeline } from './TabTimeline';
+import { TabTools } from './TabTools';
 import { computeToolInventory } from './tool-inventory';
 import { computeToolStats } from './tool-stats';
-import { ToolFrequencyTable } from './ToolFrequencyTable';
-import { ToolInventoryTable } from './ToolInventoryTable';
-import { ToolTokenTable } from './ToolTokenTable';
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -45,7 +39,7 @@ export interface SessionDetailViewProps {
   readonly session: Session;
   readonly onBack?: () => void;
   /** Called when the user wants to drill into a sub-agent's child session. */
-  readonly onSessionNavigate?: (sessionId: string) => void;
+  readonly onSessionNavigate?: ((sessionId: string) => void) | undefined;
 }
 
 /* ------------------------------------------------------------------ */
@@ -72,30 +66,13 @@ function buildModelColours(session: Session): Record<string, string> {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Section heading                                                    */
-/* ------------------------------------------------------------------ */
-
-interface SectionProps {
-  readonly title: string;
-  readonly children: React.ReactNode;
-}
-
-function Section({ title, children }: SectionProps) {
-  return (
-    <section>
-      <Text cx={styles['sectionHeading']} size="24" fontWeight="600">
-        {title}
-      </Text>
-      {children}
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
 function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionDetailViewProps) {
+  /* --- tab state ---------------------------------------------------- */
+  const [activeTab, setActiveTab] = useState<TabId>('overview');
+
   /* --- toggle state for hot-consumption compaction filter ----------- */
   const [includeCompactions, setIncludeCompactions] = useState(false);
   const toggleCompactions = useCallback(() => {
@@ -130,115 +107,117 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
   const toolInventory = useMemo(() => computeToolInventory(session), [session]);
   const eventTypes = useMemo(() => computeEventTypeStats(session), [session]);
 
+  /* --- tab notification logic --------------------------------------- */
+  const tabNotifications = useMemo<Partial<Record<TabId, boolean>>>(() => {
+    const notifications: Partial<Record<TabId, boolean>> = {};
+
+    /* "cost-models" tab: notify when cost is high or task failed */
+    if (
+      (stats.estimatedCost.value !== null && stats.estimatedCost.value > 5)
+      || stats.taskSuccess.value === 0
+    ) {
+      notifications['cost-models'] = true;
+    }
+
+    /* "overview" tab: notify when parse status is partial or failed */
+    const parseStatus = session.parseStatus.status;
+    if (parseStatus === 'partial' || parseStatus === 'failed') {
+      notifications['overview'] = true;
+    }
+
+    return notifications;
+  }, [stats, session.parseStatus.status]);
+
   /* --- render ------------------------------------------------------ */
   return (
     <div className={styles['pageContainer']} data-testid="session-detail-view">
-      {/* 1. Header */}
-      <SessionHeader
-        sessionId={session.sessionId}
-        repo={session.repository}
-        branch={session.branch}
-        copilotVersion={session.copilotVersion}
-        selectedModel={session.selectedModel}
-        reasoningEffort={session.reasoningEffort}
-        parseStatus={session.parseStatus.status}
-        isLive={isLive}
-        {...(onBack ? { onBack } : {})}
-      />
-
-      {/* 1b. Live session alert */}
-      {isLive && !liveAlertDismissed && (
-        <div className={styles.liveAlert} data-testid="live-session-alert">
-          <Alert
-            color="info"
-            onClose={() => setLiveAlertDismissed(true)}
-            rawProps={{ 'aria-live': 'polite' }}
-          >
-            This session is still active — some metrics will update when it completes.
-          </Alert>
-        </div>
-      )}
-
-      {/* 2. Parse / data-quality alerts */}
-      <SessionAlerts
-        parseStatus={session.parseStatus}
-        hasShutdown={session.shutdown !== null}
-      />
-
-      {/* 3. KPI stats grid */}
-      <StatsGrid stats={stats} />
-
-      {/* 3. Per-model spend */}
-      {modelSpend && (
-        <Section title="Per-model spend">
-          <ModelSpendTable result={modelSpend} modelColours={modelColours} isLive={isLive} />
-        </Section>
-      )}
-
-      {/* 4. Sub-agent fan-outs */}
-      {session.subagents.length > 0 && (
-        <Section title="Sub-agent fan-outs">
-          <SubagentTable subagents={session.subagents} onSessionNavigate={onSessionNavigate} />
-        </Section>
-      )}
-
-      {/* 5. Hottest token consumption */}
-      <Section title="Hottest token consumption points">
-        <HotConsumptionTable
-          result={hotConsumption}
-          includeCompactions={includeCompactions}
-          onToggleCompactions={toggleCompactions}
-          modelColours={modelColours}
-          onSessionNavigate={onSessionNavigate}
+      {/* === Sticky header ============================================ */}
+      <div className={styles['stickyHeader']}>
+        {/* 1. Header */}
+        <SessionHeader
+          sessionId={session.sessionId}
+          repo={session.repository}
+          branch={session.branch}
+          copilotVersion={session.copilotVersion}
+          selectedModel={session.selectedModel}
+          reasoningEffort={session.reasoningEffort}
+          parseStatus={session.parseStatus.status}
+          isLive={isLive}
+          {...(onBack ? { onBack } : {})}
         />
-      </Section>
 
-      {/* 6. Context window composition */}
-      <Section title="Context window composition">
-        <ContextWindowBar data={contextWindow} />
-      </Section>
+        {/* 1b. Live session alert */}
+        {isLive && !liveAlertDismissed && (
+          <div className={styles.liveAlert} data-testid="live-session-alert">
+            <Alert
+              color="info"
+              onClose={() => setLiveAlertDismissed(true)}
+              rawProps={{ 'aria-live': 'polite' }}
+            >
+              This session is still active — some metrics will update when it completes.
+            </Alert>
+          </div>
+        )}
 
-      {/* 7. Timeline */}
-      <Section title="Timeline">
-        <Timeline session={session} />
-      </Section>
+        {/* 2. Parse / data-quality alerts */}
+        <SessionAlerts
+          parseStatus={session.parseStatus}
+          hasShutdown={session.shutdown !== null}
+        />
 
-      {/* 8. Fan-out timeline */}
-      <Section title="Fan-out timeline">
-        <FanoutTimeline session={session} modelColours={modelColours} onSessionNavigate={onSessionNavigate} />
-      </Section>
+        {/* 3. Compact KPI strip */}
+        <CompactKpiStrip stats={stats} />
 
-      {/* 9. Context utilisation over time */}
-      <Section title="Context utilisation over time">
-        <ContextUtilisationChart samples={session.utilisation} />
-      </Section>
+        {/* 4. Tab bar */}
+        <SessionTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          tabNotifications={tabNotifications}
+        />
+      </div>
 
-      {/* 10. Token consumption per tool call */}
-      <Section title="Token consumption per tool call">
-        <ToolTokenTable result={toolStats} modelColours={modelColours} />
-      </Section>
+      {/* === Tab content ============================================== */}
+      <div className={styles['tabContent']}>
+        {activeTab === 'overview' && (
+          <TabOverview
+            stats={stats}
+            contextWindow={contextWindow}
+            utilisationSamples={session.utilisation}
+            compactions={session.compactions}
+            eventTypes={eventTypes}
+          />
+        )}
 
-      {/* 11. Tool-call frequency (top 15) */}
-      <Section title="Tool-call frequency (top 15)">
-        <ToolFrequencyTable rows={toolStats.frequencyStats} />
-      </Section>
+        {activeTab === 'cost-models' && (
+          <TabCostModels
+            modelSpend={modelSpend}
+            modelColours={modelColours}
+            isLive={isLive}
+            subagents={session.subagents}
+            hotConsumption={hotConsumption}
+            includeCompactions={includeCompactions}
+            onToggleCompactions={toggleCompactions}
+            onSessionNavigate={onSessionNavigate}
+          />
+        )}
 
-      {/* 12. Tool usage by category */}
-      <Section title="Tool usage by category">
-        <ToolInventoryTable result={toolInventory} />
-      </Section>
+        {activeTab === 'tools' && (
+          <TabTools
+            toolStats={toolStats}
+            toolFrequencyRows={toolStats.frequencyStats}
+            toolInventory={toolInventory}
+            modelColours={modelColours}
+          />
+        )}
 
-      {/* 13. Compactions */}
-      {session.compactions.length > 0 && (
-        <Section title="Compactions">
-          <CompactionsTable compactions={session.compactions} />
-        </Section>
-      )}
-
-      {/* 14. Event types observed */}
-      <Section title="Event types observed">
-        <EventTypesTable rows={eventTypes} />
-      </Section>
+        {activeTab === 'timeline' && (
+          <TabTimeline
+            session={session}
+            modelColours={modelColours}
+            onSessionNavigate={onSessionNavigate}
+          />
+        )}
+      </div>
     </div>
   );
 }
