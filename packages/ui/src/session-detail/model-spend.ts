@@ -15,6 +15,9 @@ import type { AssistantMessage, Session } from '@agent-profiler/core';
 import { calculateCost, DEFAULT_PRICING_TABLE } from '@agent-profiler/pricing';
 import type { CostConfidence, TokenUsage } from '@agent-profiler/pricing';
 
+/** GitHub Copilot premium request rate: $0.04 per request. */
+const PREMIUM_REQUEST_RATE_USD = 0.04;
+
 /* ------------------------------------------------------------------ */
 /*  Public interfaces                                                  */
 /* ------------------------------------------------------------------ */
@@ -25,8 +28,10 @@ export interface ModelSpendRow {
   readonly model: string;
   /** Number of API requests made to this model. */
   readonly requestCount: number;
-  /** Estimated cost in USD sourced from the pricing calculator. */
-  readonly premiumCostUsd: number;
+  /** Number of premium requests (derived from premiumRequestCost / $0.04 when available). */
+  readonly premiumRequests: number;
+  /** Cost based on premium requests × $0.04/request. */
+  readonly premiumRequestCostUsd: number;
   /** Total input tokens sent to the model. */
   readonly inputTokens: number;
   /** Total output tokens received from the model. */
@@ -35,7 +40,7 @@ export interface ModelSpendRow {
   readonly cacheReadTokens: number;
   /** Tokens written into the prompt cache. */
   readonly cacheWriteTokens: number;
-  /** Alias for {@link premiumCostUsd}. */
+  /** Estimated cost in USD from the token-based pricing calculator. */
   readonly estimatedUsd: number;
 }
 
@@ -43,8 +48,10 @@ export interface ModelSpendRow {
 export interface ModelSpendTotals {
   /** Sum of request counts across all models. */
   readonly requestCount: number;
-  /** Sum of per-model estimated costs. */
-  readonly premiumCostUsd: number;
+  /** Total premium request count from shutdown data. */
+  readonly premiumRequests: number;
+  /** Total premium request cost = totalPremiumRequests × $0.04. */
+  readonly premiumRequestCostUsd: number;
   /** Sum of input tokens across all models. */
   readonly inputTokens: number;
   /** Sum of output tokens across all models. */
@@ -53,7 +60,7 @@ export interface ModelSpendTotals {
   readonly cacheReadTokens: number;
   /** Sum of cache-write tokens across all models. */
   readonly cacheWriteTokens: number;
-  /** Sum of estimated USD across all models. */
+  /** Sum of token-based estimated USD across all models. */
   readonly estimatedUsd: number;
 }
 
@@ -158,7 +165,8 @@ export function computeModelSpend(
       return {
         model: m.model,
         requestCount: m.requestCount,
-        premiumCostUsd: cost,
+        premiumRequests: m.premiumRequestCost > 0 ? Math.round(m.premiumRequestCost / PREMIUM_REQUEST_RATE_USD) : 0,
+        premiumRequestCostUsd: m.premiumRequestCost,
         inputTokens: m.inputTokens,
         outputTokens: m.outputTokens,
         cacheReadTokens: m.cacheReadTokens,
@@ -170,7 +178,7 @@ export function computeModelSpend(
     rows.sort((a, b) => b.estimatedUsd - a.estimatedUsd);
 
     return {
-      ...buildTotals(rows),
+      ...buildTotals(rows, shutdown.totalPremiumRequests),
       confidence: costBreakdown.confidence,
       source: 'shutdown',
     };
@@ -188,7 +196,8 @@ export function computeModelSpend(
     return {
       model: m.model,
       requestCount: aggregated.requestCounts[m.model] ?? 0,
-      premiumCostUsd: cost,
+      premiumRequests: 0,
+      premiumRequestCostUsd: 0,
       inputTokens: m.inputTokens,
       outputTokens: m.outputTokens,
       cacheReadTokens: m.cacheReadTokens,
@@ -200,7 +209,7 @@ export function computeModelSpend(
   rows.sort((a, b) => b.estimatedUsd - a.estimatedUsd);
 
   return {
-    ...buildTotals(rows),
+    ...buildTotals(rows, 0),
     confidence: costBreakdown.confidence,
     source: 'messages',
   };
@@ -209,36 +218,37 @@ export function computeModelSpend(
 /**
  * Sum row values into footer totals.
  */
-function buildTotals(rows: readonly ModelSpendRow[]): {
+function buildTotals(rows: readonly ModelSpendRow[], totalPremiumRequests: number): {
   rows: readonly ModelSpendRow[];
   totals: ModelSpendTotals;
 } {
   let requestCount = 0;
-  let premiumCostUsd = 0;
   let inputTokens = 0;
   let outputTokens = 0;
   let cacheReadTokens = 0;
   let cacheWriteTokens = 0;
+  let estimatedUsd = 0;
 
   for (const row of rows) {
     requestCount += row.requestCount;
-    premiumCostUsd += row.premiumCostUsd;
     inputTokens += row.inputTokens;
     outputTokens += row.outputTokens;
     cacheReadTokens += row.cacheReadTokens;
     cacheWriteTokens += row.cacheWriteTokens;
+    estimatedUsd += row.estimatedUsd;
   }
 
   return {
     rows,
     totals: {
       requestCount,
-      premiumCostUsd,
+      premiumRequests: totalPremiumRequests,
+      premiumRequestCostUsd: totalPremiumRequests * PREMIUM_REQUEST_RATE_USD,
       inputTokens,
       outputTokens,
       cacheReadTokens,
       cacheWriteTokens,
-      estimatedUsd: premiumCostUsd,
+      estimatedUsd,
     },
   };
 }

@@ -376,7 +376,12 @@ describe('computeModelSpend', () => {
     expect(row.cacheReadTokens).toBe(300);
     expect(row.cacheWriteTokens).toBe(150);
     expect(row.requestCount).toBe(7);
-    expect(row.estimatedUsd).toBe(row.premiumCostUsd);
+    // premiumRequests derived from premiumRequestCost (0 in fixture → 0)
+    expect(row.premiumRequests).toBe(0);
+    // premiumRequestCostUsd comes from ModelMetrics.premiumRequestCost (0 in fixture)
+    expect(row.premiumRequestCostUsd).toBe(0);
+    // estimatedUsd comes from the token-based pricing calculator (may be 0 for small token counts)
+    expect(row.estimatedUsd).toBeGreaterThanOrEqual(0);
   });
 
   it('sorts multiple models by USD descending', () => {
@@ -413,7 +418,10 @@ describe('computeModelSpend', () => {
     expect(result.totals.cacheReadTokens).toBe(300);
     expect(result.totals.cacheWriteTokens).toBe(150);
     expect(result.totals.requestCount).toBe(8);
-    expect(result.totals.estimatedUsd).toBe(result.totals.premiumCostUsd);
+    // premiumRequests = totalPremiumRequests from shutdown (default 10)
+    expect(result.totals.premiumRequests).toBe(10);
+    // premiumRequestCostUsd = totalPremiumRequests × $0.04 (default totalPremiumRequests=10)
+    expect(result.totals.premiumRequestCostUsd).toBeCloseTo(0.4, 6);
   });
 
   it('includes confidence from the pricing calculator', () => {
@@ -488,6 +496,33 @@ describe('computeModelSpend', () => {
     expect(result.source).toBe('shutdown');
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]!.model).toBe('model-from-shutdown');
+  });
+
+  it('computes premiumRequestCostUsd from totalPremiumRequests × $0.04', () => {
+    const session = makeSession({
+      shutdown: makeShutdown({
+        totalPremiumRequests: 25,
+      }),
+    });
+
+    const result = computeModelSpend(session)!;
+    expect(result.totals.premiumRequests).toBe(25);
+    expect(result.totals.premiumRequestCostUsd).toBeCloseTo(1.0, 6); // 25 × 0.04
+  });
+
+  it('sets premiumRequestCostUsd to 0 when using message fallback', () => {
+    const session = makeSession({
+      shutdown: null,
+      assistantMessages: [
+        { ...makeAssistantMessage(100), model: 'claude-sonnet-4-20250514', inputTokens: 500, outputTokens: 100, cacheReadTokens: 50, cacheWriteTokens: 10 },
+      ],
+    });
+
+    const result = computeModelSpend(session)!;
+    expect(result.totals.premiumRequests).toBe(0);
+    expect(result.totals.premiumRequestCostUsd).toBe(0);
+    // Token-based estimate should still be computed (may be 0 for small token counts)
+    expect(result.totals.estimatedUsd).toBeGreaterThanOrEqual(0);
   });
 });
 

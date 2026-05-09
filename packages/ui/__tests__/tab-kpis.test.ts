@@ -94,7 +94,8 @@ function makeModelSpend(overrides?: Partial<ModelSpendResult>): ModelSpendResult
       {
         model: 'claude-sonnet-4-20250514',
         requestCount: 5,
-        premiumCostUsd: 3.5,
+        premiumRequests: 0,
+        premiumRequestCostUsd: 3.5,
         inputTokens: 1000,
         outputTokens: 500,
         cacheReadTokens: 200,
@@ -104,7 +105,8 @@ function makeModelSpend(overrides?: Partial<ModelSpendResult>): ModelSpendResult
     ],
     totals: {
       requestCount: 5,
-      premiumCostUsd: 3.5,
+      premiumRequests: 0,
+      premiumRequestCostUsd: 3.5,
       inputTokens: 1000,
       outputTokens: 500,
       cacheReadTokens: 200,
@@ -229,7 +231,8 @@ describe('computeCostKpis', () => {
       const spend = makeModelSpend({
         totals: {
           requestCount: 0,
-          premiumCostUsd: 0,
+          premiumRequests: 0,
+          premiumRequestCostUsd: 0,
           inputTokens: 0,
           outputTokens: 0,
           cacheReadTokens: 0,
@@ -246,7 +249,8 @@ describe('computeCostKpis', () => {
       const spend = makeModelSpend({
         totals: {
           requestCount: 1,
-          premiumCostUsd: 0,
+          premiumRequests: 0,
+          premiumRequestCostUsd: 0,
           inputTokens: 500,
           outputTokens: 100,
           cacheReadTokens: 500,
@@ -263,7 +267,8 @@ describe('computeCostKpis', () => {
       const spend = makeModelSpend({
         totals: {
           requestCount: 1,
-          premiumCostUsd: 0,
+          premiumRequests: 0,
+          premiumRequestCostUsd: 0,
           inputTokens: 500,
           outputTokens: 100,
           cacheReadTokens: 0,

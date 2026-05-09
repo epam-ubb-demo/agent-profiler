@@ -34,8 +34,8 @@ export const ModelSpendTable = memo(function ModelSpendTable({ result, modelColo
   return (
     <>
       <p className={styles.sectionDescription}>
-        Per-model token usage and estimated cost. Rates are per million tokens
-        using disjoint billing.
+        Per-model token usage and estimated cost. Token rates use overlapping-input
+        billing. Premium Request cost is $0.04 per premium request.
       </p>
       <p className={styles.sectionDescription}>
         Confidence: {confidence}
@@ -47,13 +47,14 @@ export const ModelSpendTable = memo(function ModelSpendTable({ result, modelColo
         <thead>
           <tr>
             <SortableHeader label="Model" sortKey="model" direction={getSortDirection('model')} onSort={requestSort} />
-            <SortableHeader label="Requests" sortKey="requestCount" direction={getSortDirection('requestCount')} onSort={requestSort} numeric />
-            <SortableHeader label="Premium cost" sortKey="premiumCostUsd" direction={getSortDirection('premiumCostUsd')} onSort={requestSort} numeric />
+            <SortableHeader label="API Requests" sortKey="requestCount" direction={getSortDirection('requestCount')} onSort={requestSort} numeric />
+            <SortableHeader label="Premium Requests" sortKey="premiumRequests" direction={getSortDirection('premiumRequests')} onSort={requestSort} numeric />
             <SortableHeader label="Input tok" sortKey="inputTokens" direction={getSortDirection('inputTokens')} onSort={requestSort} numeric />
             <SortableHeader label="Output tok" sortKey="outputTokens" direction={getSortDirection('outputTokens')} onSort={requestSort} numeric />
             <SortableHeader label="Cache read" sortKey="cacheReadTokens" direction={getSortDirection('cacheReadTokens')} onSort={requestSort} numeric />
             <SortableHeader label="Cache write" sortKey="cacheWriteTokens" direction={getSortDirection('cacheWriteTokens')} onSort={requestSort} numeric />
-            <SortableHeader label="Est. USD" sortKey="estimatedUsd" direction={getSortDirection('estimatedUsd')} onSort={requestSort} numeric />
+            <SortableHeader label="Premium Request cost" sortKey="premiumRequestCostUsd" direction={getSortDirection('premiumRequestCostUsd')} onSort={requestSort} numeric />
+            <SortableHeader label="Token USD" sortKey="estimatedUsd" direction={getSortDirection('estimatedUsd')} onSort={requestSort} numeric />
           </tr>
         </thead>
         <tbody>
@@ -73,7 +74,7 @@ export const ModelSpendTable = memo(function ModelSpendTable({ result, modelColo
                 <Text size="18">{row.requestCount}</Text>
               </td>
               <td className={styles.numericCell}>
-                <Text size="18">{formatCost(row.premiumCostUsd)}</Text>
+                <Text size="18">{row.premiumRequests}</Text>
               </td>
               <td className={styles.numericCell}>
                 <Text size="18">{formatTokenCount(row.inputTokens)}</Text>
@@ -86,6 +87,9 @@ export const ModelSpendTable = memo(function ModelSpendTable({ result, modelColo
               </td>
               <td className={styles.numericCell}>
                 <Text size="18">{formatTokenCount(row.cacheWriteTokens)}</Text>
+              </td>
+              <td className={styles.numericCell}>
+                <Text size="18">{formatCost(row.premiumRequestCostUsd)}</Text>
               </td>
               <td className={styles.numericCell}>
                 <Text size="18">{formatCost(row.estimatedUsd)}</Text>
@@ -102,9 +106,7 @@ export const ModelSpendTable = memo(function ModelSpendTable({ result, modelColo
               <Text size="18" fontWeight="600">{totals.requestCount}</Text>
             </td>
             <td className={styles.numericCell}>
-              <Text size="18" fontWeight="600">
-                {formatCost(totals.premiumCostUsd)}
-              </Text>
+              <Text size="18" fontWeight="600">{totals.premiumRequests}</Text>
             </td>
             <td className={styles.numericCell}>
               <Text size="18" fontWeight="600">
@@ -128,6 +130,11 @@ export const ModelSpendTable = memo(function ModelSpendTable({ result, modelColo
             </td>
             <td className={styles.numericCell}>
               <Text size="18" fontWeight="600">
+                {formatCost(totals.premiumRequestCostUsd)}
+              </Text>
+            </td>
+            <td className={styles.numericCell}>
+              <Text size="18" fontWeight="600">
                 {formatCost(totals.estimatedUsd)}
               </Text>
             </td>
@@ -136,7 +143,7 @@ export const ModelSpendTable = memo(function ModelSpendTable({ result, modelColo
         {isLive && (
           <tfoot>
             <tr className={styles.liveNoticeRow} data-testid="model-spend-live-notice">
-              <td colSpan={8}>
+              <td colSpan={9}>
                 <Text size="18">ℹ Totals are partial — session is still generating events.</Text>
               </td>
             </tr>
