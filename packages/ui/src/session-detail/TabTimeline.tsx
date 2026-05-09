@@ -11,6 +11,9 @@ import { Timeline } from '../timeline/Timeline';
 
 import { FanoutTimeline } from './FanoutTimeline';
 import { Section } from './Section';
+import type { StatEntry } from './session-stats';
+import { TabKpiStrip } from './TabKpiStrip';
+import { timelineKpiSeverity } from './timeline-kpis';
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -22,15 +25,20 @@ export interface TabTimelineProps {
   readonly modelColours: Record<string, string>;
   /** Called when the user wants to drill into a sub-agent's child session. */
   readonly onSessionNavigate?: ((sessionId: string) => void) | undefined;
+  /** Pre-computed KPI stats for the timeline strip. */
+  readonly timelineKpis: readonly StatEntry[];
 }
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-function TabTimelineInner({ session, modelColours, onSessionNavigate }: TabTimelineProps) {
+function TabTimelineInner({ session, modelColours, onSessionNavigate, timelineKpis }: TabTimelineProps) {
   return (
     <div data-testid="tab-timeline">
+      {/* KPI strip */}
+      <TabKpiStrip stats={timelineKpis} severityFn={timelineKpiSeverity} testIdPrefix="timeline-kpi" />
+
       <Section title="Timeline">
         <Timeline session={session} />
       </Section>

@@ -15,6 +15,7 @@ import { modelColour } from '../timeline/utils';
 
 import { CompactKpiStrip } from './CompactKpiStrip';
 import { computeContextWindow } from './context-window';
+import { computeCostKpis } from './cost-kpis';
 import { computeEventTypeStats } from './event-type-stats';
 import { computeHotConsumption } from './hot-consumption';
 import { computeModelSpend } from './model-spend';
@@ -28,7 +29,9 @@ import { TabCostModels } from './TabCostModels';
 import { TabOverview } from './TabOverview';
 import { TabTimeline } from './TabTimeline';
 import { TabTools } from './TabTools';
+import { computeTimelineKpis } from './timeline-kpis';
 import { computeToolInventory } from './tool-inventory';
+import { computeToolKpis } from './tool-kpis';
 import { computeToolStats } from './tool-stats';
 
 /* ------------------------------------------------------------------ */
@@ -106,6 +109,20 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
   const toolStats = useMemo(() => computeToolStats(session), [session]);
   const toolInventory = useMemo(() => computeToolInventory(session), [session]);
   const eventTypes = useMemo(() => computeEventTypeStats(session), [session]);
+
+  /* --- per-tab KPI strips ------------------------------------------ */
+  const costKpis = useMemo(
+    () => computeCostKpis(modelSpend, hotConsumption, isLive),
+    [modelSpend, hotConsumption, isLive],
+  );
+  const toolKpis = useMemo(
+    () => computeToolKpis(toolStats, toolStats.frequencyStats, toolInventory),
+    [toolStats, toolInventory],
+  );
+  const timelineKpis = useMemo(
+    () => computeTimelineKpis(session, isLive),
+    [session, isLive],
+  );
 
   /* --- tab notification logic --------------------------------------- */
   const tabNotifications = useMemo<Partial<Record<TabId, boolean>>>(() => {
@@ -198,6 +215,7 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
             includeCompactions={includeCompactions}
             onToggleCompactions={toggleCompactions}
             onSessionNavigate={onSessionNavigate}
+            costKpis={costKpis}
           />
         )}
 
@@ -207,6 +225,7 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
             toolFrequencyRows={toolStats.frequencyStats}
             toolInventory={toolInventory}
             modelColours={modelColours}
+            toolKpis={toolKpis}
           />
         )}
 
@@ -215,6 +234,7 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
             session={session}
             modelColours={modelColours}
             onSessionNavigate={onSessionNavigate}
+            timelineKpis={timelineKpis}
           />
         )}
       </div>

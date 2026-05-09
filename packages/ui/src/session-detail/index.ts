@@ -24,6 +24,10 @@ export type { ContextWindowData, ContextWindowSegment } from './context-window';
 export { computeToolStats } from './tool-stats';
 export type { ToolFrequencyRow, ToolStatsResult, ToolTokenRow } from './tool-stats';
 
+export { computeCostKpis, costKpiSeverity } from './cost-kpis';
+export { computeToolKpis, toolKpiSeverity } from './tool-kpis';
+export { computeTimelineKpis, timelineKpiSeverity } from './timeline-kpis';
+
 export { computeEventTypeStats } from './event-type-stats';
 export type { EventTypeRow } from './event-type-stats';
 
@@ -73,6 +77,9 @@ export type { SectionProps } from './Section';
 
 export { CompactKpiStrip } from './CompactKpiStrip';
 export type { CompactKpiStripProps } from './CompactKpiStrip';
+
+export { TabKpiStrip } from './TabKpiStrip';
+export type { TabKpiStripProps } from './TabKpiStrip';
 
 export { SessionTabs, TAB_IDS } from './SessionTabs';
 export type { SessionTabsProps, TabId } from './SessionTabs';

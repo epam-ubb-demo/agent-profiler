@@ -8,12 +8,15 @@
 import type { SubagentInvocation } from '@agent-profiler/core';
 import { memo } from 'react';
 
+import { costKpiSeverity } from './cost-kpis';
 import type { HotConsumptionResult } from './hot-consumption';
 import { HotConsumptionTable } from './HotConsumptionTable';
 import type { ModelSpendResult } from './model-spend';
 import { ModelSpendTable } from './ModelSpendTable';
 import { Section } from './Section';
+import type { StatEntry } from './session-stats';
 import { SubagentTable } from './SubagentTable';
+import { TabKpiStrip } from './TabKpiStrip';
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -30,6 +33,8 @@ export interface TabCostModelsProps {
   readonly onToggleCompactions: () => void;
   /** Called when the user wants to drill into a sub-agent's child session. */
   readonly onSessionNavigate?: ((sessionId: string) => void) | undefined;
+  /** Pre-computed KPI stats for the cost strip. */
+  readonly costKpis: readonly StatEntry[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -45,9 +50,13 @@ function TabCostModelsInner({
   includeCompactions,
   onToggleCompactions,
   onSessionNavigate,
+  costKpis,
 }: TabCostModelsProps) {
   return (
     <div data-testid="tab-cost-models">
+      {/* KPI strip */}
+      <TabKpiStrip stats={costKpis} severityFn={costKpiSeverity} testIdPrefix="cost-kpi" />
+
       {/* Per-model spend */}
       {modelSpend && (
         <Section title="Per-model spend">

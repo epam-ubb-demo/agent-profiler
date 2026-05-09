@@ -8,7 +8,10 @@
 import { memo } from 'react';
 
 import { Section } from './Section';
+import type { StatEntry } from './session-stats';
+import { TabKpiStrip } from './TabKpiStrip';
 import type { ToolInventoryResult } from './tool-inventory';
+import { toolKpiSeverity } from './tool-kpis';
 import type { ToolFrequencyRow, ToolStatsResult } from './tool-stats';
 import { ToolFrequencyTable } from './ToolFrequencyTable';
 import { ToolInventoryTable } from './ToolInventoryTable';
@@ -24,6 +27,8 @@ export interface TabToolsProps {
   readonly toolFrequencyRows: readonly ToolFrequencyRow[];
   readonly toolInventory: ToolInventoryResult;
   readonly modelColours: Record<string, string>;
+  /** Pre-computed KPI stats for the tool strip. */
+  readonly toolKpis: readonly StatEntry[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -35,9 +40,13 @@ function TabToolsInner({
   toolFrequencyRows,
   toolInventory,
   modelColours,
+  toolKpis,
 }: TabToolsProps) {
   return (
     <div data-testid="tab-tools">
+      {/* KPI strip */}
+      <TabKpiStrip stats={toolKpis} severityFn={toolKpiSeverity} testIdPrefix="tool-kpi" />
+
       <Section title="Token consumption per tool call">
         <ToolTokenTable result={toolStats} modelColours={modelColours} />
       </Section>
