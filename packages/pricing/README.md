@@ -1,20 +1,21 @@
 # @agent-profiler/pricing
 
-Disjoint-billing cost calculator for GitHub Copilot sessions.
+Overlapping-input cost calculator for GitHub Copilot sessions.
 
 ## Overview
 
-This package implements **GitHub-style disjoint billing**, where token buckets
-(input, cacheRead, cacheWrite, output) are billed separately without
-subtraction. Each model has its own rate card specifying the cost per million
-tokens for each bucket.
+This package implements **overlapping-input billing**, where the `inputTokens`
+field reported by the Copilot CLI already includes `cacheReadTokens`. To avoid
+double-counting, `cacheReadTokens` is subtracted from `inputTokens` before
+applying the input rate. Each model has its own rate card specifying the cost
+per million tokens for each bucket.
 
 ## Formula
 
 For each model in a session:
 
 ```
-cost = (inputTokens × inputRate
+cost = (max(0, inputTokens − cacheReadTokens) × inputRate
       + cacheReadTokens × cacheReadRate
       + cacheWriteTokens × cacheWriteRate
       + outputTokens × outputRate) / 1,000,000

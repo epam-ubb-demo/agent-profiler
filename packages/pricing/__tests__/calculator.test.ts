@@ -1,8 +1,8 @@
 /**
- * Unit tests for the disjoint cost calculator.
+ * Unit tests for the overlapping-input cost calculator.
  *
  * Golden expected values are computed by hand using the formula:
- *   cost = (tokens × rate) / 1,000,000
+ *   cost = (max(0, inputTokens − cacheReadTokens) × rate + …) / 1,000,000
  */
 
 import { describe, expect, it } from 'vitest';
@@ -18,11 +18,11 @@ const TEST_TABLE: PricingTable = {
 
 describe('calculateCost', () => {
   it('single model, known pricing → exact USD match', () => {
-    // 10,000 input × $3/M = $0.03
+    // max(0, 10,000 - 50,000) = 0 → inputCost = $0
     // 50,000 cacheRead × $0.3/M = $0.015
     // 2,000 cacheWrite × $3.75/M = $0.0075
     // 5,000 output × $15/M = $0.075
-    // Total = $0.1275
+    // Total = $0.0975
     const result = calculateCost(
       {
         modelMetrics: [
@@ -39,22 +39,22 @@ describe('calculateCost', () => {
     );
 
     expect(result.confidence).toBe('known');
-    expect(result.totalUsd).toBeCloseTo(0.1275, 6);
+    expect(result.totalUsd).toBeCloseTo(0.0975, 6);
 
     const model = result.perModel['claude-sonnet-4']!;
-    expect(model.inputCostUsd).toBeCloseTo(0.03, 6);
+    expect(model.inputCostUsd).toBeCloseTo(0, 6);
     expect(model.cacheReadCostUsd).toBeCloseTo(0.015, 6);
     expect(model.cacheWriteCostUsd).toBeCloseTo(0.0075, 6);
     expect(model.outputCostUsd).toBeCloseTo(0.075, 6);
-    expect(model.totalCostUsd).toBeCloseTo(0.1275, 6);
+    expect(model.totalCostUsd).toBeCloseTo(0.0975, 6);
   });
 
   it('multiple models → per-model breakdown sums to total', () => {
-    // claude-sonnet-4: 1000 input × 3/M = 0.003, 0 cache, 500 output × 15/M = 0.0075
+    // claude-sonnet-4: max(0, 1000-0)=1000 input × 3/M = 0.003, 0 cache, 500 output × 15/M = 0.0075
     //   subtotal = 0.0105
-    // gpt-4.1: 2000 input × 2/M = 0.004, 1000 cacheRead × 0.5/M = 0.0005, 1000 output × 8/M = 0.008
-    //   subtotal = 0.0125
-    // Grand total = 0.023
+    // gpt-4.1: max(0, 2000-1000)=1000 input × 2/M = 0.002, 1000 cacheRead × 0.5/M = 0.0005, 1000 output × 8/M = 0.008
+    //   subtotal = 0.0105
+    // Grand total = 0.021
     const result = calculateCost(
       {
         modelMetrics: [
@@ -79,8 +79,8 @@ describe('calculateCost', () => {
 
     expect(result.confidence).toBe('known');
     expect(result.perModel['claude-sonnet-4']!.totalCostUsd).toBeCloseTo(0.0105, 6);
-    expect(result.perModel['gpt-4.1']!.totalCostUsd).toBeCloseTo(0.0125, 6);
-    expect(result.totalUsd).toBeCloseTo(0.023, 6);
+    expect(result.perModel['gpt-4.1']!.totalCostUsd).toBeCloseTo(0.0105, 6);
+    expect(result.totalUsd).toBeCloseTo(0.021, 6);
 
     // Verify sum
     const sum = Object.values(result.perModel).reduce((s, m) => s + m.totalCostUsd, 0);
@@ -114,11 +114,11 @@ describe('calculateCost', () => {
       'my-model': { input: 10.0, cacheRead: 2.5, cacheWrite: 5.0, output: 20.0 },
     };
 
-    // 1,000,000 input × 10/M = $10
+    // max(0, 1,000,000 - 500,000) = 500,000 input × 10/M = $5
     // 500,000 cacheRead × 2.5/M = $1.25
     // 100,000 cacheWrite × 5/M = $0.5
     // 200,000 output × 20/M = $4
-    // Total = $15.75
+    // Total = $10.75
     const result = calculateCost(
       {
         modelMetrics: [
@@ -135,7 +135,7 @@ describe('calculateCost', () => {
     );
 
     expect(result.confidence).toBe('known');
-    expect(result.totalUsd).toBeCloseTo(15.75, 6);
+    expect(result.totalUsd).toBeCloseTo(10.75, 6);
   });
 
   it('zero tokens → zero cost', () => {
@@ -162,14 +162,15 @@ describe('calculateCost', () => {
   it('cache-heavy session → verify cacheRead discount applies', () => {
     // Scenario: 1000 input, 500,000 cacheRead, 0 cacheWrite, 1000 output
     // gpt-4.1 rates: input=2, cacheRead=0.5, output=8
-    // input cost = 1000 × 2 / 1M = 0.002
+    // nonCachedInput = max(0, 1000 - 500,000) = 0
+    // input cost = 0
     // cacheRead cost = 500,000 × 0.5 / 1M = 0.25
     // output cost = 1000 × 8 / 1M = 0.008
-    // total = 0.26
+    // total = 0.258
     //
     // Without cache discount (all at input rate):
-    // would be (1000 + 500,000) × 2 / 1M + 1000 × 8 / 1M = 1.002 + 0.008 = 1.01
-    // So cache saves $0.75
+    // would be 1000 × 2 / 1M + 500,000 × 2 / 1M + 1000 × 8 / 1M = 0.002 + 1.0 + 0.008 = 1.01
+    // So cache saves $0.752
     const result = calculateCost(
       {
         modelMetrics: [
@@ -186,7 +187,7 @@ describe('calculateCost', () => {
     );
 
     expect(result.confidence).toBe('known');
-    expect(result.totalUsd).toBeCloseTo(0.26, 6);
+    expect(result.totalUsd).toBeCloseTo(0.258, 6);
     expect(result.perModel['gpt-4.1']!.cacheReadCostUsd).toBeCloseTo(0.25, 6);
     // Verify cache discount: cacheRead rate (0.5) < input rate (2.0)
     expect(result.perModel['gpt-4.1']!.cacheReadCostUsd).toBeLessThan(
@@ -212,7 +213,7 @@ describe('calculateCost', () => {
     );
 
     expect(result.confidence).toBe('estimated');
-    // input: 1000 × 1/M = 0.001, cacheRead: 1000 × 0/M = 0, output: 1000 × 5/M = 0.005
-    expect(result.totalUsd).toBeCloseTo(0.006, 6);
+    // nonCached: max(0, 1000 - 1000) = 0 × 1/M = 0, cacheRead: 1000 × 0/M = 0, output: 1000 × 5/M = 0.005
+    expect(result.totalUsd).toBeCloseTo(0.005, 6);
   });
 });

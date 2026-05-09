@@ -103,7 +103,7 @@ function estimateCostUsd(
   if (!rates) return null;
   return (
     (output * rates.output +
-      input * rates.input +
+      Math.max(0, input - cacheRead) * rates.input +
       cacheRead * rates.cacheRead +
       cacheWrite * rates.cacheWrite) /
     1_000_000

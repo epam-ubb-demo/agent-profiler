@@ -19,7 +19,7 @@ import type { StatEntry } from './session-stats';
  * | 0 | Total Cost     | modelSpend totals estimated USD                |
  * | 1 | Models Used    | modelSpend row count                           |
  * | 2 | API Requests   | modelSpend totals request count                |
- * | 3 | Cache Hit Rate | cacheRead / (input + cacheRead) × 100          |
+ * | 3 | Cache Hit Rate | cacheRead / inputTokens × 100                  |
  * | 4 | Hottest Turn   | hotConsumption entries[0] tokens               |
  */
 export function computeCostKpis(
@@ -53,9 +53,8 @@ export function computeCostKpis(
   /* 3 — Cache Hit Rate */
   const inputTokens = modelSpend?.totals.inputTokens ?? 0;
   const cacheRead = modelSpend?.totals.cacheReadTokens ?? 0;
-  const denominator = inputTokens + cacheRead;
-  const cacheRate = modelSpend !== null && denominator > 0
-    ? (cacheRead / denominator) * 100
+  const cacheRate = modelSpend !== null && inputTokens > 0
+    ? (cacheRead / inputTokens) * 100
     : null;
   const cacheHitRate: StatEntry = {
     value: cacheRate,

@@ -1,7 +1,7 @@
 /**
  * @agent-profiler/pricing — public API barrel.
  *
- * Provides disjoint-billing cost calculation for GitHub Copilot sessions.
+ * Overlapping-input cost calculation for GitHub Copilot sessions.
  */
 
 export type {

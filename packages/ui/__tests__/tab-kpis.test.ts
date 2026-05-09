@@ -182,9 +182,9 @@ describe('computeCostKpis', () => {
     expect(result[2].value).toBe(5);
 
     expect(result[3].label).toBe('Cache Hit Rate');
-    // 200 / (1000 + 200) = 16.67%
-    expect(result[3].value).toBeCloseTo(16.67, 0);
-    expect(result[3].display).toBe('17%');
+    // 200 / 1000 = 20%
+    expect(result[3].value).toBeCloseTo(20, 0);
+    expect(result[3].display).toBe('20%');
 
     expect(result[4].label).toBe('Hottest Turn');
     expect(result[4].value).toBe(5000);
@@ -247,7 +247,7 @@ describe('computeCostKpis', () => {
         totals: {
           requestCount: 1,
           premiumCostUsd: 0,
-          inputTokens: 0,
+          inputTokens: 500,
           outputTokens: 100,
           cacheReadTokens: 500,
           cacheWriteTokens: 0,

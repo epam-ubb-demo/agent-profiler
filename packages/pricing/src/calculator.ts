@@ -1,14 +1,17 @@
 /**
- * Disjoint cost calculator.
+ * Overlapping-input cost calculator.
  *
- * Implements GitHub-style disjoint billing where input, cacheRead,
- * cacheWrite, and output are billed as separate, non-overlapping buckets.
+ * Implements overlapping billing where `inputTokens` already includes
+ * `cacheReadTokens`, so non-cached input must be isolated by subtraction.
  *
  * Formula per model:
- *   cost = (inputTokens × inputRate
+ *   cost = (max(0, inputTokens − cacheReadTokens) × inputRate
  *         + cacheReadTokens × cacheReadRate
  *         + cacheWriteTokens × cacheWriteRate
  *         + outputTokens × outputRate) / 1,000,000
+ *
+ * The inputTokens field from the Copilot CLI includes cached tokens,
+ * so cacheReadTokens is subtracted to isolate non-cached input.
  */
 
 import type { ModelMetrics, ShutdownMetrics } from '@agent-profiler/core';
@@ -77,7 +80,8 @@ export function calculateCost(
       overallConfidence = 'estimated';
     }
 
-    const inputCost = round6((entry.inputTokens * rates.input) / 1_000_000);
+    const nonCachedInput = Math.max(0, entry.inputTokens - entry.cacheReadTokens);
+    const inputCost = round6((nonCachedInput * rates.input) / 1_000_000);
     const cacheReadCost = round6((entry.cacheReadTokens * rates.cacheRead) / 1_000_000);
     const cacheWriteCost = round6((entry.cacheWriteTokens * rates.cacheWrite) / 1_000_000);
     const outputCost = round6((entry.outputTokens * rates.output) / 1_000_000);

@@ -6,6 +6,10 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 ## [Unreleased]
 
+### Changed
+
+- Cost calculation now uses overlapping-input model — `inputTokens` is understood to include `cacheReadTokens`, so non-cached input is computed as `max(0, inputTokens − cacheReadTokens)` before applying the input rate. Cache hit rate is now `cacheReadTokens / inputTokens`.
+
 ### Improved
 
 - **Session detail page redesigned** — the 14-section vertical scroll layout is replaced by a sticky header with compact KPI strip and four themed tabs (Overview, Cost & Models, Tools, Timeline). Key stats are always visible, problem-severity colouring highlights anomalies (high cost, task failures, excessive compactions), and tab notification dots surface issues at a glance. Within-tab two-column layouts reduce scrolling further.
