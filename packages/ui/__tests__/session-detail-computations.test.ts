@@ -376,8 +376,8 @@ describe('computeModelSpend', () => {
     expect(row.cacheReadTokens).toBe(300);
     expect(row.cacheWriteTokens).toBe(150);
     expect(row.requestCount).toBe(7);
-    // premiumRequests derived from premiumRequestCost (0 in fixture → 0)
-    expect(row.premiumRequests).toBe(0);
+    // premiumRequests is null when premiumRequestCost is 0 (data not available)
+    expect(row.premiumRequests).toBeNull();
     // premiumRequestCostUsd comes from ModelMetrics.premiumRequestCost (0 in fixture)
     expect(row.premiumRequestCostUsd).toBe(0);
     // estimatedUsd comes from the token-based pricing calculator (may be 0 for small token counts)
@@ -519,6 +519,8 @@ describe('computeModelSpend', () => {
     });
 
     const result = computeModelSpend(session)!;
+    // Per-model rows have null premiumRequests in message fallback
+    expect(result.rows[0]!.premiumRequests).toBeNull();
     expect(result.totals.premiumRequests).toBe(0);
     expect(result.totals.premiumRequestCostUsd).toBe(0);
     // Token-based estimate should still be computed (may be 0 for small token counts)

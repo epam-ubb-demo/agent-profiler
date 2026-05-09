@@ -74,7 +74,7 @@ export const ModelSpendTable = memo(function ModelSpendTable({ result, modelColo
                 <Text size="18">{row.requestCount}</Text>
               </td>
               <td className={styles.numericCell}>
-                <Text size="18">{row.premiumRequests}</Text>
+                <Text size="18">{row.premiumRequests === null ? '—' : row.premiumRequests}</Text>
               </td>
               <td className={styles.numericCell}>
                 <Text size="18">{formatTokenCount(row.inputTokens)}</Text>

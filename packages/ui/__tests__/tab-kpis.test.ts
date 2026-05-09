@@ -94,7 +94,7 @@ function makeModelSpend(overrides?: Partial<ModelSpendResult>): ModelSpendResult
       {
         model: 'claude-sonnet-4-20250514',
         requestCount: 5,
-        premiumRequests: 0,
+        premiumRequests: null,
         premiumRequestCostUsd: 3.5,
         inputTokens: 1000,
         outputTokens: 500,

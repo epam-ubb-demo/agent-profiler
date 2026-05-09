@@ -28,8 +28,8 @@ export interface ModelSpendRow {
   readonly model: string;
   /** Number of API requests made to this model. */
   readonly requestCount: number;
-  /** Number of premium requests (derived from premiumRequestCost / $0.04 when available). */
-  readonly premiumRequests: number;
+  /** Number of premium requests (derived from premiumRequestCost / $0.04 when available, null if unknown). */
+  readonly premiumRequests: number | null;
   /** Cost based on premium requests × $0.04/request. */
   readonly premiumRequestCostUsd: number;
   /** Total input tokens sent to the model. */
@@ -165,7 +165,7 @@ export function computeModelSpend(
       return {
         model: m.model,
         requestCount: m.requestCount,
-        premiumRequests: m.premiumRequestCost > 0 ? Math.round(m.premiumRequestCost / PREMIUM_REQUEST_RATE_USD) : 0,
+        premiumRequests: m.premiumRequestCost > 0 ? Math.round(m.premiumRequestCost / PREMIUM_REQUEST_RATE_USD) : null,
         premiumRequestCostUsd: m.premiumRequestCost,
         inputTokens: m.inputTokens,
         outputTokens: m.outputTokens,
@@ -196,7 +196,7 @@ export function computeModelSpend(
     return {
       model: m.model,
       requestCount: aggregated.requestCounts[m.model] ?? 0,
-      premiumRequests: 0,
+      premiumRequests: null,
       premiumRequestCostUsd: 0,
       inputTokens: m.inputTokens,
       outputTokens: m.outputTokens,
