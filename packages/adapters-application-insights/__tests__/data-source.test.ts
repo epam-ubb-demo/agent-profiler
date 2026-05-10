@@ -286,5 +286,38 @@ describe('ApplicationInsightsDataSource', () => {
         FAKE_SESSION,
       );
     });
+
+    it('returns assembled session even when cache.set() throws', async () => {
+      const mockCache: SessionCache = {
+        get: vi.fn().mockReturnValue(undefined),
+        set: vi.fn().mockImplementation(() => {
+          throw new Error('cache write failed');
+        }),
+        has: vi.fn(),
+        delete: vi.fn(),
+        clear: vi.fn(),
+      };
+      const ds = createDataSource(mockCache);
+      const mock = getMockInstance();
+      mock.query.mockResolvedValueOnce({ rows: mockSpanRows });
+      vi.mocked(mockedAssembleSession).mockReturnValueOnce(FAKE_SESSION);
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).toBe(FAKE_SESSION);
+      expect(mockCache.set).toHaveBeenCalledWith(
+        'session-abc-123',
+        FAKE_SESSION,
+      );
+    });
+
+    it('returns null for session IDs exceeding max length', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      const longId = 'a'.repeat(257);
+
+      await expect(ds.getSession(longId)).resolves.toBeNull();
+      expect(mock.query).not.toHaveBeenCalled();
+    });
   });
 });

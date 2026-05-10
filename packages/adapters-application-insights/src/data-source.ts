@@ -39,9 +39,12 @@ const DEFAULT_DAYS = 7;
 /** Pattern for valid session IDs — alphanumeric, hyphens, underscores, and dots. */
 const SESSION_ID_PATTERN = /^[a-zA-Z0-9_.\-]+$/;
 
+/** Maximum allowed length for a session ID to prevent oversized KQL literals. */
+const MAX_SESSION_ID_LENGTH = 256;
+
 /** Validate a session ID. Returns the ID if valid, or `null` for invalid input. */
 function validateSessionId(raw: string): string | null {
-  if (raw.length === 0 || !SESSION_ID_PATTERN.test(raw)) {
+  if (raw.length === 0 || raw.length > MAX_SESSION_ID_LENGTH || !SESSION_ID_PATTERN.test(raw)) {
     return null;
   }
   return raw;
@@ -165,7 +168,7 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
               name: sessionId,
               path: `ai://${this.workspaceId}/${sessionId}`,
               createdAt: Number.isFinite(createdAt.getTime()) ? createdAt : new Date(0),
-              adapter: 'application-insights' as const,
+              adapter: this.type,
             },
           ];
         });
@@ -197,9 +200,13 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
 
       const session = assembleSession(result.rows);
 
-      // Store in cache if available
+      // Store in cache if available — cache write failures must not affect the return value
       if (this.cache) {
-        this.cache.set(validId, session);
+        try {
+          this.cache.set(validId, session);
+        } catch {
+          // Silently ignore cache write errors
+        }
       }
 
       return session;
