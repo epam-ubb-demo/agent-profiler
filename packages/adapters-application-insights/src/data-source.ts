@@ -21,12 +21,39 @@ import type { TimeRange } from './types';
 // Cache interface
 // ---------------------------------------------------------------------------
 
-/** Extension point for caching assembled sessions. Not implemented in this package. */
+/**
+ * Extension point for caching assembled sessions.
+ *
+ * Not implemented in this package — consumers provide their own
+ * implementation. Designed to support future offline mode where
+ * previously-fetched sessions remain accessible without network
+ * connectivity.
+ *
+ * @remarks
+ * Cache implementations should be resilient to storage failures;
+ * the data source treats all cache operations as best-effort and
+ * falls back to live queries when the cache is unavailable.
+ */
 export interface SessionCache {
+  /** Retrieve a previously cached session, or `undefined` if not cached or stale. */
   get(sessionId: string): Session | undefined;
+
+  /** Store an assembled session for later retrieval. Replaces any existing entry. */
   set(sessionId: string, session: Session): void;
+
+  /** Check whether a valid (non-stale) cache entry exists for the given session. */
   has(sessionId: string): boolean;
+
+  /** Remove a session from the cache entirely. Returns `true` if an entry was removed. */
   delete(sessionId: string): boolean;
+
+  /**
+   * Mark a cached session as stale so the next access triggers a refresh.
+   * Implementations may choose to remove the entry immediately or flag it.
+   */
+  invalidate(sessionId: string): void;
+
+  /** Remove all cached sessions. Typically called when the workspace ID or time range changes. */
   clear(): void;
 }
 
