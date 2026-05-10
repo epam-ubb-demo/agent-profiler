@@ -1,0 +1,495 @@
+import { describe, it, expect } from 'vitest';
+
+import type { OTelSpan } from '../src/schemas';
+import {
+  assembleSession,
+  aggregateModelMetrics,
+  deriveParseStatus,
+  deriveSuccess,
+  detectModelChanges,
+  aggregateShutdownMetrics,
+} from '../src/session-assembler';
+import type { SpanNode } from '../src/turn-reconstructor';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function makeSpan(overrides: Partial<OTelSpan> = {}): OTelSpan {
+  return {
+    spanId: 'span-1',
+    parentSpanId: null,
+    traceId: 'trace-1',
+    name: 'test',
+    timestamp: '2025-01-01T00:00:00.000Z',
+    durationMs: 100,
+    success: true,
+    dims: {},
+    ...overrides,
+  };
+}
+
+function makeNode(
+  spanOverrides: Partial<OTelSpan> = {},
+  nodeOverrides: Partial<Pick<SpanNode, 'kind' | 'children' | 'depth'>> = {},
+): SpanNode {
+  const span = makeSpan(spanOverrides);
+  return {
+    span,
+    kind: nodeOverrides.kind ?? 'structural',
+    children: nodeOverrides.children ?? [],
+    depth: nodeOverrides.depth ?? 0,
+  };
+}
+
+function makeRawRow(overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
+  return {
+    id: 'span-1',
+    operation_Id: 'trace-1',
+    operation_ParentId: 'parent-1',
+    name: 'test-span',
+    timestamp: '2025-01-01T00:00:00.000Z',
+    duration: 100,
+    success: true,
+    customDimensions: '{}',
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// aggregateModelMetrics
+// ---------------------------------------------------------------------------
+
+describe('aggregateModelMetrics', () => {
+  it('aggregates metrics for a single model', () => {
+    const spans = [
+      makeSpan({
+        spanId: 'llm-1',
+        durationMs: 50,
+        dims: {
+          'gen_ai.response.model': 'claude-4',
+          'gen_ai.usage.input_tokens': '10',
+          'gen_ai.usage.output_tokens': '20',
+        },
+      }),
+      makeSpan({
+        spanId: 'llm-2',
+        durationMs: 100,
+        dims: {
+          'gen_ai.response.model': 'claude-4',
+          'gen_ai.usage.input_tokens': '30',
+          'gen_ai.usage.output_tokens': '40',
+        },
+      }),
+    ];
+
+    const metrics = aggregateModelMetrics(spans);
+
+    expect(metrics).toHaveLength(1);
+    expect(metrics[0]!.model).toBe('claude-4');
+    expect(metrics[0]!.inputTokens).toBe(40);
+    expect(metrics[0]!.outputTokens).toBe(60);
+    expect(metrics[0]!.requestCount).toBe(2);
+    expect(metrics[0]!.apiDurationMs).toBe(150);
+  });
+
+  it('creates separate entries for different models', () => {
+    const spans = [
+      makeSpan({
+        spanId: 'llm-1',
+        dims: { 'gen_ai.response.model': 'claude-4', 'gen_ai.usage.input_tokens': '10' },
+      }),
+      makeSpan({
+        spanId: 'llm-2',
+        dims: { 'gen_ai.response.model': 'gpt-5', 'gen_ai.usage.input_tokens': '20' },
+      }),
+    ];
+
+    const metrics = aggregateModelMetrics(spans);
+
+    expect(metrics).toHaveLength(2);
+    const models = metrics.map((m) => m.model).sort();
+    expect(models).toEqual(['claude-4', 'gpt-5']);
+  });
+
+  it('returns empty array for empty input', () => {
+    expect(aggregateModelMetrics([])).toEqual([]);
+  });
+
+  it('uses prompt_tokens fallback when input_tokens is absent', () => {
+    const spans = [
+      makeSpan({
+        spanId: 'llm-1',
+        dims: {
+          'gen_ai.response.model': 'claude-4',
+          'gen_ai.usage.prompt_tokens': '15',
+        },
+      }),
+    ];
+
+    const metrics = aggregateModelMetrics(spans);
+
+    expect(metrics[0]!.inputTokens).toBe(15);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// deriveParseStatus
+// ---------------------------------------------------------------------------
+
+describe('deriveParseStatus', () => {
+  it('returns failed when there are no spans', () => {
+    const status = deriveParseStatus([], 0, []);
+
+    expect(status.status).toBe('failed');
+    expect(status.error).toBe('No spans found for session');
+  });
+
+  it('returns ok for normal input', () => {
+    const spans = [makeSpan()];
+    const status = deriveParseStatus(spans, 1, []);
+
+    expect(status.status).toBe('ok');
+    expect(status.error).toBeNull();
+  });
+
+  it('returns partial when no turns are reconstructed', () => {
+    const spans = [makeSpan()];
+    const status = deriveParseStatus(spans, 0, []);
+
+    expect(status.status).toBe('partial');
+  });
+
+  it('returns partial when there are parse errors', () => {
+    const spans = [makeSpan()];
+    const status = deriveParseStatus(spans, 1, ['Row 0: bad']);
+
+    expect(status.status).toBe('partial');
+  });
+
+  it('returns partial when orphan ratio exceeds 50%', () => {
+    // 3 spans, 2 of which have non-existent parents → orphan ratio = 2/3 > 50%
+    const spans = [
+      makeSpan({ spanId: 'root', parentSpanId: null }),
+      makeSpan({ spanId: 'orphan-1', parentSpanId: 'missing-a' }),
+      makeSpan({ spanId: 'orphan-2', parentSpanId: 'missing-b' }),
+    ];
+
+    const status = deriveParseStatus(spans, 1, []);
+
+    expect(status.status).toBe('partial');
+  });
+
+  it('does not count root spans as orphans', () => {
+    const spans = [
+      makeSpan({ spanId: 'r1', parentSpanId: null }),
+      makeSpan({ spanId: 'r2', parentSpanId: null }),
+      makeSpan({ spanId: 'r3', parentSpanId: null }),
+    ];
+
+    const status = deriveParseStatus(spans, 1, []);
+
+    expect(status.status).toBe('ok');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// deriveSuccess
+// ---------------------------------------------------------------------------
+
+describe('deriveSuccess', () => {
+  it('returns null when there are no roots', () => {
+    expect(deriveSuccess([])).toBeNull();
+  });
+
+  it('returns true when all nodes succeed', () => {
+    const root = makeNode({ success: true });
+    expect(deriveSuccess([root])).toBe(true);
+  });
+
+  it('returns false when a root span failed', () => {
+    const root = makeNode({ success: false });
+    expect(deriveSuccess([root])).toBe(false);
+  });
+
+  it('returns null when root succeeds but descendant fails', () => {
+    const child = makeNode({ spanId: 'c', success: false }, { depth: 1 });
+    const root = makeNode({ spanId: 'r', success: true }, { children: [child] });
+
+    expect(deriveSuccess([root])).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// detectModelChanges
+// ---------------------------------------------------------------------------
+
+describe('detectModelChanges', () => {
+  it('returns empty for empty input', () => {
+    expect(detectModelChanges([])).toEqual([]);
+  });
+
+  it('returns empty when single model throughout', () => {
+    const nodes = [
+      makeNode({ timestamp: '2025-01-01T00:00:00.000Z', dims: { 'gen_ai.response.model': 'claude-4' } }, { kind: 'llm' }),
+      makeNode({ timestamp: '2025-01-01T00:01:00.000Z', dims: { 'gen_ai.response.model': 'claude-4' } }, { kind: 'llm' }),
+    ];
+
+    expect(detectModelChanges(nodes)).toEqual([]);
+  });
+
+  it('detects a model switch', () => {
+    const nodes = [
+      makeNode({ spanId: 'a', timestamp: '2025-01-01T00:00:00.000Z', dims: { 'gen_ai.response.model': 'model-a' } }, { kind: 'llm' }),
+      makeNode({ spanId: 'b', timestamp: '2025-01-01T00:01:00.000Z', dims: { 'gen_ai.response.model': 'model-b' } }, { kind: 'llm' }),
+    ];
+
+    const changes = detectModelChanges(nodes);
+
+    expect(changes).toHaveLength(1);
+    expect(changes[0]!.model).toBe('model-b');
+  });
+
+  it('detects multiple switches', () => {
+    const nodes = [
+      makeNode({ spanId: 'a', timestamp: '2025-01-01T00:00:00.000Z', dims: { 'gen_ai.response.model': 'a' } }, { kind: 'llm' }),
+      makeNode({ spanId: 'b', timestamp: '2025-01-01T00:01:00.000Z', dims: { 'gen_ai.response.model': 'b' } }, { kind: 'llm' }),
+      makeNode({ spanId: 'c', timestamp: '2025-01-01T00:02:00.000Z', dims: { 'gen_ai.response.model': 'a' } }, { kind: 'llm' }),
+    ];
+
+    const changes = detectModelChanges(nodes);
+
+    expect(changes).toHaveLength(2);
+    expect(changes[0]!.model).toBe('b');
+    expect(changes[1]!.model).toBe('a');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// aggregateShutdownMetrics
+// ---------------------------------------------------------------------------
+
+describe('aggregateShutdownMetrics', () => {
+  it('returns null when there are no LLM nodes', () => {
+    expect(aggregateShutdownMetrics([], [])).toBeNull();
+  });
+
+  it('aggregates metrics from LLM nodes', () => {
+    const node = makeNode(
+      {
+        spanId: 'llm-1',
+        durationMs: 200,
+        dims: {
+          'gen_ai.response.model': 'claude-4',
+          'gen_ai.usage.input_tokens': '10',
+          'gen_ai.usage.output_tokens': '20',
+        },
+      },
+      { kind: 'llm' },
+    );
+
+    const allSpans = [node.span];
+    const shutdown = aggregateShutdownMetrics([node], allSpans);
+
+    expect(shutdown).not.toBeNull();
+    expect(shutdown!.totalPremiumRequests).toBe(1);
+    expect(shutdown!.totalApiDurationMs).toBe(200);
+    expect(shutdown!.modelMetrics).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// assembleSession — integration
+// ---------------------------------------------------------------------------
+
+describe('assembleSession', () => {
+  it('assembles a realistic mini session', () => {
+    const rootRow = makeRawRow({
+      id: 'root',
+      operation_Id: 'trace-1',
+      operation_ParentId: null,
+      name: 'session',
+      timestamp: '2025-01-01T00:00:00.000Z',
+      duration: 10000,
+      customDimensions: JSON.stringify({
+        'copilot_chat.session.id': 'sess-1',
+      }),
+    });
+
+    // Turn-level spans (depth 1)
+    const turn1Row = makeRawRow({
+      id: 'turn-1-span',
+      operation_Id: 'trace-1',
+      operation_ParentId: 'root',
+      name: 'turn-1',
+      timestamp: '2025-01-01T00:00:01.000Z',
+      duration: 4000,
+      customDimensions: JSON.stringify({
+        'copilot_chat.turn.id': 'turn-1',
+      }),
+    });
+
+    const turn2Row = makeRawRow({
+      id: 'turn-2-span',
+      operation_Id: 'trace-1',
+      operation_ParentId: 'root',
+      name: 'turn-2',
+      timestamp: '2025-01-01T00:00:05.000Z',
+      duration: 5000,
+      customDimensions: JSON.stringify({
+        'copilot_chat.turn.id': 'turn-2',
+      }),
+    });
+
+    // Under turn 1: LLM + tool + user message
+    const llm1Row = makeRawRow({
+      id: 'llm-1',
+      operation_Id: 'trace-1',
+      operation_ParentId: 'turn-1-span',
+      name: 'llm-call',
+      timestamp: '2025-01-01T00:00:01.500Z',
+      duration: 1000,
+      customDimensions: JSON.stringify({
+        'copilot_chat.turn.id': 'turn-1',
+        'gen_ai.usage.input_tokens': '100',
+        'gen_ai.usage.output_tokens': '50',
+        'gen_ai.response.model': 'claude-4',
+      }),
+    });
+
+    const toolRow = makeRawRow({
+      id: 'tool-1',
+      operation_Id: 'trace-1',
+      operation_ParentId: 'turn-1-span',
+      name: 'tool-call',
+      timestamp: '2025-01-01T00:00:02.500Z',
+      duration: 500,
+      customDimensions: JSON.stringify({
+        'copilot_chat.turn.id': 'turn-1',
+        'copilot_chat.tool.call.name': 'read_file',
+        'copilot_chat.tool.call.id': 'tc-1',
+      }),
+    });
+
+    const userRow = makeRawRow({
+      id: 'user-1',
+      operation_Id: 'trace-1',
+      operation_ParentId: 'turn-1-span',
+      name: 'user-message',
+      timestamp: '2025-01-01T00:00:01.000Z',
+      duration: 10,
+      customDimensions: JSON.stringify({
+        'copilot_chat.turn.id': 'turn-1',
+        'copilot_chat.message.role': 'user',
+        'copilot_chat.message.content': 'hello',
+      }),
+    });
+
+    // Under turn 2: LLM (different model) + subagent with child LLM
+    const llm2Row = makeRawRow({
+      id: 'llm-2',
+      operation_Id: 'trace-1',
+      operation_ParentId: 'turn-2-span',
+      name: 'llm-call-2',
+      timestamp: '2025-01-01T00:00:05.500Z',
+      duration: 1500,
+      customDimensions: JSON.stringify({
+        'copilot_chat.turn.id': 'turn-2',
+        'gen_ai.usage.input_tokens': '200',
+        'gen_ai.usage.output_tokens': '100',
+        'gen_ai.response.model': 'gpt-5',
+      }),
+    });
+
+    const subagentRow = makeRawRow({
+      id: 'subagent-1',
+      operation_Id: 'trace-1',
+      operation_ParentId: 'turn-2-span',
+      name: 'subagent',
+      timestamp: '2025-01-01T00:00:07.000Z',
+      duration: 2000,
+      customDimensions: JSON.stringify({
+        'copilot_chat.turn.id': 'turn-2',
+        'copilot_chat.subagent.name': 'code-reviewer',
+        'copilot_chat.subagent.type': 'review',
+      }),
+    });
+
+    const subagentLlmRow = makeRawRow({
+      id: 'subagent-llm-1',
+      operation_Id: 'trace-1',
+      operation_ParentId: 'subagent-1',
+      name: 'subagent-llm',
+      timestamp: '2025-01-01T00:00:07.500Z',
+      duration: 800,
+      customDimensions: JSON.stringify({
+        'copilot_chat.turn.id': 'turn-2',
+        'gen_ai.usage.input_tokens': '50',
+        'gen_ai.usage.output_tokens': '25',
+        'gen_ai.response.model': 'gpt-5',
+      }),
+    });
+
+    const rows = [
+      rootRow,
+      turn1Row,
+      turn2Row,
+      llm1Row,
+      toolRow,
+      userRow,
+      llm2Row,
+      subagentRow,
+      subagentLlmRow,
+    ];
+
+    const session = assembleSession(rows);
+
+    // Session identity
+    expect(session.sessionId).toBe('sess-1');
+
+    // Turns
+    expect(session.turns).toHaveLength(2);
+    expect(session.fanoutTurns).toHaveLength(2);
+
+    // Events
+    expect(session.toolCalls).toHaveLength(1);
+    expect(session.assistantMessages.length).toBeGreaterThanOrEqual(2);
+    expect(session.userMessages).toHaveLength(1);
+    expect(session.subagents).toHaveLength(1);
+
+    // Model changes (claude-4 → gpt-5)
+    expect(session.modelChanges.length).toBeGreaterThanOrEqual(1);
+
+    // Shutdown
+    expect(session.shutdown).not.toBeNull();
+    expect(session.shutdown!.modelMetrics.length).toBeGreaterThanOrEqual(1);
+
+    // Parse status
+    expect(session.parseStatus.status).toBe('ok');
+
+    // Defaults
+    expect(session.compactions).toEqual([]);
+    expect(session.utilisation).toEqual([]);
+    expect(session.copilotVersion).toBe('');
+
+    // Time bounds
+    expect(session.startTs).not.toBeNull();
+    expect(session.endTs).not.toBeNull();
+  });
+
+  it('handles empty rows', () => {
+    const session = assembleSession([]);
+
+    expect(session.parseStatus.status).toBe('failed');
+    expect(session.turns).toEqual([]);
+    expect(session.fanoutTurns).toEqual([]);
+    expect(session.toolCalls).toEqual([]);
+    expect(session.assistantMessages).toEqual([]);
+    expect(session.userMessages).toEqual([]);
+    expect(session.subagents).toEqual([]);
+    expect(session.modelChanges).toEqual([]);
+    expect(session.compactions).toEqual([]);
+    expect(session.utilisation).toEqual([]);
+    expect(session.shutdown).toBeNull();
+  });
+});
