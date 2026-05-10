@@ -12,6 +12,7 @@ vi.mock('../src/query-client', () => ({
   QueryClient: vi.fn().mockImplementation(() => ({
     testConnection: vi.fn(),
     query: vi.fn(),
+    queryWithTruncationCheck: vi.fn(),
   })),
   DEFAULT_MAX_SPAN_COUNT: 10_000,
 }));
@@ -74,6 +75,7 @@ function createDataSource(cache?: SessionCache | undefined) {
 function getMockInstance(): {
   testConnection: ReturnType<typeof vi.fn>;
   query: ReturnType<typeof vi.fn>;
+  queryWithTruncationCheck: ReturnType<typeof vi.fn>;
 } {
   const mock = vi.mocked(MockedQueryClient).mock;
   return mock.results[mock.results.length - 1]!
@@ -216,7 +218,7 @@ describe('ApplicationInsightsDataSource', () => {
     it('returns Session from assembleSession when spans found', async () => {
       const ds = createDataSource();
       const mock = getMockInstance();
-      mock.query.mockResolvedValueOnce({ rows: mockSpanRows });
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: mockSpanRows, truncated: false });
       vi.mocked(mockedAssembleSession).mockReturnValueOnce(FAKE_SESSION);
 
       const session = await ds.getSession('session-abc-123');
@@ -228,7 +230,7 @@ describe('ApplicationInsightsDataSource', () => {
     it('returns null when query returns no rows', async () => {
       const ds = createDataSource();
       const mock = getMockInstance();
-      mock.query.mockResolvedValueOnce({ rows: [] });
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
 
       await expect(ds.getSession('session-abc-123')).resolves.toBeNull();
       expect(mockedAssembleSession).not.toHaveBeenCalled();
@@ -237,7 +239,7 @@ describe('ApplicationInsightsDataSource', () => {
     it('returns null when query throws', async () => {
       const ds = createDataSource();
       const mock = getMockInstance();
-      mock.query.mockRejectedValueOnce(new Error('query failed'));
+      mock.queryWithTruncationCheck.mockRejectedValueOnce(new Error('query failed'));
 
       await expect(ds.getSession('session-abc-123')).resolves.toBeNull();
     });
@@ -245,7 +247,7 @@ describe('ApplicationInsightsDataSource', () => {
     it('returns null when assembleSession throws', async () => {
       const ds = createDataSource();
       const mock = getMockInstance();
-      mock.query.mockResolvedValueOnce({ rows: mockSpanRows });
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: mockSpanRows, truncated: false });
       vi.mocked(mockedAssembleSession).mockImplementationOnce(() => {
         throw new Error('assembly failed');
       });
@@ -261,7 +263,7 @@ describe('ApplicationInsightsDataSource', () => {
       // Empty session ID
       await expect(ds.getSession('')).resolves.toBeNull();
       // getMockInstance query should NOT have been called for invalid IDs
-      expect(mock.query).not.toHaveBeenCalled();
+      expect(mock.queryWithTruncationCheck).not.toHaveBeenCalled();
     });
 
     it('returns cached session when cache has entry', async () => {
@@ -280,6 +282,7 @@ describe('ApplicationInsightsDataSource', () => {
       expect(session).toBe(FAKE_SESSION);
       expect(mockCache.get).toHaveBeenCalledWith('session-abc-123');
       expect(mock.query).not.toHaveBeenCalled();
+      expect(mock.queryWithTruncationCheck).not.toHaveBeenCalled();
     });
 
     it('falls through to live query when cache.get() throws', async () => {
@@ -294,14 +297,14 @@ describe('ApplicationInsightsDataSource', () => {
       };
       const ds = createDataSource(mockCache);
       const mock = getMockInstance();
-      mock.query.mockResolvedValueOnce({ rows: mockSpanRows });
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: mockSpanRows, truncated: false });
       vi.mocked(mockedAssembleSession).mockReturnValueOnce(FAKE_SESSION);
 
       const session = await ds.getSession('session-abc-123');
 
       expect(session).toBe(FAKE_SESSION);
       expect(mockCache.get).toHaveBeenCalledWith('session-abc-123');
-      expect(mock.query).toHaveBeenCalled();
+      expect(mock.queryWithTruncationCheck).toHaveBeenCalled();
     });
 
     it('stores session in cache after successful query', async () => {
@@ -314,7 +317,7 @@ describe('ApplicationInsightsDataSource', () => {
       };
       const ds = createDataSource(mockCache);
       const mock = getMockInstance();
-      mock.query.mockResolvedValueOnce({ rows: mockSpanRows });
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: mockSpanRows, truncated: false });
       vi.mocked(mockedAssembleSession).mockReturnValueOnce(FAKE_SESSION);
 
       await ds.getSession('session-abc-123');
@@ -337,7 +340,7 @@ describe('ApplicationInsightsDataSource', () => {
       };
       const ds = createDataSource(mockCache);
       const mock = getMockInstance();
-      mock.query.mockResolvedValueOnce({ rows: mockSpanRows });
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: mockSpanRows, truncated: false });
       vi.mocked(mockedAssembleSession).mockReturnValueOnce(FAKE_SESSION);
 
       const session = await ds.getSession('session-abc-123');
@@ -355,7 +358,7 @@ describe('ApplicationInsightsDataSource', () => {
       const longId = 'a'.repeat(257);
 
       await expect(ds.getSession(longId)).resolves.toBeNull();
-      expect(mock.query).not.toHaveBeenCalled();
+      expect(mock.queryWithTruncationCheck).not.toHaveBeenCalled();
     });
 
     it('sets parseStatus to partial when row count >= maxSpanCount (truncation)', async () => {
@@ -366,7 +369,7 @@ describe('ApplicationInsightsDataSource', () => {
       });
       const mock = getMockInstance();
       // Return exactly 2 rows (= maxSpanCount), triggering truncation
-      mock.query.mockResolvedValueOnce({ rows: [mockSpanRows[0], mockSpanRows[0]] });
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [mockSpanRows[0], mockSpanRows[0]], truncated: true });
       vi.mocked(mockedAssembleSession).mockReturnValueOnce({
         ...FAKE_SESSION,
         parseStatus: { status: 'ok', error: null },
@@ -386,7 +389,7 @@ describe('ApplicationInsightsDataSource', () => {
         maxSpanCount: 100,
       });
       const mock = getMockInstance();
-      mock.query.mockResolvedValueOnce({ rows: mockSpanRows });
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: mockSpanRows, truncated: false });
       vi.mocked(mockedAssembleSession).mockReturnValueOnce({
         ...FAKE_SESSION,
         parseStatus: { status: 'ok', error: null },
@@ -402,7 +405,7 @@ describe('ApplicationInsightsDataSource', () => {
       // Default is 10_000, so with 1 row it should not trigger truncation
       const ds = createDataSource();
       const mock = getMockInstance();
-      mock.query.mockResolvedValueOnce({ rows: mockSpanRows });
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: mockSpanRows, truncated: false });
       vi.mocked(mockedAssembleSession).mockReturnValueOnce({
         ...FAKE_SESSION,
         parseStatus: { status: 'ok', error: null },

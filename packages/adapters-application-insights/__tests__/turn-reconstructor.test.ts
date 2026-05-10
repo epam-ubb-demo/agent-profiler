@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 
-import type { OTelSpan } from '../src/schemas';
-import { parseSpanRows } from '../src/schemas';
+import { type OTelSpan, parseSpanRows } from '../src/schemas';
 import {
+  type SpanNode,
+  type TurnBucket,
   classifySpan,
   buildSpanTree,
   extractTurns,
@@ -15,7 +16,6 @@ import {
   flattenTree,
 } from '../src/turn-reconstructor';
 import { validSessionRows } from './fixtures';
-import type { SpanNode, TurnBucket } from '../src/turn-reconstructor';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -665,7 +665,7 @@ describe('flattenTree', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildTurns — valid-session fixture end-to-end', () => {
-  it('reconstructs turns from valid 14-span session', () => {
+  it('reconstructs turns from valid 13-span session', () => {
     const { spans } = parseSpanRows(validSessionRows);
     const roots = buildSpanTree(spans);
     const buckets = extractTurns(roots, spans);
@@ -675,13 +675,19 @@ describe('buildTurns — valid-session fixture end-to-end', () => {
     expect(turns.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('classifies all valid-session fixture spans', () => {
+  it('classifies all valid-session fixture spans into known categories', () => {
     const { spans } = parseSpanRows(validSessionRows);
     const classified = spans.map((s) => classifySpan(s));
 
-    // Every span should get a classification (never 'unknown' for well-formed spans)
+    const validKinds = new Set(['llm', 'tool', 'subagent', 'user_message', 'structural']);
     expect(classified.length).toBe(spans.length);
-    expect(classified.every((c) => c !== 'unknown')).toBe(true);
+    // Assert each classification is one of the known SpanKind values
+    for (const kind of classified) {
+      expect(validKinds.has(kind)).toBe(true);
+    }
+    // Verify the fixture exercises multiple classification categories
+    const uniqueKinds = new Set(classified);
+    expect(uniqueKinds.size).toBeGreaterThanOrEqual(3);
   });
 
   it('builds correct span tree from valid-session fixture', () => {

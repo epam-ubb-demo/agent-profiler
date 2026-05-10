@@ -190,6 +190,27 @@ describe('QueryClient', () => {
     expect(DEFAULT_MAX_SPAN_COUNT).toBe(10_000);
   });
 
+  it('uses default maxSpanCount when not configured', async () => {
+    // Create a response with exactly DEFAULT_MAX_SPAN_COUNT rows
+    const rows = Array.from({ length: DEFAULT_MAX_SPAN_COUNT }, (_, i) => [`row-${i}`]);
+    mockQueryWorkspace.mockResolvedValueOnce({
+      status: 'Success',
+      tables: [
+        {
+          columnDescriptors: [{ name: 'id', type: 'string' }],
+          rows,
+        },
+      ],
+    });
+
+    // Client with no explicit maxSpanCount — should use default
+    const client = new QueryClient({ workspaceId: TEST_WORKSPACE_ID });
+    const result = await client.queryWithTruncationCheck('TestQuery', TEST_TIME_RANGE);
+
+    expect(result.truncated).toBe(true);
+    expect(result.rows).toHaveLength(DEFAULT_MAX_SPAN_COUNT);
+  });
+
   it('respects custom maxSpanCount from config', async () => {
     // Create 5 rows — at the custom limit of 5
     const rows = Array.from({ length: 5 }, (_, i) => [`row-${i}`, i]);
@@ -211,17 +232,17 @@ describe('QueryClient', () => {
       maxSpanCount: 5,
     });
 
-    const result = await client.queryAllPages('TestQuery', TEST_TIME_RANGE);
+    const result = await client.queryWithTruncationCheck('TestQuery', TEST_TIME_RANGE);
 
     expect(result.truncated).toBe(true);
     expect(result.rows).toHaveLength(5);
   });
 
   // -----------------------------------------------------------------------
-  // queryAllPages
+  // queryWithTruncationCheck
   // -----------------------------------------------------------------------
 
-  it('queryAllPages returns truncated: false when rows < maxSpanCount', async () => {
+  it('queryWithTruncationCheck returns truncated: false when rows < maxSpanCount', async () => {
     mockQueryWorkspace.mockResolvedValueOnce({
       status: 'Success',
       tables: [
@@ -237,13 +258,13 @@ describe('QueryClient', () => {
       maxSpanCount: 100,
     });
 
-    const result = await client.queryAllPages('TestQuery', TEST_TIME_RANGE);
+    const result = await client.queryWithTruncationCheck('TestQuery', TEST_TIME_RANGE);
 
     expect(result.truncated).toBe(false);
     expect(result.rows).toHaveLength(2);
   });
 
-  it('queryAllPages returns truncated: true when rows >= maxSpanCount', async () => {
+  it('queryWithTruncationCheck returns truncated: true when rows >= maxSpanCount', async () => {
     const rows = Array.from({ length: 3 }, (_, i) => [`item-${i}`]);
     mockQueryWorkspace.mockResolvedValueOnce({
       status: 'Success',
@@ -260,7 +281,7 @@ describe('QueryClient', () => {
       maxSpanCount: 3,
     });
 
-    const result = await client.queryAllPages('TestQuery', TEST_TIME_RANGE);
+    const result = await client.queryWithTruncationCheck('TestQuery', TEST_TIME_RANGE);
 
     expect(result.truncated).toBe(true);
     expect(result.rows).toHaveLength(3);

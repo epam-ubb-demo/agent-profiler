@@ -95,7 +95,7 @@ export class QueryClient {
    * @param timeRange - Start and end timestamps for the query window.
    * @returns Query result with an additional `truncated` flag.
    */
-  async queryAllPages(
+  async queryWithTruncationCheck(
     kql: string,
     timeRange: TimeRange,
   ): Promise<QueryResult & { truncated: boolean }> {

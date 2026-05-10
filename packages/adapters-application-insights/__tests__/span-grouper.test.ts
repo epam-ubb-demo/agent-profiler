@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import type { OTelSpan } from '../src/schemas';
-import { parseSpanRows } from '../src/schemas';
+import { type OTelSpan, parseSpanRows } from '../src/schemas';
 import { groupSpansBySession, deduplicateSpans } from '../src/span-grouper';
 import { multiSessionRows } from './fixtures';
 

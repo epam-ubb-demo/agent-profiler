@@ -14,7 +14,6 @@ import type {
 import type { TokenCredential } from '@azure/identity';
 
 import { QueryClient } from './query-client';
-import { DEFAULT_MAX_SPAN_COUNT } from './query-client';
 import { assembleSession } from './session-assembler';
 import type { TimeRange } from './types';
 
@@ -117,7 +116,6 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
   private readonly workspaceId: string;
   private readonly timeRange: TimeRange | undefined;
   private readonly cache: SessionCache | undefined;
-  private readonly maxSpanCount: number;
 
   constructor(config: {
     workspaceId: string;
@@ -129,11 +127,10 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
     this.workspaceId = config.workspaceId;
     this.timeRange = config.timeRange;
     this.cache = config.cache;
-    this.maxSpanCount = config.maxSpanCount ?? DEFAULT_MAX_SPAN_COUNT;
     this.queryClient = new QueryClient({
       workspaceId: config.workspaceId,
       credential: config.credential,
-      maxSpanCount: this.maxSpanCount,
+      maxSpanCount: config.maxSpanCount,
     });
   }
 
@@ -206,23 +203,26 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
 
       const range = this.timeRange ?? defaultTimeRange();
       const kql = buildGetSessionKql(validId);
-      const result = await this.queryClient.query(kql, range);
+      const result = await this.queryClient.queryWithTruncationCheck(kql, range);
 
       if (result.rows.length === 0) {
         return null;
       }
 
-      const truncated = result.rows.length >= this.maxSpanCount;
+      const { truncated } = result;
 
-      const session = assembleSession(result.rows);
+      const assembled = assembleSession(result.rows);
 
-      // Override parseStatus when the result set was truncated at the row limit.
-      if (truncated) {
-        (session as { parseStatus: typeof session.parseStatus }).parseStatus = {
-          status: 'partial',
-          error: `Result set truncated at ${result.rows.length} spans — session may be incomplete`,
-        };
-      }
+      // Produce a new session object with overridden parseStatus when truncated.
+      const session = truncated
+        ? {
+            ...assembled,
+            parseStatus: {
+              status: 'partial' as const,
+              error: `Result set truncated at ${result.rows.length} spans — session may be incomplete`,
+            },
+          }
+        : assembled;
 
       // Store in cache if available — cache write failures must not affect the return value
       if (this.cache) {

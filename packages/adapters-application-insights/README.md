@@ -215,7 +215,7 @@ All `SessionCache` methods are optional. If a method is not provided, that opera
 | `timeoutMs` | `number` | No | Query timeout in milliseconds (default: 60 000) |
 | `maxSpanCount` | `number` | No | Maximum spans retrieved per session before flagging truncation (default: 10 000) |
 
-> **Truncation detection:** When a session query returns rows equal to `maxSpanCount`, the data source flags the result as truncated and sets `parseStatus` to `{ status: 'partial', error: '…' }`. This avoids silently presenting incomplete sessions. Adjust `maxSpanCount` upward for workspaces with very large sessions.
+> **Truncation detection:** When a session query returns rows equal to or exceeding `maxSpanCount`, the data source flags the result as truncated and sets `parseStatus` to `{ status: 'partial', error: '…' }`. This avoids silently presenting incomplete sessions. Adjust `maxSpanCount` upward for workspaces with very large sessions.
 
 For authentication setup, see the [Azure Authentication Setup Guide](../../docs/guides/azure-authentication-setup.md).
 

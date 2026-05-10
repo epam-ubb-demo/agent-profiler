@@ -14,7 +14,7 @@
  * - 3 turns (plus a `<no-turn>` bucket for the root span)
  * - `selectedModel` = 'claude-4' (first LLM span chronologically)
  * - 1 model change (claude-4 → gpt-5)
- * - 3 tool calls total
+ * - 4 tool calls total (read_file, edit, bash, grep)
  * - 1 subagent invocation
  * - `parseStatus` = 'ok'
  */
