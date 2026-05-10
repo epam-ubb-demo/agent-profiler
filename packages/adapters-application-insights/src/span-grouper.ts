@@ -54,11 +54,22 @@ export function groupSpansBySession(
   const SESSION_DIM = 'copilot_chat.session.id';
   const hasSessionDim = spans.some((s) => s.dims[SESSION_DIM] != null);
 
+  // Build per-trace session ID lookup
+  const traceSessionMap = new Map<string, string>();
+  if (hasSessionDim) {
+    for (const span of spans) {
+      const sid = span.dims[SESSION_DIM];
+      if (sid != null && !traceSessionMap.has(span.traceId)) {
+        traceSessionMap.set(span.traceId, sid);
+      }
+    }
+  }
+
   const buckets = new Map<string, OTelSpan[]>();
 
   for (const span of spans) {
     const key = hasSessionDim
-      ? (span.dims[SESSION_DIM] ?? span.traceId)
+      ? (traceSessionMap.get(span.traceId) ?? span.traceId)
       : span.traceId;
 
     let list = buckets.get(key);

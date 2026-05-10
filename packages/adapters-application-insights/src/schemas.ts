@@ -40,12 +40,13 @@ const RawSpanRowSchema = z.object({
   operation_Id: z.string(),
   operation_ParentId: z.string().nullish().transform((v) => v ?? null),
   name: z.string(),
-  timestamp: z.string(),
+  timestamp: z.union([z.string(), z.date().transform((d) => d.toISOString())]),
   duration: z.number(),
   success: z.boolean().default(true),
   customDimensions: z
     .union([z.string(), z.record(z.unknown())])
-    .default('{}'),
+    .nullish()
+    .transform((v) => v ?? '{}'),
 });
 
 // ---------------------------------------------------------------------------

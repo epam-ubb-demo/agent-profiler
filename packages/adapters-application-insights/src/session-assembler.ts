@@ -129,10 +129,10 @@ export function aggregateShutdownMetrics(
     totalApiDurationMs += m.apiDurationMs;
   }
 
-  // Use the latest span timestamp as the shutdown timestamp
-  const lastSpan = [...allSpans].sort((a, b) =>
-    b.timestamp.localeCompare(a.timestamp),
-  )[0];
+  // Use the latest span end time (timestamp + duration) as the shutdown timestamp
+  const lastEndTs = [...allSpans]
+    .map((s) => new Date(s.timestamp).getTime() + s.durationMs)
+    .reduce((max, t) => Math.max(max, t), 0);
 
   return {
     totalPremiumRequests,
@@ -143,7 +143,9 @@ export function aggregateShutdownMetrics(
     conversationTokens: 0,
     toolDefinitionsTokens: 0,
     codeChanges: {},
-    timestamp: lastSpan?.timestamp ?? null,
+    timestamp: allSpans.length > 0
+      ? new Date(lastEndTs).toISOString()
+      : null,
   };
 }
 
@@ -293,8 +295,6 @@ export function assembleSession(
   // Step 6 — Aggregate metrics
   const allNodes = flattenTree(roots);
   const llmNodes = allNodes.filter((n) => n.kind === 'llm');
-  const llmSpans = llmNodes.map((n) => n.span);
-  const modelMetrics = aggregateModelMetrics(llmSpans);
   const shutdown = aggregateShutdownMetrics(llmNodes, spans);
   const modelChanges = detectModelChanges(llmNodes);
 
@@ -306,15 +306,26 @@ export function assembleSession(
     .filter((m): m is Exclude<typeof m, null> => m !== null);
   const allSubagents = turns.flatMap((t) => t.subagents);
 
-  // Determine selected model from first LLM metric or first model change
-  const selectedModel = modelMetrics[0]?.model ?? '';
+  // Determine selected model from chronologically-first LLM span
+  const sortedLlmNodes = [...llmNodes].sort((a, b) =>
+    a.span.timestamp.localeCompare(b.span.timestamp),
+  );
+  const selectedModel =
+    sortedLlmNodes[0]?.span.dims['gen_ai.response.model'] ??
+    sortedLlmNodes[0]?.span.dims['gen_ai.request.model'] ??
+    '';
 
   // Session identity and context from span dimensions
-  const firstSpan = spans[0];
-  const sessionId =
-    firstSpan?.dims['copilot_chat.session.id'] ??
-    firstSpan?.traceId ??
-    '';
+  const sessionId = spans.find((s) => s.dims['copilot_chat.session.id'] != null)
+    ?.dims['copilot_chat.session.id']
+    ?? spans[0]?.traceId
+    ?? '';
+
+  const contextSpan = spans.find((s) =>
+    s.dims['copilot_chat.context.repository'] != null ||
+    s.dims['copilot_chat.context.branch'] != null ||
+    s.dims['copilot_chat.context.cwd'] != null,
+  );
 
   // Time bounds
   const startTs = spans.length > 0 ? spans[0]!.timestamp : null;
@@ -334,9 +345,9 @@ export function assembleSession(
     copilotVersion: '',
     selectedModel,
     reasoningEffort: '',
-    repository: firstSpan?.dims['copilot_chat.context.repository'] ?? '',
-    branch: firstSpan?.dims['copilot_chat.context.branch'] ?? '',
-    cwd: firstSpan?.dims['copilot_chat.context.cwd'] ?? '',
+    repository: contextSpan?.dims['copilot_chat.context.repository'] ?? '',
+    branch: contextSpan?.dims['copilot_chat.context.branch'] ?? '',
+    cwd: contextSpan?.dims['copilot_chat.context.cwd'] ?? '',
     startTs,
     endTs,
     modelChanges,

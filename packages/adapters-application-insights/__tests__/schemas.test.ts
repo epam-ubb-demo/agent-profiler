@@ -120,6 +120,19 @@ describe('parseSpanRow', () => {
 
     expect(span.success).toBe(true);
   });
+
+  it('accepts a Date object for timestamp and coerces to ISO string', () => {
+    const date = new Date('2025-06-15T12:30:00.000Z');
+    const span = parseSpanRow(makeRawRow({ timestamp: date }));
+
+    expect(span.timestamp).toBe('2025-06-15T12:30:00.000Z');
+  });
+
+  it('handles customDimensions: null gracefully', () => {
+    const span = parseSpanRow(makeRawRow({ customDimensions: null }));
+
+    expect(span.dims).toEqual({});
+  });
 });
 
 // ---------------------------------------------------------------------------

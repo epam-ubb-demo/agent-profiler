@@ -46,8 +46,8 @@ describe('groupSpansBySession', () => {
 
   it('creates multiple groups for different session ids', () => {
     const spans = [
-      makeSpan({ spanId: 's1', dims: { 'copilot_chat.session.id': 'sess-a' } }),
-      makeSpan({ spanId: 's2', dims: { 'copilot_chat.session.id': 'sess-b' } }),
+      makeSpan({ spanId: 's1', traceId: 'trace-a', dims: { 'copilot_chat.session.id': 'sess-a' } }),
+      makeSpan({ spanId: 's2', traceId: 'trace-b', dims: { 'copilot_chat.session.id': 'sess-b' } }),
     ];
 
     const groups = groupSpansBySession(spans);
@@ -71,7 +71,7 @@ describe('groupSpansBySession', () => {
     expect(ids).toEqual(['trace-a', 'trace-b']);
   });
 
-  it('uses session dim strategy when some spans have it, falling back to traceId for others', () => {
+  it('uses per-trace session ID resolution when some spans have it', () => {
     const spans = [
       makeSpan({ spanId: 's1', traceId: 'trace-x', dims: { 'copilot_chat.session.id': 'sess-1' } }),
       makeSpan({ spanId: 's2', traceId: 'trace-x', dims: {} }),
@@ -79,10 +79,10 @@ describe('groupSpansBySession', () => {
 
     const groups = groupSpansBySession(spans);
 
-    // s1 -> sess-1, s2 -> trace-x (fallback within session-dim strategy)
-    expect(groups).toHaveLength(2);
-    const ids = groups.map((g) => g.sessionId).sort();
-    expect(ids).toEqual(['sess-1', 'trace-x']);
+    // Both spans are in trace-x; s1 provides session id for the whole trace
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.sessionId).toBe('sess-1');
+    expect(groups[0]!.spans).toHaveLength(2);
   });
 
   it('sorts spans within each group by timestamp ascending', () => {

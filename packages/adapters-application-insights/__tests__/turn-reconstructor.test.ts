@@ -220,7 +220,7 @@ describe('extractTurns', () => {
     expect(buckets[0]!.startTs! <= buckets[1]!.startTs!).toBe(true);
   });
 
-  it('skips spans without turn id in Strategy A', () => {
+  it('collects spans without turn id into __unassigned__ bucket (Strategy A)', () => {
     const spans = [
       makeSpan({ spanId: 'root', parentSpanId: null, dims: { 'copilot_chat.turn.id': 'turn-a' } }),
       makeSpan({ spanId: 'child', parentSpanId: 'root', dims: {} }),
@@ -229,9 +229,30 @@ describe('extractTurns', () => {
 
     const buckets = extractTurns(roots, spans);
 
-    expect(buckets).toHaveLength(1);
-    expect(buckets[0]!.spans).toHaveLength(1);
-    expect(buckets[0]!.spans[0]!.span.spanId).toBe('root');
+    expect(buckets).toHaveLength(2);
+    const turnIds = buckets.map((b) => b.turnId).sort();
+    expect(turnIds).toEqual(['__unassigned__', 'turn-a']);
+    const unassigned = buckets.find((b) => b.turnId === '__unassigned__')!;
+    expect(unassigned.spans).toHaveLength(1);
+    expect(unassigned.spans[0]!.span.spanId).toBe('child');
+  });
+
+  it('sorts children by timestamp before assigning synthetic IDs (Strategy B)', () => {
+    const spans = [
+      makeSpan({ spanId: 'root', parentSpanId: null, timestamp: '2025-01-01T00:00:00.000Z' }),
+      makeSpan({ spanId: 'child-late', parentSpanId: 'root', timestamp: '2025-01-01T00:02:00.000Z' }),
+      makeSpan({ spanId: 'child-early', parentSpanId: 'root', timestamp: '2025-01-01T00:01:00.000Z' }),
+    ];
+    const roots = buildSpanTree(spans);
+
+    const buckets = extractTurns(roots, spans);
+
+    expect(buckets).toHaveLength(2);
+    // turn-0 should be the chronologically earlier child
+    expect(buckets[0]!.turnId).toBe('turn-0');
+    expect(buckets[0]!.spans[0]!.span.spanId).toBe('child-early');
+    expect(buckets[1]!.turnId).toBe('turn-1');
+    expect(buckets[1]!.spans[0]!.span.spanId).toBe('child-late');
   });
 });
 
@@ -358,6 +379,28 @@ describe('mapToolCall', () => {
 
     expect(tc.argumentsPreview).toBe(shortArgs);
   });
+
+  it('uses parentModel when the tool span has no model dim', () => {
+    const node = makeNode(
+      { dims: { 'copilot_chat.tool.call.name': 'read_file' } },
+      { kind: 'tool' },
+    );
+
+    const tc = mapToolCall(node, 'turn-0', 'claude-4');
+
+    expect(tc.model).toBe('claude-4');
+  });
+
+  it('prefers tool span model dim over parentModel', () => {
+    const node = makeNode(
+      { dims: { 'copilot_chat.tool.call.name': 'read_file', 'gen_ai.request.model': 'gpt-5' } },
+      { kind: 'tool' },
+    );
+
+    const tc = mapToolCall(node, 'turn-0', 'claude-4');
+
+    expect(tc.model).toBe('gpt-5');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -481,6 +524,51 @@ describe('buildTurns', () => {
     const { fanoutTurns } = buildTurns([bucket]);
 
     expect(fanoutTurns[0]!.model).toBe('claude-4');
+  });
+
+  it('sorts events chronologically within each turn', () => {
+    const bucket: TurnBucket = {
+      turnId: 'turn-0',
+      spans: [
+        makeNode(
+          {
+            spanId: 'tool-1',
+            timestamp: '2025-01-01T00:00:03.000Z',
+            durationMs: 100,
+            dims: { 'copilot_chat.tool.call.name': 'read_file' },
+          },
+          { kind: 'tool' },
+        ),
+        makeNode(
+          {
+            spanId: 'llm-1',
+            timestamp: '2025-01-01T00:00:01.000Z',
+            durationMs: 200,
+            dims: { 'gen_ai.usage.input_tokens': '10', 'gen_ai.response.model': 'claude-4' },
+          },
+          { kind: 'llm' },
+        ),
+        makeNode(
+          {
+            spanId: 'llm-2',
+            timestamp: '2025-01-01T00:00:05.000Z',
+            durationMs: 150,
+            dims: { 'gen_ai.usage.input_tokens': '20', 'gen_ai.response.model': 'gpt-5' },
+          },
+          { kind: 'llm' },
+        ),
+      ],
+      startTs: '2025-01-01T00:00:01.000Z',
+      endTs: '2025-01-01T00:00:05.150Z',
+    };
+
+    const { turns } = buildTurns([bucket]);
+
+    // LLM spans should be sorted: llm-1 first, llm-2 second
+    expect(turns[0]!.assistantMessages[0]!.requestId).toBe('llm-1');
+    expect(turns[0]!.assistantMessages[1]!.requestId).toBe('llm-2');
+    // Tool call should inherit model from the LLM span that preceded it
+    expect(turns[0]!.toolCalls[0]!.model).toBe('claude-4');
   });
 });
 

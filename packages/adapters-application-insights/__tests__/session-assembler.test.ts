@@ -296,6 +296,48 @@ describe('aggregateShutdownMetrics', () => {
     expect(shutdown!.totalApiDurationMs).toBe(200);
     expect(shutdown!.modelMetrics).toHaveLength(1);
   });
+
+  it('uses MAX(timestamp + duration) for shutdown timestamp', () => {
+    const earlyLongSpan = makeSpan({
+      spanId: 'llm-1',
+      timestamp: '2025-01-01T00:00:00.000Z',
+      durationMs: 10000,
+      dims: {
+        'gen_ai.response.model': 'claude-4',
+        'gen_ai.usage.input_tokens': '10',
+        'gen_ai.usage.output_tokens': '20',
+      },
+    });
+
+    const lateLlmSpan = makeSpan({
+      spanId: 'llm-2',
+      timestamp: '2025-01-01T00:00:05.000Z',
+      durationMs: 100,
+      dims: {
+        'gen_ai.response.model': 'claude-4',
+        'gen_ai.usage.input_tokens': '5',
+        'gen_ai.usage.output_tokens': '10',
+      },
+    });
+
+    const llmNodes = [
+      makeNode(
+        { ...earlyLongSpan },
+        { kind: 'llm' },
+      ),
+      makeNode(
+        { ...lateLlmSpan },
+        { kind: 'llm' },
+      ),
+    ];
+
+    const allSpans = [earlyLongSpan, lateLlmSpan];
+    const shutdown = aggregateShutdownMetrics(llmNodes, allSpans);
+
+    // earlyLongSpan ends at T+10s, lateLlmSpan ends at T+5.1s
+    // MAX should be T+10s = 2025-01-01T00:00:10.000Z
+    expect(shutdown!.timestamp).toBe('2025-01-01T00:00:10.000Z');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -447,9 +489,9 @@ describe('assembleSession', () => {
     // Session identity
     expect(session.sessionId).toBe('sess-1');
 
-    // Turns
-    expect(session.turns).toHaveLength(2);
-    expect(session.fanoutTurns).toHaveLength(2);
+    // Turns (turn-1, turn-2, plus __unassigned__ for spans without turn IDs)
+    expect(session.turns).toHaveLength(3);
+    expect(session.fanoutTurns).toHaveLength(3);
 
     // Events
     expect(session.toolCalls).toHaveLength(1);
@@ -491,5 +533,69 @@ describe('assembleSession', () => {
     expect(session.compactions).toEqual([]);
     expect(session.utilisation).toEqual([]);
     expect(session.shutdown).toBeNull();
+  });
+
+  it('picks selectedModel from the chronologically-first LLM span', () => {
+    // LLM span with later timestamp but earlier insertion order uses model-b
+    const llmLate = makeRawRow({
+      id: 'llm-late',
+      operation_Id: 'trace-1',
+      operation_ParentId: null,
+      name: 'llm',
+      timestamp: '2025-01-01T00:00:02.000Z',
+      duration: 100,
+      customDimensions: JSON.stringify({
+        'gen_ai.response.model': 'model-b',
+        'gen_ai.usage.input_tokens': '10',
+      }),
+    });
+
+    // LLM span with earlier timestamp uses model-a
+    const llmEarly = makeRawRow({
+      id: 'llm-early',
+      operation_Id: 'trace-1',
+      operation_ParentId: null,
+      name: 'llm',
+      timestamp: '2025-01-01T00:00:01.000Z',
+      duration: 100,
+      customDimensions: JSON.stringify({
+        'gen_ai.response.model': 'model-a',
+        'gen_ai.usage.input_tokens': '5',
+      }),
+    });
+
+    // Deliberately put the late row first to test that insertion order doesn't matter
+    const session = assembleSession([llmLate, llmEarly]);
+
+    expect(session.selectedModel).toBe('model-a');
+  });
+
+  it('scans all spans for sessionId, not just spans[0]', () => {
+    const structuralRow = makeRawRow({
+      id: 'structural',
+      operation_Id: 'trace-1',
+      operation_ParentId: null,
+      name: 'root',
+      timestamp: '2025-01-01T00:00:00.000Z',
+      duration: 100,
+      customDimensions: '{}',
+    });
+
+    const llmRow = makeRawRow({
+      id: 'llm-1',
+      operation_Id: 'trace-1',
+      operation_ParentId: 'structural',
+      name: 'llm',
+      timestamp: '2025-01-01T00:00:01.000Z',
+      duration: 100,
+      customDimensions: JSON.stringify({
+        'copilot_chat.session.id': 'my-session',
+        'gen_ai.usage.input_tokens': '10',
+      }),
+    });
+
+    const session = assembleSession([structuralRow, llmRow]);
+
+    expect(session.sessionId).toBe('my-session');
   });
 });

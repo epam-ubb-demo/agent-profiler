@@ -39,6 +39,14 @@ export interface SpanNode {
   readonly depth: number;
 }
 
+/** Internal mutable node used during tree construction. */
+interface MutableSpanNode {
+  readonly span: OTelSpan;
+  readonly kind: SpanKind;
+  readonly children: MutableSpanNode[];
+  depth: number;
+}
+
 /** A bucket accumulating spans that belong to the same turn. */
 export interface TurnBucket {
   readonly turnId: string;
@@ -92,8 +100,8 @@ export function classifySpan(span: OTelSpan): SpanKind {
 export function buildSpanTree(spans: readonly OTelSpan[]): SpanNode[] {
   if (spans.length === 0) return [];
 
-  // Phase 1 — create nodes (depth 0 initially; adjusted later)
-  const nodeMap = new Map<string, SpanNode>();
+  // Phase 1 — create mutable nodes (depth 0 initially; adjusted later)
+  const nodeMap = new Map<string, MutableSpanNode>();
   for (const span of spans) {
     nodeMap.set(span.spanId, {
       span,
@@ -104,7 +112,7 @@ export function buildSpanTree(spans: readonly OTelSpan[]): SpanNode[] {
   }
 
   // Phase 2 — link children to parents
-  const roots: SpanNode[] = [];
+  const roots: MutableSpanNode[] = [];
 
   for (const node of nodeMap.values()) {
     if (node.span.parentSpanId && nodeMap.has(node.span.parentSpanId)) {
@@ -115,21 +123,21 @@ export function buildSpanTree(spans: readonly OTelSpan[]): SpanNode[] {
   }
 
   // Phase 3 — assign depth via BFS
-  const queue: { node: SpanNode; depth: number }[] = roots.map((r) => ({
+  const queue: { node: MutableSpanNode; depth: number }[] = roots.map((r) => ({
     node: r,
     depth: 0,
   }));
 
   while (queue.length > 0) {
     const { node, depth } = queue.shift()!;
-    // depth is readonly on the interface but we own the objects here
-    (node as { depth: number }).depth = depth;
+    node.depth = depth;
     for (const child of node.children) {
       queue.push({ node: child, depth: depth + 1 });
     }
   }
 
-  return roots;
+  // MutableSpanNode is structurally compatible with SpanNode
+  return roots as unknown as SpanNode[];
 }
 
 // ---------------------------------------------------------------------------
@@ -200,8 +208,7 @@ export function extractTurns(
     // Strategy A — group by explicit turn id
     const allNodes = flattenTree(roots);
     for (const node of allNodes) {
-      const turnId = node.span.dims[TURN_DIM];
-      if (turnId == null) continue;
+      const turnId = node.span.dims[TURN_DIM] ?? '__unassigned__';
 
       let bucket = buckets.get(turnId);
       if (!bucket) {
@@ -226,7 +233,10 @@ export function extractTurns(
         };
         buckets.set(turnId, bucket);
       } else {
-        for (const child of root.children) {
+        const sortedChildren = [...root.children].sort((a, b) =>
+          a.span.timestamp.localeCompare(b.span.timestamp),
+        );
+        for (const child of sortedChildren) {
           const turnId = `turn-${turnIndex++}`;
           const descendants = flattenTree([child]);
           const bucket: TurnBucket = {
@@ -287,13 +297,14 @@ export function mapAssistantMessage(
 export function mapToolCall(
   node: SpanNode,
   turnId: string,
+  parentModel?: string | null,
 ): ToolCall {
   const d = node.span.dims;
   const args = d['copilot_chat.tool.call.arguments'] ?? '';
   return {
     toolCallId: d['copilot_chat.tool.call.id'] ?? node.span.spanId,
     toolName: d['copilot_chat.tool.call.name'] ?? node.span.name,
-    model: d['gen_ai.request.model'] ?? null,
+    model: d['gen_ai.request.model'] ?? parentModel ?? null,
     startTs: node.span.timestamp,
     endTs: computeEndTs(node.span),
     durationMs: node.span.durationMs,
@@ -377,13 +388,23 @@ export function buildTurns(
     const subagents: SubagentInvocation[] = [];
     let userMessage: UserMessage | null = null;
 
-    for (const node of bucket.spans) {
+    // Sort spans chronologically for proper model tracking
+    const sortedSpans = [...bucket.spans].sort((a, b) =>
+      a.span.timestamp.localeCompare(b.span.timestamp),
+    );
+
+    let currentModel: string | null = null;
+
+    for (const node of sortedSpans) {
       switch (node.kind) {
-        case 'llm':
-          assistantMessages.push(mapAssistantMessage(node, bucket.turnId));
+        case 'llm': {
+          const msg = mapAssistantMessage(node, bucket.turnId);
+          assistantMessages.push(msg);
+          currentModel = msg.model;
           break;
+        }
         case 'tool':
-          toolCalls.push(mapToolCall(node, bucket.turnId));
+          toolCalls.push(mapToolCall(node, bucket.turnId, currentModel));
           break;
         case 'subagent':
           subagents.push(mapSubagentInvocation(node, bucket.turnId));
