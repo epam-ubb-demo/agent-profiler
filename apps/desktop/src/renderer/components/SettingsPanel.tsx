@@ -35,6 +35,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
   const [testResult, setTestResult] = useState<TestConnectionResultIpc | null>(null);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Load settings when the dialog opens
   useEffect(() => {
@@ -67,7 +68,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
 
   const buildSettings = useCallback((): AppInsightsSettingsIpc => {
     return {
-      workspaceId,
+      workspaceId: workspaceId.trim(),
       timeRangePreset: timeRange.timeRangePreset,
       ...(timeRange.customStartDate ? { customStartDate: timeRange.customStartDate } : {}),
       ...(timeRange.customEndDate ? { customEndDate: timeRange.customEndDate } : {}),
@@ -94,12 +95,13 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
 
   const handleSave = useCallback(async () => {
     setSaving(true);
+    setSaveError(null);
     try {
       await window.electronApi.settings.set(buildSettings());
       onSettingsSaved?.();
       setOpen(false);
-    } catch {
-      // Save failed — keep dialog open so user can retry
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -192,7 +194,13 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex flex-col gap-2">
+          {saveError && (
+            <div className="flex items-center gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+              <XCircle className="h-4 w-4 shrink-0" />
+              <span>{saveError}</span>
+            </div>
+          )}
           <Button
             type="button"
             onClick={() => void handleSave()}

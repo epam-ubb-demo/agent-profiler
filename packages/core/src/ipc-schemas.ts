@@ -67,7 +67,7 @@ export const ipcChannels = {
  * Schema for Application Insights connection settings flowing across IPC.
  */
 export const appInsightsSettingsSchema = z.object({
-  workspaceId: z.string(),
+  workspaceId: z.string().trim(),
   timeRangePreset: z.enum(['24h', '7d', '30d', 'custom']),
   customStartDate: z.string().date().optional(),
   customEndDate: z.string().date().optional(),

@@ -46,6 +46,7 @@ export function TimeRangePicker({ value, onChange }: TimeRangePickerProps) {
             type="button"
             size="sm"
             variant={value.timeRangePreset === preset.value ? 'default' : 'outline'}
+            aria-pressed={value.timeRangePreset === preset.value}
             onClick={() => handlePresetClick(preset.value)}
           >
             {preset.label}

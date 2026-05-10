@@ -5,6 +5,7 @@ import {
   ipcChannels,
   sessionListItemSchema,
   appInsightsSettingsSchema,
+  testConnectionResultSchema,
 } from '@agent-profiler/core';
 import type { AppInsightsSettingsIpc } from '@agent-profiler/core';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
@@ -140,7 +141,12 @@ ipcMain.handle(ipcChannels.DIALOG_OPEN_DIRECTORY, async () => {
 // ── Settings IPC handlers ───────────────────────────────────────────────
 
 ipcMain.handle(ipcChannels.SETTINGS_GET, () => {
-  return getAppInsightsSettings();
+  try {
+    const raw = getAppInsightsSettings();
+    return appInsightsSettingsSchema.parse(raw);
+  } catch {
+    return { workspaceId: '', timeRangePreset: '7d' as const };
+  }
 });
 
 ipcMain.handle(
@@ -153,7 +159,8 @@ ipcMain.handle(
 );
 
 ipcMain.handle(ipcChannels.SETTINGS_TEST_CONNECTION, async () => {
-  return manager.testConnection();
+  const result = await manager.testConnection();
+  return testConnectionResultSchema.parse(result);
 });
 
 app.whenReady().then(async () => {
