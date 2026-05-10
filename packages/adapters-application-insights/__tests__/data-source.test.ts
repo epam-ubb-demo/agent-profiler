@@ -13,6 +13,7 @@ vi.mock('../src/query-client', () => ({
     testConnection: vi.fn(),
     query: vi.fn(),
   })),
+  DEFAULT_MAX_SPAN_COUNT: 10_000,
 }));
 
 vi.mock('../src/session-assembler', () => ({
@@ -355,6 +356,62 @@ describe('ApplicationInsightsDataSource', () => {
 
       await expect(ds.getSession(longId)).resolves.toBeNull();
       expect(mock.query).not.toHaveBeenCalled();
+    });
+
+    it('sets parseStatus to partial when row count >= maxSpanCount (truncation)', async () => {
+      // Create a data source with a very small maxSpanCount
+      const ds = new ApplicationInsightsDataSource({
+        workspaceId: TEST_WORKSPACE_ID,
+        maxSpanCount: 2,
+      });
+      const mock = getMockInstance();
+      // Return exactly 2 rows (= maxSpanCount), triggering truncation
+      mock.query.mockResolvedValueOnce({ rows: [mockSpanRows[0], mockSpanRows[0]] });
+      vi.mocked(mockedAssembleSession).mockReturnValueOnce({
+        ...FAKE_SESSION,
+        parseStatus: { status: 'ok', error: null },
+      });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.parseStatus.status).toBe('partial');
+      expect(session!.parseStatus.error).toContain('truncated');
+      expect(session!.parseStatus.error).toContain('2 spans');
+    });
+
+    it('does not override parseStatus when row count < maxSpanCount', async () => {
+      const ds = new ApplicationInsightsDataSource({
+        workspaceId: TEST_WORKSPACE_ID,
+        maxSpanCount: 100,
+      });
+      const mock = getMockInstance();
+      mock.query.mockResolvedValueOnce({ rows: mockSpanRows });
+      vi.mocked(mockedAssembleSession).mockReturnValueOnce({
+        ...FAKE_SESSION,
+        parseStatus: { status: 'ok', error: null },
+      });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.parseStatus.status).toBe('ok');
+    });
+
+    it('uses DEFAULT_MAX_SPAN_COUNT when maxSpanCount is not specified', async () => {
+      // Default is 10_000, so with 1 row it should not trigger truncation
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.query.mockResolvedValueOnce({ rows: mockSpanRows });
+      vi.mocked(mockedAssembleSession).mockReturnValueOnce({
+        ...FAKE_SESSION,
+        parseStatus: { status: 'ok', error: null },
+      });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.parseStatus.status).toBe('ok');
     });
   });
 });

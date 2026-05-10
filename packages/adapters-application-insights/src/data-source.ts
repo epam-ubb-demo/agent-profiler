@@ -14,6 +14,7 @@ import type {
 import type { TokenCredential } from '@azure/identity';
 
 import { QueryClient } from './query-client';
+import { DEFAULT_MAX_SPAN_COUNT } from './query-client';
 import { assembleSession } from './session-assembler';
 import type { TimeRange } from './types';
 
@@ -116,19 +117,23 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
   private readonly workspaceId: string;
   private readonly timeRange: TimeRange | undefined;
   private readonly cache: SessionCache | undefined;
+  private readonly maxSpanCount: number;
 
   constructor(config: {
     workspaceId: string;
     credential?: TokenCredential | undefined;
     timeRange?: TimeRange | undefined;
     cache?: SessionCache | undefined;
+    maxSpanCount?: number | undefined;
   }) {
     this.workspaceId = config.workspaceId;
     this.timeRange = config.timeRange;
     this.cache = config.cache;
+    this.maxSpanCount = config.maxSpanCount ?? DEFAULT_MAX_SPAN_COUNT;
     this.queryClient = new QueryClient({
       workspaceId: config.workspaceId,
       credential: config.credential,
+      maxSpanCount: this.maxSpanCount,
     });
   }
 
@@ -207,7 +212,17 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
         return null;
       }
 
+      const truncated = result.rows.length >= this.maxSpanCount;
+
       const session = assembleSession(result.rows);
+
+      // Override parseStatus when the result set was truncated at the row limit.
+      if (truncated) {
+        (session as { parseStatus: typeof session.parseStatus }).parseStatus = {
+          status: 'partial',
+          error: `Result set truncated at ${result.rows.length} spans — session may be incomplete`,
+        };
+      }
 
       // Store in cache if available — cache write failures must not affect the return value
       if (this.cache) {

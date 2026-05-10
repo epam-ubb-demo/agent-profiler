@@ -1,7 +1,7 @@
 import { LogsQueryClient } from '@azure/monitor-query-logs';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { QueryClient } from '../src/query-client';
+import { QueryClient, DEFAULT_MAX_SPAN_COUNT } from '../src/query-client';
 import {
   AuthenticationError,
   WorkspaceNotFoundError,
@@ -180,5 +180,89 @@ describe('QueryClient', () => {
       credential: customCredential as never,
     });
     expect(client).toBeDefined();
+  });
+
+  // -----------------------------------------------------------------------
+  // maxSpanCount
+  // -----------------------------------------------------------------------
+
+  it('defaults maxSpanCount to DEFAULT_MAX_SPAN_COUNT (10_000)', () => {
+    expect(DEFAULT_MAX_SPAN_COUNT).toBe(10_000);
+  });
+
+  it('respects custom maxSpanCount from config', async () => {
+    // Create 5 rows — at the custom limit of 5
+    const rows = Array.from({ length: 5 }, (_, i) => [`row-${i}`, i]);
+    mockQueryWorkspace.mockResolvedValueOnce({
+      status: 'Success',
+      tables: [
+        {
+          columnDescriptors: [
+            { name: 'name', type: 'string' },
+            { name: 'value', type: 'int' },
+          ],
+          rows,
+        },
+      ],
+    });
+
+    const client = new QueryClient({
+      workspaceId: TEST_WORKSPACE_ID,
+      maxSpanCount: 5,
+    });
+
+    const result = await client.queryAllPages('TestQuery', TEST_TIME_RANGE);
+
+    expect(result.truncated).toBe(true);
+    expect(result.rows).toHaveLength(5);
+  });
+
+  // -----------------------------------------------------------------------
+  // queryAllPages
+  // -----------------------------------------------------------------------
+
+  it('queryAllPages returns truncated: false when rows < maxSpanCount', async () => {
+    mockQueryWorkspace.mockResolvedValueOnce({
+      status: 'Success',
+      tables: [
+        {
+          columnDescriptors: [{ name: 'id', type: 'string' }],
+          rows: [['a'], ['b']],
+        },
+      ],
+    });
+
+    const client = new QueryClient({
+      workspaceId: TEST_WORKSPACE_ID,
+      maxSpanCount: 100,
+    });
+
+    const result = await client.queryAllPages('TestQuery', TEST_TIME_RANGE);
+
+    expect(result.truncated).toBe(false);
+    expect(result.rows).toHaveLength(2);
+  });
+
+  it('queryAllPages returns truncated: true when rows >= maxSpanCount', async () => {
+    const rows = Array.from({ length: 3 }, (_, i) => [`item-${i}`]);
+    mockQueryWorkspace.mockResolvedValueOnce({
+      status: 'Success',
+      tables: [
+        {
+          columnDescriptors: [{ name: 'id', type: 'string' }],
+          rows,
+        },
+      ],
+    });
+
+    const client = new QueryClient({
+      workspaceId: TEST_WORKSPACE_ID,
+      maxSpanCount: 3,
+    });
+
+    const result = await client.queryAllPages('TestQuery', TEST_TIME_RANGE);
+
+    expect(result.truncated).toBe(true);
+    expect(result.rows).toHaveLength(3);
   });
 });

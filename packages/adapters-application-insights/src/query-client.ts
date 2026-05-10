@@ -12,6 +12,9 @@ import {
 
 const DEFAULT_TIMEOUT_MS = 60_000;
 
+/** Default maximum span count per session before truncation is flagged. */
+export const DEFAULT_MAX_SPAN_COUNT = 10_000;
+
 /**
  * Thin wrapper around the Azure Monitor Logs Query client.
  *
@@ -22,10 +25,12 @@ export class QueryClient {
   private readonly logsClient: LogsQueryClient;
   private readonly config: AppInsightsConfig;
   private readonly timeoutMs: number;
+  private readonly maxSpanCount: number;
 
   constructor(config: AppInsightsConfig) {
     this.config = config;
     this.timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.maxSpanCount = config.maxSpanCount ?? DEFAULT_MAX_SPAN_COUNT;
 
     const credential: TokenCredential =
       config.credential ?? new DefaultAzureCredential();
@@ -77,6 +82,26 @@ export class QueryClient {
       }
       throw this.mapError(error);
     }
+  }
+
+  /**
+   * Execute a KQL query and detect whether the result set was truncated.
+   *
+   * App Insights / Log Analytics imposes row limits on query results.
+   * When the returned row count reaches {@link maxSpanCount}, the result
+   * is flagged as truncated so callers can surface a warning.
+   *
+   * @param kql - Kusto Query Language expression.
+   * @param timeRange - Start and end timestamps for the query window.
+   * @returns Query result with an additional `truncated` flag.
+   */
+  async queryAllPages(
+    kql: string,
+    timeRange: TimeRange,
+  ): Promise<QueryResult & { truncated: boolean }> {
+    const result = await this.query(kql, timeRange);
+    const truncated = result.rows.length >= this.maxSpanCount;
+    return { ...result, truncated };
   }
 
   /**
