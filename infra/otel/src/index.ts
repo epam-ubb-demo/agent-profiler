@@ -7,6 +7,7 @@ import { createTags, registerAutoTagging } from "./tags.js";
 import { resourceGroupName } from "./naming.js";
 import { NetworkStack } from "./network.js";
 import { MonitoringStack, addDiagnosticSettings } from "./monitoring.js";
+import { ContainerAppStack } from "./container-app.js";
 
 const config = new pulumi.Config();
 const environment = config.require("environment");
@@ -42,10 +43,25 @@ const monitoring = new MonitoringStack("monitoring", {
   tags,
 });
 
+// Container App stack (OTel Collector)
+const containerApp = new ContainerAppStack("container-app", {
+  environment,
+  region,
+  instance,
+  resourceGroupName: resourceGroup.name,
+  tags,
+  acaSubnetId: network.acaSubnetId,
+  logAnalyticsWorkspaceId: monitoring.logAnalyticsWorkspaceId,
+  appInsightsConnectionString: monitoring.appInsightsConnectionString,
+});
+
 // Wire diagnostic settings for resources owned by other stacks
 addDiagnosticSettings("vnet", network.vnetId, monitoring.logAnalyticsWorkspaceId);
+addDiagnosticSettings("cae", containerApp.caeId, monitoring.logAnalyticsWorkspaceId);
 
 // Exports
 export const resourceGroupOutput = resourceGroup.name;
 export const vnetId = network.vnetId;
 export const appInsightsConnectionString = monitoring.appInsightsConnectionString;
+export const containerAppFqdn = containerApp.containerAppFqdn;
+export const containerAppId = containerApp.containerAppId;
