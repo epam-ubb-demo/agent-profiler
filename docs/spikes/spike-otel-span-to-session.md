@@ -742,8 +742,8 @@ function reconstructSession(spans: OTelSpan[]): Session {
     : null;
 
   // Scan all spans for session-level attributes (not just spans[0])
-  function findAttribute(spans: OTelSpan[], key: string): string {
-    for (const s of spans) {
+  function findAttribute(searchSpans: OTelSpan[], key: string): string {
+    for (const s of searchSpans) {
       const val = s.dims[key];
       if (val !== undefined && val !== '') return String(val);
     }
