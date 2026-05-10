@@ -263,6 +263,40 @@ describe('detectModelChanges', () => {
     expect(changes[0]!.model).toBe('b');
     expect(changes[1]!.model).toBe('a');
   });
+
+  it('skips spans with no model info and reports no artificial changes', () => {
+    const nodes = [
+      makeNode({ spanId: 'a', timestamp: '2025-01-01T00:00:00.000Z', dims: { 'gen_ai.response.model': 'model-a' } }, { kind: 'llm' }),
+      makeNode({ spanId: 'b', timestamp: '2025-01-01T00:01:00.000Z', dims: {} }, { kind: 'llm' }),
+      makeNode({ spanId: 'c', timestamp: '2025-01-01T00:02:00.000Z', dims: { 'gen_ai.response.model': 'model-a' } }, { kind: 'llm' }),
+    ];
+
+    const changes = detectModelChanges(nodes);
+
+    expect(changes).toEqual([]);
+  });
+
+  it('sets currentModel from first span that has model info', () => {
+    const nodes = [
+      makeNode({ spanId: 'a', timestamp: '2025-01-01T00:00:00.000Z', dims: {} }, { kind: 'llm' }),
+      makeNode({ spanId: 'b', timestamp: '2025-01-01T00:01:00.000Z', dims: { 'gen_ai.response.model': 'model-a' } }, { kind: 'llm' }),
+    ];
+
+    const changes = detectModelChanges(nodes);
+
+    expect(changes).toEqual([]);
+  });
+
+  it('returns empty changes when all spans have no model info', () => {
+    const nodes = [
+      makeNode({ spanId: 'a', timestamp: '2025-01-01T00:00:00.000Z', dims: {} }, { kind: 'llm' }),
+      makeNode({ spanId: 'b', timestamp: '2025-01-01T00:01:00.000Z', dims: {} }, { kind: 'llm' }),
+    ];
+
+    const changes = detectModelChanges(nodes);
+
+    expect(changes).toEqual([]);
+  });
 });
 
 // ---------------------------------------------------------------------------

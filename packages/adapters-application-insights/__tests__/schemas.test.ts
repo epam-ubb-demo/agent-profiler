@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { parseSpanRow, parseSpanRows, safeInt } from '../src/schemas';
+import { parseSpanRow, parseSpanRows, safeInt, parseKustoDuration } from '../src/schemas';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -171,5 +171,73 @@ describe('parseSpanRows', () => {
 
     expect(spans).toEqual([]);
     expect(errors).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseKustoDuration
+// ---------------------------------------------------------------------------
+
+describe('parseKustoDuration', () => {
+  it('parses HH:mm:ss.fffffff format', () => {
+    // 1 second + 0.2345678 seconds = 1234.5678 ms
+    expect(parseKustoDuration('00:00:01.2345678')).toBeCloseTo(1234.5678, 2);
+  });
+
+  it('parses d.HH:mm:ss.fffffff format with day component', () => {
+    // 1 day + 2 hours + 3 minutes + 4 seconds + 0.567 seconds
+    const expected = 86_400_000 + 2 * 3_600_000 + 3 * 60_000 + 4 * 1_000 + 567;
+    expect(parseKustoDuration('1.02:03:04.5670000')).toBeCloseTo(expected, 0);
+  });
+
+  it('returns 0 for unparseable values', () => {
+    expect(parseKustoDuration('not-a-duration')).toBe(0);
+  });
+
+  it('handles format without fractional seconds', () => {
+    expect(parseKustoDuration('00:01:30')).toBe(90_000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseSpanRow — duration as Kusto timespan string (Fix 1)
+// ---------------------------------------------------------------------------
+
+describe('parseSpanRow — Kusto duration', () => {
+  it('parses duration as a Kusto timespan string', () => {
+    const span = parseSpanRow(makeRawRow({ duration: '00:00:01.2345678' }));
+    expect(span.durationMs).toBeCloseTo(1234.5678, 2);
+  });
+
+  it('parses duration with day component', () => {
+    const span = parseSpanRow(makeRawRow({ duration: '1.02:03:04.5670000' }));
+    const expected = 86_400_000 + 2 * 3_600_000 + 3 * 60_000 + 4 * 1_000 + 567;
+    expect(span.durationMs).toBeCloseTo(expected, 0);
+  });
+
+  it('returns durationMs 0 for unparseable duration string', () => {
+    const span = parseSpanRow(makeRawRow({ duration: 'not-a-duration' }));
+    expect(span.durationMs).toBe(0);
+  });
+
+  it('still works with duration as a regular number (regression)', () => {
+    const span = parseSpanRow(makeRawRow({ duration: 42 }));
+    expect(span.durationMs).toBe(42);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseSpanRow — invalid timestamp normalisation (Fix 2)
+// ---------------------------------------------------------------------------
+
+describe('parseSpanRow — timestamp validation', () => {
+  it('normalises an invalid timestamp string to epoch', () => {
+    const span = parseSpanRow(makeRawRow({ timestamp: 'not-a-date' }));
+    expect(span.timestamp).toBe('1970-01-01T00:00:00.000Z');
+  });
+
+  it('preserves a valid ISO timestamp string (regression)', () => {
+    const span = parseSpanRow(makeRawRow({ timestamp: '2025-06-15T12:00:00.000Z' }));
+    expect(span.timestamp).toBe('2025-06-15T12:00:00.000Z');
   });
 });

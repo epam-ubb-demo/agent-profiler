@@ -1,6 +1,6 @@
 export { QueryClient } from './query-client';
 export type { OTelSpan } from './schemas';
-export { parseSpanRow, parseSpanRows, safeInt } from './schemas';
+export { parseKustoDuration, parseSpanRow, parseSpanRows, safeInt } from './schemas';
 export { assembleSession } from './session-assembler';
 export type { SpanGroup } from './span-grouper';
 export { deduplicateSpans, groupSpansBySession } from './span-grouper';

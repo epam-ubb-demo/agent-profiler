@@ -177,7 +177,9 @@ export function detectModelChanges(
     const model =
       d['gen_ai.response.model'] ??
       d['gen_ai.request.model'] ??
-      'unknown';
+      null;
+
+    if (model === null) continue; // Skip spans with no model info
 
     if (currentModel === null) {
       // First model — not a change

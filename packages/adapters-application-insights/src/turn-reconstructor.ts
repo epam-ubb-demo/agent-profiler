@@ -123,6 +123,7 @@ export function buildSpanTree(spans: readonly OTelSpan[]): SpanNode[] {
   }
 
   // Phase 3 — assign depth via BFS
+  const visited = new Set<string>();
   const queue: { node: MutableSpanNode; depth: number }[] = roots.map((r) => ({
     node: r,
     depth: 0,
@@ -130,6 +131,8 @@ export function buildSpanTree(spans: readonly OTelSpan[]): SpanNode[] {
 
   while (queue.length > 0) {
     const { node, depth } = queue.shift()!;
+    if (visited.has(node.span.spanId)) continue;
+    visited.add(node.span.spanId);
     node.depth = depth;
     for (const child of node.children) {
       queue.push({ node: child, depth: depth + 1 });
@@ -149,17 +152,26 @@ export function buildSpanTree(spans: readonly OTelSpan[]): SpanNode[] {
  * duration.
  */
 export function computeEndTs(span: OTelSpan): string {
-  return new Date(
-    new Date(span.timestamp).getTime() + span.durationMs,
-  ).toISOString();
+  try {
+    const start = new Date(span.timestamp).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(span.durationMs)) {
+      return span.timestamp;
+    }
+    return new Date(start + span.durationMs).toISOString();
+  } catch {
+    return span.timestamp;
+  }
 }
 
 /** Recursively flatten a tree of span nodes into a flat array. */
 export function flattenTree(roots: readonly SpanNode[]): SpanNode[] {
   const result: SpanNode[] = [];
+  const visited = new Set<string>();
   const stack = [...roots];
   while (stack.length > 0) {
     const node = stack.pop()!;
+    if (visited.has(node.span.spanId)) continue;
+    visited.add(node.span.spanId);
     result.push(node);
     // Push children in reverse so left-most is popped first
     for (let i = node.children.length - 1; i >= 0; i--) {

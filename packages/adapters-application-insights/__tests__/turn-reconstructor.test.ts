@@ -585,6 +585,26 @@ describe('computeEndTs', () => {
 
     expect(computeEndTs(span)).toBe('2025-01-01T00:00:05.000Z');
   });
+
+  it('returns span.timestamp when durationMs is NaN', () => {
+    const span = makeSpan({
+      timestamp: '2025-01-01T00:00:00.000Z',
+      durationMs: NaN,
+    });
+
+    expect(() => computeEndTs(span)).not.toThrow();
+    expect(computeEndTs(span)).toBe('2025-01-01T00:00:00.000Z');
+  });
+
+  it('returns span.timestamp when durationMs is Infinity', () => {
+    const span = makeSpan({
+      timestamp: '2025-01-01T00:00:00.000Z',
+      durationMs: Infinity,
+    });
+
+    expect(() => computeEndTs(span)).not.toThrow();
+    expect(computeEndTs(span)).toBe('2025-01-01T00:00:00.000Z');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -605,5 +625,20 @@ describe('flattenTree', () => {
     expect(flat.map((n) => n.span.spanId)).toContain('c1');
     expect(flat.map((n) => n.span.spanId)).toContain('c2');
     expect(flat.map((n) => n.span.spanId)).toContain('gc');
+  });
+
+  it('terminates and deduplicates when the tree contains a cycle', () => {
+    const nodeA = makeNode({ spanId: 'a' }, { depth: 0 });
+    const nodeB = makeNode({ spanId: 'b' }, { depth: 1 });
+
+    // Create a cycle: A → B → A
+    (nodeA.children as SpanNode[]).push(nodeB);
+    (nodeB.children as SpanNode[]).push(nodeA);
+
+    const flat = flattenTree([nodeA]);
+
+    // Must terminate and return each node exactly once
+    expect(flat).toHaveLength(2);
+    expect(flat.map((n) => n.span.spanId).sort()).toEqual(['a', 'b']);
   });
 });

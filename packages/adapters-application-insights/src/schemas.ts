@@ -40,8 +40,14 @@ const RawSpanRowSchema = z.object({
   operation_Id: z.string(),
   operation_ParentId: z.string().nullish().transform((v) => v ?? null),
   name: z.string(),
-  timestamp: z.union([z.string(), z.date().transform((d) => d.toISOString())]),
-  duration: z.number(),
+  timestamp: z.union([
+    z.string().transform((s) => {
+      const d = new Date(s);
+      return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : s;
+    }),
+    z.date().transform((d) => d.toISOString()),
+  ]),
+  duration: z.union([z.number(), z.string().transform(parseKustoDuration)]),
   success: z.boolean().default(true),
   customDimensions: z
     .union([z.string(), z.record(z.unknown())])
@@ -52,6 +58,39 @@ const RawSpanRowSchema = z.object({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Parse a Kusto timespan string into milliseconds.
+ *
+ * Supports formats:
+ * - `HH:mm:ss.fffffff`
+ * - `d.HH:mm:ss.fffffff`
+ *
+ * @returns Duration in milliseconds, or `0` for unparseable values.
+ */
+export function parseKustoDuration(value: string): number {
+  // d.HH:mm:ss.fffffff  or  HH:mm:ss.fffffff
+  const match = /^(?:(\d+)\.)?(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?$/.exec(
+    value,
+  );
+  if (!match) return 0;
+
+  const days = match[1] != null ? parseInt(match[1], 10) : 0;
+  const hours = parseInt(match[2]!, 10);
+  const minutes = parseInt(match[3]!, 10);
+  const seconds = parseInt(match[4]!, 10);
+  // Fractional part: pad/truncate to 7 digits (100-ns ticks), then convert to ms
+  const fracStr = (match[5] ?? '').padEnd(7, '0').slice(0, 7);
+  const fracMs = parseInt(fracStr, 10) / 10_000;
+
+  return (
+    days * 86_400_000 +
+    hours * 3_600_000 +
+    minutes * 60_000 +
+    seconds * 1_000 +
+    fracMs
+  );
+}
 
 /**
  * Safely parse an integer from a string value.
