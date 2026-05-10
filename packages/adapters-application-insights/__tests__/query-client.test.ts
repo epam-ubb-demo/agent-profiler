@@ -1,4 +1,4 @@
-import { LogsQueryClient } from '@azure/monitor-query';
+import { LogsQueryClient } from '@azure/monitor-query-logs';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { QueryClient } from '../src/query-client';
@@ -15,7 +15,7 @@ vi.mock('@azure/identity', () => ({
   DefaultAzureCredential: vi.fn(),
 }));
 
-vi.mock('@azure/monitor-query', () => ({
+vi.mock('@azure/monitor-query-logs', () => ({
   LogsQueryClient: vi.fn().mockImplementation(() => ({
     queryWorkspace: vi.fn(),
   })),

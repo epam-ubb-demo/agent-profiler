@@ -20,8 +20,6 @@ export interface TimeRange {
 export interface QueryResult {
   /** Rows returned by the query, each as a key-value record. */
   readonly rows: Record<string, unknown>[];
-  /** Optional query statistics from Azure Monitor. */
-  readonly statistics?: Record<string, unknown> | undefined;
 }
 
 /** Base domain error for Application Insights operations. */

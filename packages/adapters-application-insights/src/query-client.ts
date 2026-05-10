@@ -1,6 +1,6 @@
 import { DefaultAzureCredential } from '@azure/identity';
 import type { TokenCredential } from '@azure/identity';
-import { LogsQueryClient, LogsQueryResultStatus } from '@azure/monitor-query';
+import { LogsQueryClient, LogsQueryResultStatus } from '@azure/monitor-query-logs';
 
 import type { AppInsightsConfig, QueryResult, TimeRange } from './types';
 import {
