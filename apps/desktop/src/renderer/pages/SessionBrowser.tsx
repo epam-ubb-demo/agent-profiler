@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { SessionListItemIpc } from '../../preload/api';
 
 import { EmptyState } from '@/components/EmptyState';
+import { SettingsPanel } from '@/components/SettingsPanel';
 import { Button } from '@/components/ui/button';
 
 export interface SessionBrowserProps {
@@ -41,6 +42,10 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
     }
   }, [loadSessions]);
 
+  const handleSettingsSaved = useCallback(() => {
+    void loadSessions();
+  }, [loadSessions]);
+
   if (loading) {
     return (
       <div data-testid="session-browser-loading" className="flex items-center justify-center p-12">
@@ -57,10 +62,13 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
     <div data-testid="session-browser" className="flex flex-col gap-4 p-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Sessions</h1>
-        <Button variant="outline" size="sm" onClick={handleOpenFolder}>
-          <FolderOpen className="mr-2 h-4 w-4" />
-          Open Folder…
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleOpenFolder}>
+            <FolderOpen className="mr-2 h-4 w-4" />
+            Open Folder…
+          </Button>
+          <SettingsPanel onSettingsSaved={handleSettingsSaved} />
+        </div>
       </div>
       <ul className="flex flex-col gap-2" data-testid="session-list">
         {sessions.map((session) => (

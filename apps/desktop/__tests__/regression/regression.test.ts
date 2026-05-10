@@ -20,27 +20,23 @@ import {
   CreateAnnotationSchema,
   AddTagSchema,
   AddCommentSchema,
-  RemoveTagSchema,
-  RemoveCommentSchema,
   DeleteAnnotationSchema,
   ListBySessionSchema,
   ListByTargetSchema,
 } from '@agent-profiler/annotations';
 import {
   sessionSchema,
-  aggregateBenchRun,
   type Session,
   type ShutdownMetrics,
 } from '@agent-profiler/core';
 import { LocalFsDataSource } from '@agent-profiler/data-source';
 import {
   pluginManifestSchema,
-  pluginMetadataSchema,
   loadPlugin,
   discoverPlugins,
   PluginLoadError,
 } from '@agent-profiler/plugins';
-import { calculateCost, DEFAULT_PRICING_TABLE, loadPricingTable } from '@agent-profiler/pricing';
+import { calculateCost, loadPricingTable } from '@agent-profiler/pricing';
 
 // ─── Test fixtures ───────────────────────────────────────────────────────────
 
