@@ -72,6 +72,29 @@ describe('QueryClient', () => {
     ]);
   });
 
+  it('returns rows from partialTables on partial failure', async () => {
+    mockQueryWorkspace.mockResolvedValueOnce({
+      status: 'PartialFailure',
+      partialTables: [
+        {
+          columnDescriptors: [
+            { name: 'ts', type: 'datetime' },
+            { name: 'msg', type: 'string' },
+          ],
+          rows: [['2024-01-01T00:00:00Z', 'partial result row']],
+        },
+      ],
+      partialError: { message: 'Query returned partial results' },
+    });
+
+    const client = new QueryClient({ workspaceId: TEST_WORKSPACE_ID });
+    const result = await client.query('TestQuery', TEST_TIME_RANGE);
+
+    expect(result.rows).toEqual([
+      { ts: '2024-01-01T00:00:00Z', msg: 'partial result row' },
+    ]);
+  });
+
   it('throws AuthenticationError on credential failure', async () => {
     const authError = new Error(
       'DefaultAzureCredential authentication failed',
