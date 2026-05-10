@@ -76,6 +76,8 @@ export class DataSourceManager {
       }
     }
 
+    merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
     return merged;
   }
 
@@ -129,9 +131,8 @@ export class DataSourceManager {
   /**
    * Test Application Insights connectivity.
    *
-   * Creates a *temporary* data source with a 24-hour time range,
-   * calls `isAvailable()` and — on success — `listSessions()` to
-   * obtain a session count.
+   * Uses the currently configured data source to call `isAvailable()`
+   * and — on success — `listSessions()` to obtain a session count.
    */
   async testConnection(): Promise<{
     success: boolean;

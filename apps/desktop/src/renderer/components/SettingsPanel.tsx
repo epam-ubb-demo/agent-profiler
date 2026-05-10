@@ -196,7 +196,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
           <Button
             type="button"
             onClick={() => void handleSave()}
-            disabled={saving || !workspaceId.trim()}
+            disabled={saving}
           >
             {saving ? (
               <>

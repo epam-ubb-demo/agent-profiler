@@ -69,8 +69,8 @@ export const ipcChannels = {
 export const appInsightsSettingsSchema = z.object({
   workspaceId: z.string(),
   timeRangePreset: z.enum(['24h', '7d', '30d', 'custom']),
-  customStartDate: z.string().datetime().optional(),
-  customEndDate: z.string().datetime().optional(),
+  customStartDate: z.string().date().optional(),
+  customEndDate: z.string().date().optional(),
 });
 
 export type AppInsightsSettingsIpc = z.infer<typeof appInsightsSettingsSchema>;

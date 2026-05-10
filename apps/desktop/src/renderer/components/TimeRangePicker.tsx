@@ -65,7 +65,7 @@ export function TimeRangePicker({ value, onChange }: TimeRangePickerProps) {
               onChange={(e) =>
                 onChange({
                   ...value,
-                  ...(e.target.value ? { customStartDate: e.target.value } : {}),
+                  customStartDate: e.target.value || undefined,
                 })
               }
               className={cn(
@@ -85,7 +85,7 @@ export function TimeRangePicker({ value, onChange }: TimeRangePickerProps) {
               onChange={(e) =>
                 onChange({
                   ...value,
-                  ...(e.target.value ? { customEndDate: e.target.value } : {}),
+                  customEndDate: e.target.value || undefined,
                 })
               }
               className={cn(
