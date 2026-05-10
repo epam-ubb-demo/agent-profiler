@@ -13,7 +13,7 @@ import Store from 'electron-store';
 import type { AppInsightsSettingsIpc } from '@agent-profiler/core';
 
 /** Default directory for Copilot CLI session state. */
-const DEFAULT_ROOT_DIR = join(homedir(), '.copilot', 'session-state');
+export const DEFAULT_ROOT_DIR = join(homedir(), '.copilot', 'session-state');
 
 /** Schema consumed by electron-store for type-safe defaults. */
 interface SettingsSchema {

@@ -41,6 +41,8 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
   useEffect(() => {
     if (!open) return;
 
+    setSaveError(null);
+
     let cancelled = false;
 
     void (async () => {
@@ -135,6 +137,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
               onChange={(e) => {
                 setWorkspaceId(e.target.value);
                 setTestResult(null);
+                setSaveError(null);
               }}
               placeholder="Enter your Log Analytics Workspace ID"
               className={cn(

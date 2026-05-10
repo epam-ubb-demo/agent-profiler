@@ -1,4 +1,3 @@
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 import {
@@ -12,6 +11,7 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 
 import { DataSourceManager } from './data-source-manager';
 import {
+  DEFAULT_ROOT_DIR,
   getAppInsightsSettings,
   setAppInsightsSettings,
   getSessionRootDir,
@@ -19,9 +19,6 @@ import {
 } from './settings-store';
 import { registerPdfExportHandlers, registerPdfDialogHandler } from './pdf-export';
 import { AppUpdater } from './auto-updater';
-
-/** Default directory for Copilot CLI session state. */
-const DEFAULT_ROOT_DIR = join(homedir(), '.copilot', 'session-state');
 
 // ---------------------------------------------------------------------------
 // Data-source manager
@@ -168,11 +165,16 @@ app.whenReady().then(async () => {
   registerPdfExportHandlers();
   registerPdfDialogHandler();
 
-  // Restore persisted App Insights settings
-  const savedSettings = getAppInsightsSettings();
-  if (savedSettings.workspaceId) {
-    applyAppInsightsSettings(savedSettings);
-    console.log('[agent-profiler] Application Insights configured from saved settings');
+  // Restore persisted App Insights settings (validate to guard against corruption)
+  const rawSettings = getAppInsightsSettings();
+  const parsed = appInsightsSettingsSchema.safeParse(rawSettings);
+  if (parsed.success) {
+    if (parsed.data.workspaceId) {
+      applyAppInsightsSettings(parsed.data);
+      console.log('[agent-profiler] Application Insights configured from saved settings');
+    }
+  } else {
+    console.warn('[agent-profiler] Persisted settings are invalid, using defaults:', parsed.error.message);
   }
 
   // Auto-discover sessions at configured location on startup
