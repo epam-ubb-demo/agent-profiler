@@ -442,5 +442,6 @@ describe('ApplicationInsightsDataSource', () => {
       expect(session).not.toBeNull();
       expect(session!.parseStatus.status).toBe('ok');
     });
+
   });
 });

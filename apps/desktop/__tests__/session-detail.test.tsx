@@ -47,7 +47,7 @@ vi.mock('@agent-profiler/ui', () => ({
   },
 }));
 
-const mockElectronApi: ElectronApi = {
+const mockElectronApi = {
   getVersion: vi.fn<() => Promise<string>>().mockResolvedValue('0.0.0'),
   session: {
     list: vi.fn(),
@@ -57,7 +57,17 @@ const mockElectronApi: ElectronApi = {
   dialog: {
     openDirectory: vi.fn(),
   },
-};
+  pdf: {
+    selectOutputPath: vi.fn(),
+    exportCurrentView: vi.fn(),
+    exportSession: vi.fn(),
+  },
+  settings: {
+    get: vi.fn(),
+    set: vi.fn(),
+    testConnection: vi.fn(),
+  },
+} satisfies ElectronApi;
 
 beforeEach(() => {
   Object.defineProperty(window, 'electronApi', { value: mockElectronApi, writable: true });

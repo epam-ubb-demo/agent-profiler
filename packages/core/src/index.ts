@@ -65,5 +65,14 @@ export {
   adapterTypeSchema,
   sessionListItemSchema,
   ipcChannels,
+  appInsightsSettingsSchema,
+  testConnectionResultSchema,
 } from './ipc-schemas';
-export type { SessionSummary, SessionData, AdapterTypeIpc, SessionListItemIpc } from './ipc-schemas';
+export type {
+  SessionSummary,
+  SessionData,
+  AdapterTypeIpc,
+  SessionListItemIpc,
+  AppInsightsSettingsIpc,
+  TestConnectionResultIpc,
+} from './ipc-schemas';

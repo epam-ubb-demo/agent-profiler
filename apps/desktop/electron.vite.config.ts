@@ -12,6 +12,8 @@ export default defineConfig({
           '@agent-profiler/core',
           '@agent-profiler/data-source',
           '@agent-profiler/export-pdf',
+          '@agent-profiler/adapters-application-insights',
+          'electron-store',
         ],
       }),
     ],

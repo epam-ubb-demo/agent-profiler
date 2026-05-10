@@ -1,4 +1,4 @@
-import type { AdapterTypeIpc } from '@agent-profiler/core';
+import type { AdapterTypeIpc, AppInsightsSettingsIpc, TestConnectionResultIpc } from '@agent-profiler/core';
 
 /**
  * Typed API exposed to the renderer process via contextBridge.
@@ -32,6 +32,15 @@ export interface ElectronApi {
     exportCurrentView: (options: PdfExportOptionsIpc) => Promise<PdfExportResult>;
     /** Exports a session as a formatted PDF. */
     exportSession: (session: unknown, options: PdfExportOptionsIpc) => Promise<PdfExportResult>;
+  };
+
+  settings: {
+    /** Retrieve persisted Application Insights settings. */
+    get: () => Promise<AppInsightsSettingsIpc>;
+    /** Save Application Insights settings and reconfigure the data source. */
+    set: (settings: AppInsightsSettingsIpc) => Promise<void>;
+    /** Test the current Application Insights connection. */
+    testConnection: () => Promise<TestConnectionResultIpc>;
   };
 }
 

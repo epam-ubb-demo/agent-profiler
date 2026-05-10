@@ -1,18 +1,63 @@
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-import { ipcChannels, sessionListItemSchema } from '@agent-profiler/core';
-import { LocalFsDataSource } from '@agent-profiler/data-source';
+import {
+  ipcChannels,
+  sessionListItemSchema,
+  appInsightsSettingsSchema,
+  testConnectionResultSchema,
+} from '@agent-profiler/core';
+import type { AppInsightsSettingsIpc } from '@agent-profiler/core';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 
+import { DataSourceManager } from './data-source-manager';
+import {
+  DEFAULT_ROOT_DIR,
+  getAppInsightsSettings,
+  setAppInsightsSettings,
+  getSessionRootDir,
+  setSessionRootDir,
+} from './settings-store';
 import { registerPdfExportHandlers, registerPdfDialogHandler } from './pdf-export';
 import { AppUpdater } from './auto-updater';
 
-/** Default directory for Copilot CLI session state. */
-const DEFAULT_ROOT_DIR = join(homedir(), '.copilot', 'session-state');
+// ---------------------------------------------------------------------------
+// Data-source manager
+// ---------------------------------------------------------------------------
 
-/** The active data source — replaced when root dir changes. */
-let dataSource = new LocalFsDataSource(DEFAULT_ROOT_DIR);
+const manager = new DataSourceManager(getSessionRootDir() || DEFAULT_ROOT_DIR);
+
+/** Resolve a time range from the persisted preset. */
+function resolveTimeRange(
+  settings: AppInsightsSettingsIpc,
+): { startTime: Date; endTime: Date } | undefined {
+  const now = new Date();
+  switch (settings.timeRangePreset) {
+    case '24h':
+      return { startTime: new Date(now.getTime() - 24 * 60 * 60 * 1000), endTime: now };
+    case '7d':
+      return { startTime: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), endTime: now };
+    case '30d':
+      return { startTime: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), endTime: now };
+    case 'custom': {
+      if (settings.customStartDate && settings.customEndDate) {
+        return {
+          startTime: new Date(settings.customStartDate + 'T00:00:00.000Z'),
+          endTime: new Date(settings.customEndDate + 'T23:59:59.999Z'),
+        };
+      }
+      return undefined;
+    }
+  }
+}
+
+/** Apply persisted App Insights settings to the manager. */
+function applyAppInsightsSettings(settings: AppInsightsSettingsIpc): void {
+  const timeRange = resolveTimeRange(settings);
+  manager.configureAppInsights({
+    workspaceId: settings.workspaceId,
+    ...(timeRange ? { timeRange } : {}),
+  });
+}
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
@@ -53,7 +98,7 @@ ipcMain.handle(ipcChannels.APP_GET_VERSION, () => {
 });
 
 ipcMain.handle(ipcChannels.SESSION_LIST, async () => {
-  const items = await dataSource.listSessions();
+  const items = await manager.listSessions();
   // Serialize for IPC transport (Dates → ISO strings, validate with Zod)
   return items.map((item) =>
     sessionListItemSchema.parse({
@@ -67,17 +112,15 @@ ipcMain.handle(ipcChannels.SESSION_LIST, async () => {
 });
 
 ipcMain.handle(ipcChannels.SESSION_OPEN, async (_event, sessionId: string) => {
-  return dataSource.getSession(sessionId);
+  return manager.getSession(sessionId);
 });
 
 ipcMain.handle(ipcChannels.SESSION_SET_ROOT_DIR, async (_event, dir: string) => {
-  const newSource = new LocalFsDataSource(dir);
-  const available = await newSource.isAvailable();
-  if (available) {
-    dataSource = newSource;
-    return true;
+  const ok = await manager.setLocalRootDir(dir);
+  if (ok) {
+    setSessionRootDir(dir);
   }
-  return false;
+  return ok;
 });
 
 ipcMain.handle(ipcChannels.DIALOG_OPEN_DIRECTORY, async () => {
@@ -92,21 +135,58 @@ ipcMain.handle(ipcChannels.DIALOG_OPEN_DIRECTORY, async () => {
   return result.filePaths[0] ?? null;
 });
 
+// ── Settings IPC handlers ───────────────────────────────────────────────
+
+ipcMain.handle(ipcChannels.SETTINGS_GET, () => {
+  try {
+    const raw = getAppInsightsSettings();
+    return appInsightsSettingsSchema.parse(raw);
+  } catch {
+    return { workspaceId: '', timeRangePreset: '7d' as const };
+  }
+});
+
+ipcMain.handle(
+  ipcChannels.SETTINGS_SET,
+  async (_event, raw: unknown) => {
+    const settings = appInsightsSettingsSchema.parse(raw);
+    setAppInsightsSettings(settings);
+    applyAppInsightsSettings(settings);
+  },
+);
+
+ipcMain.handle(ipcChannels.SETTINGS_TEST_CONNECTION, async () => {
+  const result = await manager.testConnection();
+  return testConnectionResultSchema.parse(result);
+});
+
 app.whenReady().then(async () => {
   // Register PDF export handlers
   registerPdfExportHandlers();
   registerPdfDialogHandler();
 
-  // Auto-discover sessions at default location on startup
-  const available = await dataSource.isAvailable();
+  // Restore persisted App Insights settings (validate to guard against corruption)
+  const rawSettings = getAppInsightsSettings();
+  const parsed = appInsightsSettingsSchema.safeParse(rawSettings);
+  if (parsed.success) {
+    if (parsed.data.workspaceId) {
+      applyAppInsightsSettings(parsed.data);
+      console.log('[agent-profiler] Application Insights configured from saved settings');
+    }
+  } else {
+    console.warn('[agent-profiler] Persisted settings are invalid, using defaults:', parsed.error.message);
+  }
+
+  // Auto-discover sessions at configured location on startup
+  const available = await manager.isLocalAvailable();
   if (available) {
-    const sessions = await dataSource.listSessions();
+    const sessions = await manager.listSessions();
     console.log(
-      `[agent-profiler] Auto-discovered ${sessions.length} session(s) in ${DEFAULT_ROOT_DIR}`,
+      `[agent-profiler] Auto-discovered ${sessions.length} session(s)`,
     );
   } else {
     console.log(
-      `[agent-profiler] Default session directory not found: ${DEFAULT_ROOT_DIR}`,
+      `[agent-profiler] Default session directory not found: ${getSessionRootDir() || DEFAULT_ROOT_DIR}`,
     );
   }
 

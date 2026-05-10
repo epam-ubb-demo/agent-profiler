@@ -18,6 +18,11 @@ const api: ElectronApi = {
     exportSession: (session, options) =>
       ipcRenderer.invoke('pdf:export-session', { session, options }),
   },
+  settings: {
+    get: () => ipcRenderer.invoke('settings:get'),
+    set: (settings) => ipcRenderer.invoke('settings:set', settings),
+    testConnection: () => ipcRenderer.invoke('settings:testConnection'),
+  },
 };
 
 contextBridge.exposeInMainWorld('electronApi', api);
