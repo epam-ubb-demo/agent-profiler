@@ -383,6 +383,32 @@ describe('ApplicationInsightsDataSource', () => {
       expect(session!.parseStatus.error).toContain('2 spans');
     });
 
+    it('appends truncation warning to existing non-ok parseStatus', async () => {
+      const mockSession = {
+        ...FAKE_SESSION,
+        parseStatus: { status: 'partial' as const, error: '3/5 spans have missing parents' },
+      } as unknown as Session;
+
+      const ds = new ApplicationInsightsDataSource({
+        workspaceId: TEST_WORKSPACE_ID,
+        maxSpanCount: 5,
+      });
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({
+        rows: Array.from({ length: 5 }, () => ({})),
+        truncated: true,
+      });
+      vi.mocked(mockedAssembleSession).mockReturnValueOnce(mockSession);
+
+      const session = await ds.getSession('sess-001');
+
+      expect(session).not.toBeNull();
+      expect(session!.parseStatus.status).toBe('partial');
+      // Should preserve original error AND append truncation note
+      expect(session!.parseStatus.error).toContain('3/5 spans have missing parents');
+      expect(session!.parseStatus.error).toContain('truncated at 5 spans');
+    });
+
     it('does not override parseStatus when row count < maxSpanCount', async () => {
       const ds = new ApplicationInsightsDataSource({
         workspaceId: TEST_WORKSPACE_ID,

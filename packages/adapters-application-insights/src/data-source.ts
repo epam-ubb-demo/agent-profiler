@@ -213,16 +213,31 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
 
       const assembled = assembleSession(result.rows);
 
-      // Produce a new session object with overridden parseStatus when truncated.
-      const session = truncated
-        ? {
-            ...assembled,
-            parseStatus: {
-              status: 'partial' as const,
-              error: `Result set truncated at ${result.rows.length} spans — session may be incomplete`,
-            },
-          }
-        : assembled;
+      // Merge truncation warning into parseStatus without masking existing issues.
+      // Only downgrade 'ok' → 'partial'; if already non-ok, append truncation note.
+      let session: Session;
+      if (!truncated) {
+        session = assembled;
+      } else if (assembled.parseStatus.status === 'ok') {
+        session = {
+          ...assembled,
+          parseStatus: {
+            status: 'partial' as const,
+            error: `Result set truncated at ${result.rows.length} spans — session may be incomplete`,
+          },
+        };
+      } else {
+        const existingError = assembled.parseStatus.error ?? '';
+        session = {
+          ...assembled,
+          parseStatus: {
+            ...assembled.parseStatus,
+            error: existingError
+              ? `${existingError}; result set truncated at ${result.rows.length} spans`
+              : `Result set truncated at ${result.rows.length} spans — session may be incomplete`,
+          },
+        };
+      }
 
       // Store in cache if available — cache write failures must not affect the return value
       if (this.cache) {

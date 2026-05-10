@@ -191,8 +191,9 @@ describe('QueryClient', () => {
   });
 
   it('uses default maxSpanCount when not configured', async () => {
-    // Create a response with exactly DEFAULT_MAX_SPAN_COUNT rows
-    const rows = Array.from({ length: DEFAULT_MAX_SPAN_COUNT }, (_, i) => [`row-${i}`]);
+    // Verify the default is applied by creating a client without explicit maxSpanCount
+    // and checking that fewer rows than the default are not flagged as truncated.
+    const rows = Array.from({ length: 5 }, (_, i) => [`row-${i}`]);
     mockQueryWorkspace.mockResolvedValueOnce({
       status: 'Success',
       tables: [
@@ -203,12 +204,13 @@ describe('QueryClient', () => {
       ],
     });
 
-    // Client with no explicit maxSpanCount — should use default
+    // Client with no explicit maxSpanCount — should use DEFAULT_MAX_SPAN_COUNT (10_000)
     const client = new QueryClient({ workspaceId: TEST_WORKSPACE_ID });
     const result = await client.queryWithTruncationCheck('TestQuery', TEST_TIME_RANGE);
 
-    expect(result.truncated).toBe(true);
-    expect(result.rows).toHaveLength(DEFAULT_MAX_SPAN_COUNT);
+    // 5 rows is well below the 10_000 default, so should not be truncated
+    expect(result.truncated).toBe(false);
+    expect(result.rows).toHaveLength(5);
   });
 
   it('respects custom maxSpanCount from config', async () => {

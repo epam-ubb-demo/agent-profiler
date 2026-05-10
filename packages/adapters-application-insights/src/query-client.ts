@@ -87,9 +87,12 @@ export class QueryClient {
   /**
    * Execute a KQL query and detect whether the result set was truncated.
    *
-   * App Insights / Log Analytics imposes row limits on query results.
-   * When the returned row count reaches {@link maxSpanCount}, the result
-   * is flagged as truncated so callers can surface a warning.
+   * This method intentionally performs a single query — KQL handles
+   * server-side pagination natively. The truncation flag detects when
+   * the result set hits the configured {@link maxSpanCount} limit,
+   * signalling potential data loss to callers. Full client-side
+   * pagination was considered and rejected per
+   * {@link https://github.com/epam-ubb-demo/agent-profiler/blob/main/docs/spikes/spike-otel-span-to-session.md spike-otel-span-to-session.md §4}.
    *
    * @param kql - Kusto Query Language expression.
    * @param timeRange - Start and end timestamps for the query window.
