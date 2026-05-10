@@ -48,6 +48,72 @@ if (!ok) {
 }
 ```
 
+## Span Transformation Pipeline
+
+The package provides a complete pipeline for reconstructing Agent Profiler `Session` objects from raw OTel span data stored in Application Insights. Starting from flat query-result rows, the pipeline handles validation, deduplication, tree construction, turn extraction, metrics aggregation, and final assembly — producing an immutable `Session` ready for the UI.
+
+### `assembleSession`
+
+`assembleSession` is the main entry point. Pass in the raw rows from a `QueryClient.query()` call and receive a fully assembled `Session`:
+
+```typescript
+import { assembleSession } from '@agent-profiler/adapters-application-insights';
+
+// Raw rows from a QueryClient.query() call
+const result = await client.query(kql, timeRange);
+const session = assembleSession(result.rows);
+
+console.log(session.sessionId);
+console.log(session.turns.length);
+console.log(session.parseStatus.status); // 'ok' | 'partial' | 'failed'
+```
+
+Internally the function executes a seven-step pipeline:
+
+1. **Parse** — Validates raw rows against a Zod schema, producing typed `OTelSpan` objects.
+2. **Deduplicate** — Removes duplicate span IDs, keeping the entry with the latest timestamp.
+3. **Build tree** — Reconstructs the parent–child hierarchy from `spanId` / `parentSpanId` references.
+4. **Extract turns** — Identifies turn boundaries from `copilot_chat.turn.id` attributes (or infers them from tree depth when the attribute is absent).
+5. **Map events** — Transforms spans into domain objects: `Turn`, `ToolCall`, `AssistantMessage`, `UserMessage`, and `SubagentInvocation`.
+6. **Aggregate metrics** — Computes `ModelMetrics` and `ShutdownMetrics` from LLM spans, grouping token counts and request durations by model.
+7. **Assemble** — Produces the final immutable `Session` together with a `ParseStatus` describing data quality.
+
+### Lower-level API
+
+For advanced usage the package also exports the individual pipeline stages:
+
+| Function | Description |
+|---|---|
+| `parseSpanRow(row)` | Validate and parse a single raw row into an `OTelSpan`. Throws on invalid input. |
+| `parseSpanRows(rows)` | Batch parse with error collection — never throws; parse failures are captured in the returned `errors` array. |
+| `groupSpansBySession(spans)` | Group spans by session identity (`copilot_chat.session.id`, falling back to `traceId`). |
+| `deduplicateSpans(spans)` | Remove duplicate span IDs, keeping the latest timestamp for each. |
+| `safeInt(value)` | Parse an integer from a string, returning `0` for `null`, `undefined`, empty, or non-numeric values. |
+
+### Data quality
+
+Every `Session` carries a `parseStatus` field of type `ParseStatus`:
+
+| Status | Meaning |
+|---|---|
+| `ok` | All rows parsed, tree constructed, and turns extracted successfully. |
+| `partial` | Some data issues were encountered (orphan spans, validation errors, or no turns could be reconstructed) but a session was still produced. |
+| `failed` | No usable span data was found. The returned `Session` contains empty collections. |
+
+The `parseStatus.error` property provides a human-readable description when the status is not `ok`.
+
+> **Design note:** The pipeline never throws. It always returns a `Session` object, using `parseStatus` to communicate data quality so that callers can decide how to present incomplete results.
+
+### Unmapped fields
+
+Some `Session` fields have no OTel equivalent and are populated with defaults:
+
+- `copilotVersion` — empty string
+- `compactions` — empty array
+- `utilisation` — empty array
+
+See [docs/spikes/spike-otel-span-to-session.md](../../docs/spikes/spike-otel-span-to-session.md) for the full field-mapping analysis.
+
 ## Configuration
 
 `AppInsightsConfig` accepts the following properties:
