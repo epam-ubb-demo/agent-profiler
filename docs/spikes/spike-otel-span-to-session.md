@@ -225,7 +225,7 @@ Tool call spans are identified by the presence of `copilot_chat.tool.call.name` 
 | `model`             | Inherited from the parent LLM span's `gen_ai.request.model` or `null`  |
 | `startTs`           | Span `timestamp`                                                        |
 | `endTs`             | `timestamp + duration` (computed)                                       |
-| `durationMs`        | Span `duration` — derive via `duration / 1ms` in KQL (AI stores duration as a Kusto timespan, not raw milliseconds) |
+| `durationMs`        | Span `duration` — derive via `duration / 1ms` in KQL (Application Insights stores duration as a Kusto timespan, not raw milliseconds) |
 | `success`           | `copilot_chat.tool.call.success` ∥ span `success`                      |
 | `parentId`          | `parentSpanId`                                                          |
 | `turnId`            | Inherited from parent Turn                                              |
@@ -365,7 +365,8 @@ Groups spans by session identifier and returns a summary row per session.
 let sessionSpans = AppDependencies
 | union AppRequests
 | where isnotempty(customDimensions)
-| extend sessionId = coalesce(
+| extend sessionId = iif(
+    isnotempty(tostring(customDimensions.["copilot_chat.session.id"])),
     tostring(customDimensions.["copilot_chat.session.id"]),
     operation_Id
   )
@@ -521,7 +522,7 @@ interface OTelSpan {
   readonly timestamp: string;              // ISO 8601
   readonly durationMs: number;
   readonly success: boolean;
-  readonly dims: Record<string, string>;   // customDimensions flattened
+  readonly dims: Partial<Record<string, string>>;   // customDimensions flattened
 }
 
 type SpanKind = 'llm' | 'tool' | 'subagent' | 'user_message' | 'structural';
