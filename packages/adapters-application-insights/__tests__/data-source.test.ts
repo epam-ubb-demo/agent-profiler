@@ -451,7 +451,7 @@ describe('ApplicationInsightsDataSource', () => {
       });
       const mock = getMockInstance();
       // Return exactly 2 rows (= maxSpanCount), triggering truncation
-      mock.query.mockResolvedValueOnce({ rows: [mockSpanRows[0], mockSpanRows[0]] });
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [mockSpanRows[0], mockSpanRows[0]], truncated: true });
       vi.mocked(mockedAssembleSession).mockReturnValueOnce({
         ...FAKE_SESSION,
         parseStatus: { status: 'ok', error: null },
@@ -471,7 +471,7 @@ describe('ApplicationInsightsDataSource', () => {
         maxSpanCount: 100,
       });
       const mock = getMockInstance();
-      mock.query.mockResolvedValueOnce({ rows: mockSpanRows });
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: mockSpanRows, truncated: false });
       vi.mocked(mockedAssembleSession).mockReturnValueOnce({
         ...FAKE_SESSION,
         parseStatus: { status: 'ok', error: null },
@@ -487,7 +487,7 @@ describe('ApplicationInsightsDataSource', () => {
       // Default is 10_000, so with 1 row it should not trigger truncation
       const ds = createDataSource();
       const mock = getMockInstance();
-      mock.query.mockResolvedValueOnce({ rows: mockSpanRows });
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: mockSpanRows, truncated: false });
       vi.mocked(mockedAssembleSession).mockReturnValueOnce({
         ...FAKE_SESSION,
         parseStatus: { status: 'ok', error: null },
