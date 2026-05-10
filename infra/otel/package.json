@@ -1,0 +1,23 @@
+{
+  "name": "@agent-profiler/infra-otel",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Centralized OpenTelemetry Gateway infrastructure (Pulumi)",
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "preview": "pulumi preview",
+    "up": "pulumi up",
+    "destroy": "pulumi destroy"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "^3.100.0",
+    "@pulumi/azure-native": "^2.60.0"
+  },
+  "devDependencies": {
+    "@agent-profiler/tsconfig-base": "workspace:*",
+    "typescript": "^5.7.0"
+  }
+}

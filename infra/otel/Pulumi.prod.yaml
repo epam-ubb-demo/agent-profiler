@@ -1,0 +1,16 @@
+config:
+  azure-native:location: eastus
+  agent-profiler-otel-gateway:environment: prod
+  agent-profiler-otel-gateway:region: eastus
+  agent-profiler-otel-gateway:instance: "001"
+  agent-profiler-otel-gateway:vnetCidr: "10.0.0.0/16"
+  agent-profiler-otel-gateway:acaSubnetCidr: "10.0.2.0/23"
+  agent-profiler-otel-gateway:platformReservedCidr: "10.0.4.0/22"
+  agent-profiler-otel-gateway:platformReservedDnsIP: "10.0.4.2"
+  agent-profiler-otel-gateway:dockerBridgeCidr: "172.17.0.1/16"
+  agent-profiler-otel-gateway:agwSubnetCidr: "10.0.1.0/24"
+  agent-profiler-otel-gateway:logRetentionDays: "90"
+  agent-profiler-otel-gateway:enableResourceLocks: "true"
+  agent-profiler-otel-gateway:enableAppGateway: "true"
+  agent-profiler-otel-gateway:minReplicas: "2"
+  agent-profiler-otel-gateway:maxReplicas: "10"

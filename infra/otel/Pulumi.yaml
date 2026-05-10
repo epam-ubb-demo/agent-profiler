@@ -1,0 +1,7 @@
+name: agent-profiler-otel-gateway
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+description: Centralized OpenTelemetry Gateway for GitHub Copilot Telemetry
+main: src/index.ts
