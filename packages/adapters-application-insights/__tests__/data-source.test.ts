@@ -191,6 +191,21 @@ describe('ApplicationInsightsDataSource', () => {
       expect(items).toHaveLength(1);
       expect(items[0]!.createdAt).toEqual(dateObj);
     });
+
+    it('filters out rows with invalid startTs instead of falling back to epoch', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.query.mockResolvedValueOnce({
+        rows: [
+          { sessionId: 'bad-ts', startTs: 'not-a-date', spanCount: 5, selectedModel: 'gpt-4' },
+          { sessionId: 'good-ts', startTs: '2024-06-15T10:00:00Z', spanCount: 10, selectedModel: 'gpt-4' },
+        ],
+      });
+
+      const items = await ds.listSessions();
+      expect(items).toHaveLength(1);
+      expect(items[0]!.id).toBe('good-ts');
+    });
   });
 
   // -----------------------------------------------------------------------
@@ -264,6 +279,28 @@ describe('ApplicationInsightsDataSource', () => {
       expect(session).toBe(FAKE_SESSION);
       expect(mockCache.get).toHaveBeenCalledWith('session-abc-123');
       expect(mock.query).not.toHaveBeenCalled();
+    });
+
+    it('falls through to live query when cache.get() throws', async () => {
+      const mockCache: SessionCache = {
+        get: vi.fn().mockImplementation(() => {
+          throw new Error('cache read failed');
+        }),
+        set: vi.fn(),
+        has: vi.fn(),
+        delete: vi.fn(),
+        clear: vi.fn(),
+      };
+      const ds = createDataSource(mockCache);
+      const mock = getMockInstance();
+      mock.query.mockResolvedValueOnce({ rows: mockSpanRows });
+      vi.mocked(mockedAssembleSession).mockReturnValueOnce(FAKE_SESSION);
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).toBe(FAKE_SESSION);
+      expect(mockCache.get).toHaveBeenCalledWith('session-abc-123');
+      expect(mock.query).toHaveBeenCalled();
     });
 
     it('stores session in cache after successful query', async () => {

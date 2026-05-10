@@ -162,12 +162,17 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
               ? rawStartTs
               : new Date(String(rawStartTs ?? ''));
 
+          // Filter out rows with unparseable timestamps rather than falling back to epoch
+          if (!Number.isFinite(createdAt.getTime())) {
+            return [];
+          }
+
           return [
             {
               id: sessionId,
               name: sessionId,
               path: `ai://${this.workspaceId}/${sessionId}`,
-              createdAt: Number.isFinite(createdAt.getTime()) ? createdAt : new Date(0),
+              createdAt,
               adapter: this.type,
             },
           ];
@@ -184,10 +189,14 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
         return null;
       }
 
-      // Check cache first
-      const cached = this.cache?.get(validId);
-      if (cached !== undefined) {
-        return cached;
+      // Check cache first — cache read failures must not prevent live queries
+      try {
+        const cached = this.cache?.get(validId);
+        if (cached !== undefined) {
+          return cached;
+        }
+      } catch {
+        // Silently ignore cache read errors and fall through to query
       }
 
       const range = this.timeRange ?? defaultTimeRange();
