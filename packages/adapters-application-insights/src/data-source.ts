@@ -50,8 +50,9 @@ export interface SessionCache {
   /**
    * Mark a cached session as stale so the next access triggers a refresh.
    * Implementations may choose to remove the entry immediately or flag it.
+   * Optional — omit if your cache does not support stale-marking.
    */
-  invalidate(sessionId: string): void;
+  invalidate?(sessionId: string): void;
 
   /** Remove all cached sessions. Typically called when the workspace ID or time range changes. */
   clear(): void;

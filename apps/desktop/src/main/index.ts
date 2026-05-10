@@ -43,8 +43,8 @@ function resolveTimeRange(
     case 'custom': {
       if (settings.customStartDate && settings.customEndDate) {
         return {
-          startTime: new Date(settings.customStartDate),
-          endTime: new Date(settings.customEndDate),
+          startTime: new Date(settings.customStartDate + 'T00:00:00.000Z'),
+          endTime: new Date(settings.customEndDate + 'T23:59:59.999Z'),
         };
       }
       return undefined;
