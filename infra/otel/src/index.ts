@@ -11,6 +11,7 @@ import { ContainerAppStack } from "./container-app.js";
 import { KeyVaultStack } from "./keyvault.js";
 import { IdentityStack } from "./identity.js";
 import { GatewayStack } from "./gateway.js";
+import { WorkbookStack } from "./workbooks.js";
 
 const config = new pulumi.Config();
 const environment = config.require("environment");
@@ -82,6 +83,17 @@ const containerApp = new ContainerAppStack("container-app", {
   acaSubnetId: network.acaSubnetId,
   logAnalyticsWorkspaceId: monitoring.logAnalyticsWorkspaceId,
   appInsightsConnectionString: monitoring.appInsightsConnectionString,
+});
+
+// Workbook dashboards
+void new WorkbookStack("workbooks", {
+  environment,
+  region,
+  instance,
+  resourceGroupName: resourceGroup.name,
+  tags,
+  appInsightsId: monitoring.appInsightsId,
+  logAnalyticsWorkspaceId: monitoring.logAnalyticsWorkspaceId,
 });
 
 // Application Gateway stack (prod only, when enabled)
