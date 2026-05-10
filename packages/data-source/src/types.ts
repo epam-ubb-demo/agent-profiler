@@ -8,7 +8,7 @@
 import type { Session } from '@agent-profiler/core';
 
 /** Supported adapter types for session parsing. */
-export type AdapterType = 'copilot-cli' | 'vscode-chat' | 'vscode-agent' | 'ctb';
+export type AdapterType = 'copilot-cli' | 'vscode-chat' | 'vscode-agent' | 'ctb' | 'application-insights';
 
 /**
  * Lightweight session metadata for list views.

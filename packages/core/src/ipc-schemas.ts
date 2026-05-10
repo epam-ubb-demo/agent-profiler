@@ -30,6 +30,7 @@ export const adapterTypeSchema = z.enum([
   'vscode-chat',
   'vscode-agent',
   'ctb',
+  'application-insights',
 ]);
 
 export type AdapterTypeIpc = z.infer<typeof adapterTypeSchema>;
