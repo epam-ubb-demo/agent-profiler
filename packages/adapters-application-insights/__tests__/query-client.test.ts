@@ -238,6 +238,50 @@ describe('QueryClient', () => {
     expect(result.rows).toHaveLength(1);
   });
 
+  it('falls back to default for NaN maxSpanCount', async () => {
+    const rows = Array.from({ length: 5 }, (_, i) => [`row-${i}`]);
+    mockQueryWorkspace.mockResolvedValueOnce({
+      status: 'Success',
+      tables: [
+        {
+          columnDescriptors: [{ name: 'id', type: 'string' }],
+          rows,
+        },
+      ],
+    });
+
+    const client = new QueryClient({
+      workspaceId: TEST_WORKSPACE_ID,
+      maxSpanCount: NaN,
+    });
+
+    const result = await client.queryWithTruncationCheck('TestQuery', TEST_TIME_RANGE);
+    expect(result.truncated).toBe(false);
+    expect(result.rows).toHaveLength(5);
+  });
+
+  it('falls back to default for Infinity maxSpanCount', async () => {
+    const rows = Array.from({ length: 5 }, (_, i) => [`row-${i}`]);
+    mockQueryWorkspace.mockResolvedValueOnce({
+      status: 'Success',
+      tables: [
+        {
+          columnDescriptors: [{ name: 'id', type: 'string' }],
+          rows,
+        },
+      ],
+    });
+
+    const client = new QueryClient({
+      workspaceId: TEST_WORKSPACE_ID,
+      maxSpanCount: Infinity,
+    });
+
+    const result = await client.queryWithTruncationCheck('TestQuery', TEST_TIME_RANGE);
+    expect(result.truncated).toBe(false);
+    expect(result.rows).toHaveLength(5);
+  });
+
   it('respects custom maxSpanCount from config', async () => {
     // Create 5 rows — at the custom limit of 5
     const rows = Array.from({ length: 5 }, (_, i) => [`row-${i}`, i]);

@@ -16,7 +16,7 @@ export {
   rowNonStringOperationId,
   rowInvalidTimestamp,
   rowMalformedDimensions,
-  rowEmptyStrings,
+  rowEmptyIdentifiers,
   rowKustoDuration,
   allMalformedRows,
 } from './malformed-spans';

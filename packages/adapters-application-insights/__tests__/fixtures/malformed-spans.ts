@@ -8,7 +8,7 @@
  * - `rowNonStringOperationId`: `operation_Id` is a number — Zod validation fails
  * - `rowInvalidTimestamp`: timestamp is not parseable — normalised to epoch
  * - `rowMalformedDimensions`: customDimensions is broken JSON — dims = {}
- * - `rowEmptyStrings`: empty strings for key fields — mostly acceptable
+ * - `rowEmptyIdentifiers`: empty strings for key fields — rejected by schema .min(1) validation
  * - `rowKustoDuration`: Kusto timespan string for duration — parsed to ms
  */
 
@@ -59,8 +59,8 @@ export const rowMalformedDimensions: Record<string, unknown> = {
   customDimensions: '{this is not valid json!!!',
 };
 
-/** Row with empty string values for name and other fields. */
-export const rowEmptyStrings: Record<string, unknown> = {
+/** Row with empty string identifiers — rejected by schema .min(1) validation. */
+export const rowEmptyIdentifiers: Record<string, unknown> = {
   id: '',
   operation_Id: '',
   operation_ParentId: '',
@@ -92,6 +92,6 @@ export const allMalformedRows: Record<string, unknown>[] = [
   rowNonStringOperationId,
   rowInvalidTimestamp,
   rowMalformedDimensions,
-  rowEmptyStrings,
+  rowEmptyIdentifiers,
   rowKustoDuration,
 ];

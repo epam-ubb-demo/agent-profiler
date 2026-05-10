@@ -36,10 +36,10 @@ export interface OTelSpan {
  * (e.g. `operation_Id`, `operation_ParentId`).
  */
 const RawSpanRowSchema = z.object({
-  id: z.string(),
-  operation_Id: z.string(),
+  id: z.string().min(1),
+  operation_Id: z.string().min(1),
   operation_ParentId: z.string().nullish().transform((v) => (v == null || v.trim() === '') ? null : v),
-  name: z.string(),
+  name: z.string().min(1),
   timestamp: z.union([
     z.string().transform((s) => {
       const d = new Date(s);

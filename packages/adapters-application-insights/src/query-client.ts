@@ -30,7 +30,8 @@ export class QueryClient {
   constructor(config: AppInsightsConfig) {
     this.config = config;
     this.timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    this.maxSpanCount = Math.max(1, config.maxSpanCount ?? DEFAULT_MAX_SPAN_COUNT);
+    const raw = config.maxSpanCount ?? DEFAULT_MAX_SPAN_COUNT;
+    this.maxSpanCount = Math.max(1, Number.isFinite(raw) ? raw : DEFAULT_MAX_SPAN_COUNT);
 
     const credential: TokenCredential =
       config.credential ?? new DefaultAzureCredential();
@@ -87,12 +88,12 @@ export class QueryClient {
   /**
    * Execute a KQL query and detect whether the result set was truncated.
    *
-   * This method performs a single KQL query. Log Analytics imposes a
-   * server-side row limit (typically 30 000 rows). The truncation flag
-   * indicates when the result set reaches the configured
-   * {@link maxSpanCount} threshold, signalling potential data loss.
-   * For sessions exceeding this limit, callers should narrow the time
-   * window or increase {@link maxSpanCount}.
+   * This method does NOT implement pagination or follow-up queries. It
+   * performs a single KQL query and sets a truncation flag when the result
+   * count reaches the configured {@link maxSpanCount} threshold, signalling
+   * potential data loss. Log Analytics imposes a server-side row limit
+   * (typically 30 000 rows). For sessions exceeding this limit, callers
+   * should narrow the time window or increase {@link maxSpanCount}.
    *
    * @param kql - Kusto Query Language expression.
    * @param timeRange - Start and end timestamps for the query window.

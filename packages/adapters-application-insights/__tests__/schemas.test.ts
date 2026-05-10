@@ -6,7 +6,7 @@ import {
   rowNonStringOperationId,
   rowInvalidTimestamp,
   rowMalformedDimensions,
-  rowEmptyStrings,
+  rowEmptyIdentifiers,
   rowKustoDuration,
   allMalformedRows,
 } from './fixtures';
@@ -330,14 +330,11 @@ describe('parseSpanRows — malformed fixture data', () => {
     expect(spans[0]!.dims).toEqual({});
   });
 
-  it('accepts row with empty string values', () => {
-    const { spans, errors } = parseSpanRows([rowEmptyStrings]);
+  it('rejects row with empty string identifiers', () => {
+    const { spans, errors } = parseSpanRows([rowEmptyIdentifiers]);
 
-    // Empty string for id is still a string — Zod accepts it
-    expect(spans).toHaveLength(1);
-    expect(errors).toHaveLength(0);
-    expect(spans[0]!.spanId).toBe('');
-    expect(spans[0]!.parentSpanId).toBeNull(); // empty string normalised to null
+    expect(spans).toHaveLength(0);
+    expect(errors).toHaveLength(1);
   });
 
   it('parses Kusto timespan duration from fixture', () => {
@@ -353,8 +350,8 @@ describe('parseSpanRows — malformed fixture data', () => {
   it('collects errors and successes from mixed batch of malformed rows', () => {
     const { spans, errors } = parseSpanRows(allMalformedRows);
 
-    // rowMissingId and rowNonStringOperationId fail; rest succeed
-    expect(errors).toHaveLength(2);
-    expect(spans).toHaveLength(4);
+    // rowMissingId, rowNonStringOperationId, and rowEmptyIdentifiers fail; rest succeed
+    expect(errors).toHaveLength(3);
+    expect(spans).toHaveLength(3);
   });
 });
