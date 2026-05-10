@@ -158,7 +158,7 @@ A `FanoutTurn` is a turn where the LLM dispatched multiple tool calls in paralle
 
 ```
 A Turn is a FanoutTurn IF:
-  - It contains > 1 ToolCall spans at the same depth, AND
+  - It contains > 1 ToolCall spans, AND
   - Those ToolCall spans have overlapping time ranges
     (i.e., span B starts before span A ends)
 ```
@@ -202,7 +202,7 @@ Each LLM call span (identified by the presence of `gen_ai.usage.*` attributes) m
 **Token attribute resolution:**
 
 ```typescript
-function resolveTokens(dims: Record<string, string>): { input: number; output: number } {
+function resolveTokens(dims: Partial<Record<string, string>>): { input: number; output: number } {
   return {
     input:  safeInt(dims['gen_ai.usage.input_tokens'])
          || safeInt(dims['gen_ai.usage.prompt_tokens'])
@@ -671,8 +671,8 @@ function extractTurns(roots: SpanNode[], allSpans: OTelSpan[]): TurnBucket[] {
 
 /**
  * Detect parallel tool calls by checking for overlapping time ranges.
- * A turn has parallel tool calls if any two ToolCall spans at the same
- * depth have overlapping durations (span B starts before span A ends).
+ * A turn has parallel tool calls if any two ToolCall spans have
+ * overlapping durations (span B starts before span A ends).
  * See FanoutTurn identification criteria in §3.2.
  */
 function hasParallelToolCalls(toolCalls: ToolCall[]): boolean {
