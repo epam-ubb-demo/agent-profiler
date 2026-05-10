@@ -557,7 +557,7 @@ describe('assembleSession', () => {
     // Session identity
     expect(session.sessionId).toBe('sess-1');
 
-    // Turns (turn-1, turn-2, plus __unassigned__ for spans without turn IDs)
+    // Turns (turn-1, turn-2, plus <no-turn> for spans without turn IDs)
     expect(session.turns).toHaveLength(3);
     expect(session.fanoutTurns).toHaveLength(3);
 

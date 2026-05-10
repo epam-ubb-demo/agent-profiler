@@ -126,7 +126,8 @@ function parseDims(
 
   const result: Record<string, string> = {};
   for (const [key, val] of Object.entries(obj)) {
-    result[key] = String(val ?? '');
+    if (val == null) continue;
+    result[key] = String(val);
   }
   return result;
 }
@@ -138,6 +139,10 @@ function parseDims(
 /**
  * Parse and validate a single raw Application Insights row into an
  * {@link OTelSpan}.
+ *
+ * **This function throws on invalid input.** For batch processing where
+ * individual failures should be collected rather than thrown, use
+ * {@link parseSpanRows} instead.
  *
  * @throws {Error} When the row fails Zod validation — the error message
  *   includes the formatted Zod issues for easier debugging.

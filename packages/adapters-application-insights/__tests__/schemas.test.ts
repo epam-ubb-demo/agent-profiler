@@ -133,6 +133,31 @@ describe('parseSpanRow', () => {
 
     expect(span.dims).toEqual({});
   });
+
+  it('drops keys with null values from customDimensions', () => {
+    const span = parseSpanRow(
+      makeRawRow({ customDimensions: { 'gen_ai.request.model': null } }),
+    );
+    expect(span.dims['gen_ai.request.model']).toBeUndefined();
+    expect('gen_ai.request.model' in span.dims).toBe(false);
+  });
+
+  it('drops keys with undefined values from customDimensions', () => {
+    const span = parseSpanRow(
+      makeRawRow({ customDimensions: { 'copilot_chat.session.id': undefined } }),
+    );
+    expect(span.dims['copilot_chat.session.id']).toBeUndefined();
+    expect('copilot_chat.session.id' in span.dims).toBe(false);
+  });
+
+  it('retains keys with real values including empty string', () => {
+    const span = parseSpanRow(
+      makeRawRow({ customDimensions: { 'gen_ai.request.model': 'claude-4', 'copilot_chat.tool.call.name': '' } }),
+    );
+    expect(span.dims['gen_ai.request.model']).toBe('claude-4');
+    // Empty string IS a real value — it stays (unlike null/undefined which are absent)
+    expect(span.dims['copilot_chat.tool.call.name']).toBe('');
+  });
 });
 
 // ---------------------------------------------------------------------------

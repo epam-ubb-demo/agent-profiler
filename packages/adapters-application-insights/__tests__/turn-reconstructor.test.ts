@@ -87,6 +87,12 @@ describe('classifySpan', () => {
       ),
     ).toBe('subagent');
   });
+
+  it('returns structural for empty-string dimension values', () => {
+    expect(classifySpan(makeSpan({ dims: { 'copilot_chat.subagent.name': '' } }))).toBe('structural');
+    expect(classifySpan(makeSpan({ dims: { 'copilot_chat.tool.call.name': '' } }))).toBe('structural');
+    expect(classifySpan(makeSpan({ dims: { 'gen_ai.usage.input_tokens': '' } }))).toBe('structural');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -220,7 +226,7 @@ describe('extractTurns', () => {
     expect(buckets[0]!.startTs! <= buckets[1]!.startTs!).toBe(true);
   });
 
-  it('collects spans without turn id into __unassigned__ bucket (Strategy A)', () => {
+  it('collects spans without turn id into <no-turn> bucket (Strategy A)', () => {
     const spans = [
       makeSpan({ spanId: 'root', parentSpanId: null, dims: { 'copilot_chat.turn.id': 'turn-a' } }),
       makeSpan({ spanId: 'child', parentSpanId: 'root', dims: {} }),
@@ -231,8 +237,8 @@ describe('extractTurns', () => {
 
     expect(buckets).toHaveLength(2);
     const turnIds = buckets.map((b) => b.turnId).sort();
-    expect(turnIds).toEqual(['__unassigned__', 'turn-a']);
-    const unassigned = buckets.find((b) => b.turnId === '__unassigned__')!;
+    expect(turnIds).toEqual(['<no-turn>', 'turn-a']);
+    const unassigned = buckets.find((b) => b.turnId === '<no-turn>')!;
     expect(unassigned.spans).toHaveLength(1);
     expect(unassigned.spans[0]!.span.spanId).toBe('child');
   });

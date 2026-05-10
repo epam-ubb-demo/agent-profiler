@@ -73,13 +73,10 @@ export interface TurnBucket {
  */
 export function classifySpan(span: OTelSpan): SpanKind {
   const d = span.dims;
-  if (d['copilot_chat.subagent.name'] != null) return 'subagent';
-  if (d['copilot_chat.tool.call.name'] != null) return 'tool';
+  if (d['copilot_chat.subagent.name']) return 'subagent';
+  if (d['copilot_chat.tool.call.name']) return 'tool';
   if (d['copilot_chat.message.role'] === 'user') return 'user_message';
-  if (
-    d['gen_ai.usage.input_tokens'] != null ||
-    d['gen_ai.usage.prompt_tokens'] != null
-  ) {
+  if (d['gen_ai.usage.input_tokens'] || d['gen_ai.usage.prompt_tokens']) {
     return 'llm';
   }
   return 'structural';
@@ -219,6 +216,13 @@ export function extractTurns(
   if (roots.length === 0) return [];
 
   const TURN_DIM = 'copilot_chat.turn.id';
+
+  /**
+   * Sentinel turn ID for spans that lack a `copilot_chat.turn.id` dimension.
+   * Aligned with the convention used in `@agent-profiler/adapters-copilot-cli`.
+   */
+  const NO_TURN_SENTINEL = '<no-turn>';
+
   const hasTurnDim = allSpans.some((s) => s.dims[TURN_DIM] != null);
 
   const buckets = new Map<string, TurnBucket>();
@@ -227,7 +231,7 @@ export function extractTurns(
     // Strategy A — group by explicit turn id
     const allNodes = flattenTree(roots);
     for (const node of allNodes) {
-      const turnId = node.span.dims[TURN_DIM] ?? '__unassigned__';
+      const turnId = node.span.dims[TURN_DIM] ?? NO_TURN_SENTINEL;
 
       let bucket = buckets.get(turnId);
       if (!bucket) {
