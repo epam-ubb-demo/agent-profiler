@@ -27,7 +27,7 @@ A new **OTel Gateway** (built by a separate team) instruments GitHub Copilot age
 - Edge cases and failure modes
 - A complete reconstruction algorithm
 
-The output of this spike directly informs the implementation of a new `packages/adapters-otel` adapter package.
+The output of this spike directly informs the implementation of a new `packages/adapters-application-insights` adapter package.
 
 ---
 
@@ -53,7 +53,7 @@ Each row in `AppRequests` / `AppDependencies` carries:
 | `id`                | `spanId`             | Unique identifier for this span                |
 | `operation_ParentId`| `parentSpanId`       | Links child → parent                           |
 | `timestamp`         | `startTime`          | Span start (UTC)                               |
-| `duration`          | `endTime - startTime`| Milliseconds                                   |
+| `duration`          | `endTime - startTime`| Kusto timespan — derive milliseconds via `duration / 1ms` in KQL |
 | `name`              | Span name            | Operation name (e.g., `chat`, `tool.Read`)     |
 | `success`           | `status.code`        | Boolean derived from OTel status                |
 | `customDimensions`  | Span attributes      | JSON bag of all `gen_ai.*`, `copilot_chat.*` attributes |
@@ -100,7 +100,7 @@ The OTel Gateway emits spans using [OpenTelemetry Semantic Conventions for Gener
 | Session Field       | OTel Source                                                     | Mapping Strategy                                                                                                    |
 | ------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `sessionId`         | `copilot_chat.session.id` or `operation_Id` (traceId)          | Prefer `copilot_chat.session.id` if present; fall back to `operation_Id`. See §8 Q1.                               |
-| `copilotVersion`    | *Not emitted* — see §7                                          | Default: `'unknown'`. May appear as a resource attribute in future.                                                 |
+| `copilotVersion`    | *Not emitted* — see §7                                          | Default: `''` (empty string). May appear as a resource attribute in future.                                         |
 | `selectedModel`     | `gen_ai.request.model` on the first LLM span                   | Take from the earliest `gen_ai.request.model` in the trace.                                                         |
 | `reasoningEffort`   | *Not emitted* — see §7                                          | Default: `''`. May appear as `copilot_chat.reasoning.effort` resource attribute.                                    |
 | `repository`        | *Not reliably emitted* — see §7                                 | Default: `''`. Check for `copilot_chat.context.repository` resource attribute.                                      |
@@ -158,12 +158,12 @@ A `FanoutTurn` is a turn where the LLM dispatched multiple tool calls in paralle
 
 ```
 A Turn is a FanoutTurn IF:
-  - It contains > 1 ToolCall spans at the same depth, AND
+  - It contains > 1 ToolCall spans, AND
   - Those ToolCall spans have overlapping time ranges
     (i.e., span B starts before span A ends)
 ```
 
-All turns are represented as both `Turn` and `FanoutTurn` objects (the existing adapters do this too). The `fanoutTurns` array always mirrors `turns` — the UI layer decides which view to render.
+`FanoutTurn` objects are reconstructed independently from the span tree — they are not simple mirrors of `Turn` objects. The Copilot CLI adapter builds `fanoutTurns` with separate logic, and the VS Code chat adapter returns `fanoutTurns: []`. This adapter should reconstruct `fanoutTurns` from the span tree where parallel tool calls are detected, and return an empty array when no fan-out structure is observed.
 
 **Mapping to domain types:**
 
@@ -202,7 +202,7 @@ Each LLM call span (identified by the presence of `gen_ai.usage.*` attributes) m
 **Token attribute resolution:**
 
 ```typescript
-function resolveTokens(dims: Record<string, string>): { input: number; output: number } {
+function resolveTokens(dims: Partial<Record<string, string>>): { input: number; output: number } {
   return {
     input:  safeInt(dims['gen_ai.usage.input_tokens'])
          || safeInt(dims['gen_ai.usage.prompt_tokens'])
@@ -225,7 +225,7 @@ Tool call spans are identified by the presence of `copilot_chat.tool.call.name` 
 | `model`             | Inherited from the parent LLM span's `gen_ai.request.model` or `null`  |
 | `startTs`           | Span `timestamp`                                                        |
 | `endTs`             | `timestamp + duration` (computed)                                       |
-| `durationMs`        | Span `duration` (AI stores this in milliseconds)                        |
+| `durationMs`        | Span `duration` — derive via `duration / 1ms` in KQL (Application Insights stores duration as a Kusto timespan, not raw milliseconds) |
 | `success`           | `copilot_chat.tool.call.success` ∥ span `success`                      |
 | `parentId`          | `parentSpanId`                                                          |
 | `turnId`            | Inherited from parent Turn                                              |
@@ -365,17 +365,19 @@ Groups spans by session identifier and returns a summary row per session.
 let sessionSpans = AppDependencies
 | union AppRequests
 | where isnotempty(customDimensions)
-| extend sessionId = coalesce(
+| extend sessionId = iif(
+    isnotempty(tostring(customDimensions.["copilot_chat.session.id"])),
     tostring(customDimensions.["copilot_chat.session.id"]),
     operation_Id
   )
 | where isnotempty(sessionId);
 sessionSpans
+| extend turnId = tostring(customDimensions.["copilot_chat.turn.id"])
 | summarize
     startTs          = min(timestamp),
     endTs            = max(timestamp + duration),
     spanCount        = count(),
-    turnCount        = dcount(tostring(customDimensions.["copilot_chat.turn.id"])),
+    turnCount        = dcountif(turnId, isnotempty(turnId)),
     llmCallCount     = countif(isnotempty(tostring(customDimensions.["gen_ai.usage.input_tokens"]))),
     toolCallCount    = countif(isnotempty(tostring(customDimensions.["copilot_chat.tool.call.name"]))),
     totalInputTokens = sum(toint(customDimensions.["gen_ai.usage.input_tokens"])),
@@ -406,6 +408,7 @@ let spans = AppDependencies
     spanName         = name,
     spanTimestamp     = timestamp,
     spanDuration     = duration,
+    durationMs       = duration / 1ms,
     spanSuccess      = success,
     // gen_ai.* attributes
     requestModel     = tostring(customDimensions.["gen_ai.request.model"]),
@@ -519,7 +522,7 @@ interface OTelSpan {
   readonly timestamp: string;              // ISO 8601
   readonly durationMs: number;
   readonly success: boolean;
-  readonly dims: Record<string, string>;   // customDimensions flattened
+  readonly dims: Partial<Record<string, string>>;   // customDimensions flattened
 }
 
 type SpanKind = 'llm' | 'tool' | 'subagent' | 'user_message' | 'structural';
@@ -666,9 +669,26 @@ function extractTurns(roots: SpanNode[], allSpans: OTelSpan[]): TurnBucket[] {
 
 // ─── Step 5 & 6: Map and aggregate ─────────────────────────────────
 
+/**
+ * Detect parallel tool calls by checking for overlapping time ranges.
+ * A turn has parallel tool calls if any two ToolCall spans have
+ * overlapping durations (span B starts before span A ends).
+ * See FanoutTurn identification criteria in §3.2.
+ */
+function hasParallelToolCalls(toolCalls: ToolCall[]): boolean {
+  if (toolCalls.length < 2) return false;
+  const sorted = [...toolCalls].sort((a, b) => a.startTs.localeCompare(b.startTs));
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i]!.startTs < sorted[i - 1]!.endTs) return true;
+  }
+  return false;
+}
+
 function reconstructSession(spans: OTelSpan[]): Session {
-  const roots = buildSpanTree(spans);
-  const turnBuckets = extractTurns(roots, spans);
+  // Sort spans by timestamp for deterministic reconstruction (see §6.3)
+  const sorted = [...spans].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  const roots = buildSpanTree(sorted);
+  const turnBuckets = extractTurns(roots, sorted);
 
   // Classify all spans for top-level aggregation
   const allNodes = flattenTree(roots);
@@ -694,11 +714,15 @@ function reconstructSession(spans: OTelSpan[]): Session {
     subagents: subagents.filter(sa => sa.turnId === bucket.turnId),
   }));
 
-  // Build fanout turns
-  const fanoutTurns: FanoutTurn[] = turns.map(turn => ({
-    ...turn,
-    model: turn.assistantMessages[0]?.model ?? null,
-  }));
+  // Build fanout turns — reconstruct independently from span tree.
+  // Only turns with parallel tool calls produce FanoutTurn entries;
+  // hasParallelToolCalls checks for overlapping time ranges (see §3.2).
+  const fanoutTurns: FanoutTurn[] = turns
+    .filter(turn => hasParallelToolCalls(turn.toolCalls))
+    .map(turn => ({
+      ...turn,
+      model: turn.assistantMessages[0]?.model ?? null,
+    }));
 
   // Detect model changes (transitions between different models across LLM spans)
   const modelChanges = detectModelChanges(llmNodes);
@@ -707,32 +731,42 @@ function reconstructSession(spans: OTelSpan[]): Session {
   const shutdown = aggregateShutdownMetrics(llmNodes, spans);
 
   // Compute session boundaries
-  const startTs = spans.length > 0
-    ? spans.reduce((min, s) => s.timestamp < min ? s.timestamp : min, spans[0]!.timestamp)
+  const startTs = sorted.length > 0
+    ? sorted.reduce((min, s) => s.timestamp < min ? s.timestamp : min, sorted[0]!.timestamp)
     : null;
-  const endTs = spans.length > 0
-    ? spans.reduce((max, s) => {
+  const endTs = sorted.length > 0
+    ? sorted.reduce((max, s) => {
         const end = computeEndTs(s);
         return end > max ? end : max;
-      }, computeEndTs(spans[0]!))
+      }, computeEndTs(sorted[0]!))
     : null;
 
-  // Derive session ID
-  const sessionId = spans[0]?.dims['copilot_chat.session.id']
-                 ?? spans[0]?.traceId
-                 ?? 'unknown';
+  // Scan all spans for session-level attributes (not just spans[0])
+  function findAttribute(searchSpans: OTelSpan[], key: string): string {
+    for (const s of searchSpans) {
+      const val = s.dims[key];
+      if (val !== undefined && val !== '') return String(val);
+    }
+    return '';
+  }
+
+  const sessionId = findAttribute(sorted, 'copilot_chat.session.id')
+                 || sorted[0]?.traceId
+                 || 'unknown';
 
   // Derive parse status
-  const parseStatus = deriveParseStatus(spans, turns);
+  const parseStatus = deriveParseStatus(sorted, turns);
 
   return {
     sessionId,
     copilotVersion: '',                    // Not available in OTel — see §7
-    selectedModel: llmNodes[0]?.span.dims['gen_ai.request.model'] ?? '',
+    selectedModel: llmNodes.length > 0
+      ? [...llmNodes].sort((a, b) => a.span.timestamp.localeCompare(b.span.timestamp))[0]!.span.dims['gen_ai.request.model'] ?? ''
+      : '',
     reasoningEffort: '',                   // Not available in OTel — see §7
-    repository: spans[0]?.dims['copilot_chat.context.repository'] ?? '',
-    branch: spans[0]?.dims['copilot_chat.context.branch'] ?? '',
-    cwd: spans[0]?.dims['copilot_chat.context.cwd'] ?? '',
+    repository: findAttribute(sorted, 'copilot_chat.context.repository'),
+    branch: findAttribute(sorted, 'copilot_chat.context.branch'),
+    cwd: findAttribute(sorted, 'copilot_chat.context.cwd'),
     startTs,
     endTs,
     modelChanges,
