@@ -39,3 +39,8 @@ export interface KeyVaultOutputs {
   keyVaultUri: pulumi.Output<string>;
   keyVaultName: pulumi.Output<string>;
 }
+
+export interface GatewayOutputs {
+  gatewayId: pulumi.Output<string>;
+  gatewayPrivateIp: pulumi.Output<string>;
+}
