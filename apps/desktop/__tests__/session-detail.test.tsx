@@ -57,7 +57,12 @@ const mockElectronApi: ElectronApi = {
   dialog: {
     openDirectory: vi.fn(),
   },
-};
+  settings: {
+    get: vi.fn(),
+    set: vi.fn(),
+    testConnection: vi.fn(),
+  },
+} as unknown as ElectronApi;
 
 beforeEach(() => {
   Object.defineProperty(window, 'electronApi', { value: mockElectronApi, writable: true });

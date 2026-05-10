@@ -58,4 +58,30 @@ export const ipcChannels = {
   SESSION_OPEN: 'session:open',
   SESSION_SET_ROOT_DIR: 'session:setRootDir',
   DIALOG_OPEN_DIRECTORY: 'dialog:openDirectory',
+  SETTINGS_GET: 'settings:get',
+  SETTINGS_SET: 'settings:set',
+  SETTINGS_TEST_CONNECTION: 'settings:testConnection',
 } as const;
+
+/**
+ * Schema for Application Insights connection settings flowing across IPC.
+ */
+export const appInsightsSettingsSchema = z.object({
+  workspaceId: z.string(),
+  timeRangePreset: z.enum(['24h', '7d', '30d', 'custom']),
+  customStartDate: z.string().datetime().optional(),
+  customEndDate: z.string().datetime().optional(),
+});
+
+export type AppInsightsSettingsIpc = z.infer<typeof appInsightsSettingsSchema>;
+
+/**
+ * Schema for the result of testing an Application Insights connection.
+ */
+export const testConnectionResultSchema = z.object({
+  success: z.boolean(),
+  sessionCount: z.number().optional(),
+  error: z.string().optional(),
+});
+
+export type TestConnectionResultIpc = z.infer<typeof testConnectionResultSchema>;
