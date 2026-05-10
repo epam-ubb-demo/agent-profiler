@@ -1,0 +1,75 @@
+# OTel Collector configuration — demo environment
+# Processor ordering: memory_limiter MUST be first in every pipeline
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    limit_mib: 400
+    spike_limit_mib: 100
+    check_interval: 1s
+
+  resourcedetection:
+    detectors: [env, azure]
+
+  transform/pii:
+    error_mode: ignore
+    trace_statements:
+      - context: resource
+        statements:
+          - replace_pattern(attributes["process.command_line"], "/home/[^/]+", "REDACTED")
+          - replace_pattern(attributes["process.executable.path"], "/home/[^/]+", "REDACTED")
+    log_statements:
+      - context: resource
+        statements:
+          - replace_pattern(attributes["process.command_line"], "/home/[^/]+", "REDACTED")
+          - replace_pattern(attributes["process.executable.path"], "/home/[^/]+", "REDACTED")
+
+  attributes/env:
+    actions:
+      - key: deployment.environment
+        value: ${env:ENV}
+        action: insert
+      - key: service.namespace
+        value: agent-profiler
+        action: insert
+
+  batch:
+    timeout: 1s
+    send_batch_size: 512
+
+exporters:
+  azuremonitor:
+    connection_string: ${env:APPLICATIONINSIGHTS_CONNECTION_STRING}
+    maxbatchsize: 512
+    maxbatchinterval: 5s
+
+  debug:
+    verbosity: basic
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions: [health_check, zpages]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, transform/pii, attributes/env, batch]
+      exporters: [azuremonitor, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, attributes/env, batch]
+      exporters: [azuremonitor, debug]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, transform/pii, attributes/env, batch]
+      exporters: [azuremonitor, debug]

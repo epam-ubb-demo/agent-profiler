@@ -21,3 +21,9 @@ export interface MonitoringOutputs {
   appInsightsConnectionString: pulumi.Output<string>;
   appInsightsInstrumentationKey: pulumi.Output<string>;
 }
+
+export interface ContainerAppOutputs {
+  caeId: pulumi.Output<string>;
+  containerAppId: pulumi.Output<string>;
+  containerAppFqdn: pulumi.Output<string>;
+}

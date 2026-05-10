@@ -9,6 +9,10 @@ config:
   agent-profiler-otel-gateway:platformReservedDnsIP: "10.0.4.2"
   agent-profiler-otel-gateway:dockerBridgeCidr: "172.17.0.1/16"
   agent-profiler-otel-gateway:logRetentionDays: "30"
+  agent-profiler-otel-gateway:otelCollectorImage: "otel/opentelemetry-collector-contrib"
+  agent-profiler-otel-gateway:otelCollectorTag: "0.102.0"
+  agent-profiler-otel-gateway:minReplicas: "0"
+  agent-profiler-otel-gateway:maxReplicas: "2"
   agent-profiler-otel-gateway:publicAccess: "true"
   # Replace with actual demo client IP ranges before deployment
   agent-profiler-otel-gateway:allowedIpRanges: "203.0.113.0/24"
