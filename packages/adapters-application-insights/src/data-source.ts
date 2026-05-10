@@ -147,23 +147,28 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
       const result = await this.queryClient.query(LIST_SESSIONS_KQL, range);
 
       return result.rows
-        .map((row) => {
-          const sessionId = String(row['sessionId'] ?? '');
+        .flatMap((row) => {
+          const raw = String(row['sessionId'] ?? '');
+          const sessionId = validateSessionId(raw);
+          if (sessionId === null) {
+            return [];
+          }
           const rawStartTs = row['startTs'];
           const createdAt =
             rawStartTs instanceof Date
               ? rawStartTs
               : new Date(String(rawStartTs ?? ''));
 
-          return {
-            id: sessionId,
-            name: sessionId,
-            path: `ai://${this.workspaceId}/${sessionId}`,
-            createdAt: Number.isFinite(createdAt.getTime()) ? createdAt : new Date(0),
-            adapter: 'application-insights' as const,
-          };
-        })
-        .filter((item) => item.id !== '');
+          return [
+            {
+              id: sessionId,
+              name: sessionId,
+              path: `ai://${this.workspaceId}/${sessionId}`,
+              createdAt: Number.isFinite(createdAt.getTime()) ? createdAt : new Date(0),
+              adapter: 'application-insights' as const,
+            },
+          ];
+        });
     } catch {
       return [];
     }

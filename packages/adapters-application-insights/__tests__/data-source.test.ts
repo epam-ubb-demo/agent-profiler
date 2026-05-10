@@ -74,7 +74,8 @@ function getMockInstance(): {
   testConnection: ReturnType<typeof vi.fn>;
   query: ReturnType<typeof vi.fn>;
 } {
-  return vi.mocked(MockedQueryClient).mock.results[0]!
+  const mock = vi.mocked(MockedQueryClient).mock;
+  return mock.results[mock.results.length - 1]!
     .value as unknown as ReturnType<typeof getMockInstance>;
 }
 

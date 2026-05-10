@@ -1,3 +1,5 @@
+import type { AdapterTypeIpc } from '@agent-profiler/core';
+
 /**
  * Typed API exposed to the renderer process via contextBridge.
  *
@@ -56,5 +58,5 @@ export interface SessionListItemIpc {
   name: string;
   path: string;
   createdAt: string;
-  adapter: 'copilot-cli' | 'vscode-chat' | 'vscode-agent' | 'ctb' | 'application-insights';
+  adapter: AdapterTypeIpc;
 }
