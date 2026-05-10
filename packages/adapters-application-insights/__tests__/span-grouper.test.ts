@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 
 import type { OTelSpan } from '../src/schemas';
+import { parseSpanRows } from '../src/schemas';
 import { groupSpansBySession, deduplicateSpans } from '../src/span-grouper';
+import { multiSessionRows } from './fixtures';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -142,5 +144,43 @@ describe('deduplicateSpans', () => {
     const result = deduplicateSpans(spans);
 
     expect(result.map((s) => s.spanId)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fixture-based tests — multi-session grouping
+// ---------------------------------------------------------------------------
+
+describe('groupSpansBySession — multi-session fixture', () => {
+  it('separates spans from two different sessions', () => {
+    const { spans } = parseSpanRows(multiSessionRows);
+    const groups = groupSpansBySession(spans);
+
+    expect(groups).toHaveLength(2);
+    const ids = groups.map((g) => g.sessionId).sort();
+    expect(ids).toEqual(['sess-multi-a', 'sess-multi-b']);
+  });
+
+  it('assigns correct span counts to each session group', () => {
+    const { spans } = parseSpanRows(multiSessionRows);
+    const groups = groupSpansBySession(spans);
+
+    const groupA = groups.find((g) => g.sessionId === 'sess-multi-a');
+    const groupB = groups.find((g) => g.sessionId === 'sess-multi-b');
+
+    expect(groupA!.spans).toHaveLength(3);
+    expect(groupB!.spans).toHaveLength(2);
+  });
+});
+
+describe('deduplicateSpans — fixture duplicates', () => {
+  it('removes duplicate spans from multi-session fixture data', () => {
+    const { spans } = parseSpanRows(multiSessionRows);
+    // Simulate duplicates by doubling the span list
+    const duplicated = [...spans, ...spans];
+
+    const deduped = deduplicateSpans(duplicated);
+
+    expect(deduped).toHaveLength(spans.length);
   });
 });

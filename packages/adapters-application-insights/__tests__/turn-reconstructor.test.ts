@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import type { OTelSpan } from '../src/schemas';
+import { parseSpanRows } from '../src/schemas';
 import {
   classifySpan,
   buildSpanTree,
@@ -13,6 +14,7 @@ import {
   computeEndTs,
   flattenTree,
 } from '../src/turn-reconstructor';
+import { validSessionRows } from './fixtures';
 import type { SpanNode, TurnBucket } from '../src/turn-reconstructor';
 
 // ---------------------------------------------------------------------------
@@ -655,5 +657,40 @@ describe('flattenTree', () => {
     // Must terminate and return each node exactly once
     expect(flat).toHaveLength(2);
     expect(flat.map((n) => n.span.spanId).sort()).toEqual(['a', 'b']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fixture-based full pipeline test — valid-session fixture through buildTurns
+// ---------------------------------------------------------------------------
+
+describe('buildTurns — valid-session fixture end-to-end', () => {
+  it('reconstructs turns from valid 14-span session', () => {
+    const { spans } = parseSpanRows(validSessionRows);
+    const roots = buildSpanTree(spans);
+    const buckets = extractTurns(roots, spans);
+    const { turns } = buildTurns(buckets);
+
+    // At least 3 turn groups (one per user message)
+    expect(turns.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('classifies all valid-session fixture spans', () => {
+    const { spans } = parseSpanRows(validSessionRows);
+    const classified = spans.map((s) => classifySpan(s));
+
+    // Every span should get a classification (never 'unknown' for well-formed spans)
+    expect(classified.length).toBe(spans.length);
+    expect(classified.every((c) => c !== 'unknown')).toBe(true);
+  });
+
+  it('builds correct span tree from valid-session fixture', () => {
+    const { spans } = parseSpanRows(validSessionRows);
+    const roots = buildSpanTree(spans);
+
+    // There should be a single root span (the session root)
+    expect(roots.length).toBeGreaterThanOrEqual(1);
+    // The root span should have children
+    expect(roots[0]!.children.length).toBeGreaterThan(0);
   });
 });

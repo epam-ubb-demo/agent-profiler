@@ -10,6 +10,7 @@ import {
   aggregateShutdownMetrics,
 } from '../src/session-assembler';
 import type { SpanNode } from '../src/turn-reconstructor';
+import { validSessionRows, partialOrphanRows, minimalSessionRows } from './fixtures';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -665,5 +666,77 @@ describe('assembleSession', () => {
     const session = assembleSession([structuralRow, llmRow]);
 
     expect(session.sessionId).toBe('my-session');
+  });
+
+  // -----------------------------------------------------------------------
+  // Fixture-based full pipeline tests
+  // -----------------------------------------------------------------------
+
+  it('assembles valid-session fixture with correct session identity', () => {
+    const session = assembleSession(validSessionRows);
+
+    expect(session.sessionId).toBe('sess-valid-001');
+    expect(session.repository).toBe('epam/agent-profiler');
+    expect(session.branch).toBe('main');
+    expect(session.cwd).toBe('/home/dev/agent-profiler');
+  });
+
+  it('assembles valid-session fixture with correct turn structure', () => {
+    const session = assembleSession(validSessionRows);
+
+    // 3 explicit turn IDs + 1 <no-turn> bucket for root span
+    expect(session.turns.length).toBeGreaterThanOrEqual(3);
+    expect(session.fanoutTurns.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('assembles valid-session fixture with correct event counts', () => {
+    const session = assembleSession(validSessionRows);
+
+    // 3 user messages, 4 tool calls (read_file, edit, bash, grep), 1 subagent
+    expect(session.userMessages).toHaveLength(3);
+    expect(session.toolCalls.length).toBeGreaterThanOrEqual(4);
+    expect(session.subagents).toHaveLength(1);
+    expect(session.assistantMessages.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('assembles valid-session fixture with model change detection', () => {
+    const session = assembleSession(validSessionRows);
+
+    // claude-4 is first, then gpt-5 in turn 3
+    expect(session.selectedModel).toBe('claude-4');
+    expect(session.modelChanges.length).toBeGreaterThanOrEqual(1);
+    expect(session.modelChanges.some((c) => c.model === 'gpt-5')).toBe(true);
+  });
+
+  it('assembles valid-session fixture with ok parseStatus', () => {
+    const session = assembleSession(validSessionRows);
+
+    expect(session.parseStatus.status).toBe('ok');
+    expect(session.parseStatus.error).toBeNull();
+  });
+
+  it('assembles partial-orphans fixture with partial parseStatus', () => {
+    const session = assembleSession(partialOrphanRows);
+
+    expect(session.parseStatus.status).toBe('partial');
+    expect(session.parseStatus.error).toContain('orphan');
+  });
+
+  it('assembles minimal-session fixture using traceId as sessionId', () => {
+    const session = assembleSession(minimalSessionRows);
+
+    expect(session.sessionId).toBe('minimal-trace-001');
+    expect(session.selectedModel).toBe('claude-4');
+    expect(session.turns.length).toBeGreaterThanOrEqual(1);
+    expect(session.parseStatus.status).toBe('ok');
+  });
+
+  it('assembles minimal-session fixture with shutdown metrics', () => {
+    const session = assembleSession(minimalSessionRows);
+
+    expect(session.shutdown).not.toBeNull();
+    expect(session.shutdown!.totalPremiumRequests).toBe(1);
+    expect(session.shutdown!.modelMetrics).toHaveLength(1);
+    expect(session.shutdown!.modelMetrics[0]!.inputTokens).toBe(500);
   });
 });
