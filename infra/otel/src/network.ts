@@ -20,6 +20,7 @@ export class NetworkStack extends pulumi.ComponentResource {
   public readonly vnetName: pulumi.Output<string>;
   public readonly acaSubnetId: pulumi.Output<string>;
   public readonly agwSubnetId: pulumi.Output<string> | undefined;
+  public readonly publicIpId: pulumi.Output<string> | undefined;
 
   constructor(
     name: string,
@@ -171,7 +172,7 @@ export class NetworkStack extends pulumi.ComponentResource {
 
       // Public IP is required by Application Gateway v2 infrastructure
       // but the frontend uses a private IP. The internet deny NSG rule is intentional.
-      new azure.network.PublicIPAddress(
+      const pip = new azure.network.PublicIPAddress(
         "pip-agw",
         {
           publicIpAddressName: pipName("agw", namingArgs),
@@ -186,6 +187,7 @@ export class NetworkStack extends pulumi.ComponentResource {
       );
 
       this.agwSubnetId = agwSubnet.id;
+      this.publicIpId = pip.id;
     }
 
     this.registerOutputs({
@@ -193,6 +195,7 @@ export class NetworkStack extends pulumi.ComponentResource {
       vnetName: this.vnetName,
       acaSubnetId: this.acaSubnetId,
       agwSubnetId: this.agwSubnetId,
+      publicIpId: this.publicIpId,
     });
   }
 }

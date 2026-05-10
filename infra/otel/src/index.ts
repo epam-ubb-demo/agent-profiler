@@ -10,11 +10,14 @@ import { MonitoringStack, addDiagnosticSettings } from "./monitoring.js";
 import { ContainerAppStack } from "./container-app.js";
 import { KeyVaultStack } from "./keyvault.js";
 import { IdentityStack } from "./identity.js";
+import { GatewayStack } from "./gateway.js";
 
 const config = new pulumi.Config();
 const environment = config.require("environment");
 const region = config.require("region");
 const instance = config.require("instance");
+
+const enableAppGateway = config.getBoolean("enableAppGateway") ?? false;
 
 const tags = createTags({ environment });
 registerAutoTagging(tags);
@@ -80,6 +83,23 @@ const containerApp = new ContainerAppStack("container-app", {
   logAnalyticsWorkspaceId: monitoring.logAnalyticsWorkspaceId,
   appInsightsConnectionString: monitoring.appInsightsConnectionString,
 });
+
+// Application Gateway stack (prod only, when enabled)
+if (enableAppGateway && environment === "prod") {
+  const gateway = new GatewayStack("gateway", {
+    environment,
+    region,
+    instance,
+    resourceGroupName: resourceGroup.name,
+    tags,
+    agwSubnetId: network.agwSubnetId!,
+    publicIpId: network.publicIpId!,
+    containerAppFqdn: containerApp.containerAppFqdn,
+    logAnalyticsWorkspaceId: monitoring.logAnalyticsWorkspaceId,
+  });
+
+  addDiagnosticSettings("agw", gateway.gatewayId, monitoring.logAnalyticsWorkspaceId);
+}
 
 // Wire diagnostic settings for resources owned by other stacks
 addDiagnosticSettings("vnet", network.vnetId, monitoring.logAnalyticsWorkspaceId);
