@@ -1,8 +1,9 @@
 /**
  * Span grouping utilities.
  *
- * Groups validated {@link OTelSpan} objects by session and removes
- * duplicate spans that may appear across overlapping query windows.
+ * Groups validated {@link OTelSpan} objects by session.
+ * A separate {@link deduplicateSpans} helper removes duplicate spans
+ * that may appear across overlapping query windows.
  */
 
 import type { OTelSpan } from './schemas';

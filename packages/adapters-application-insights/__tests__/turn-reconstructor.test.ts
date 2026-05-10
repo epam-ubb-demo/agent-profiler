@@ -254,6 +254,15 @@ describe('extractTurns', () => {
     expect(buckets[1]!.turnId).toBe('turn-1');
     expect(buckets[1]!.spans[0]!.span.spanId).toBe('child-late');
   });
+
+  it('promotes all nodes to roots when every span forms a cycle', () => {
+    const spans: OTelSpan[] = [
+      makeSpan({ spanId: 'a', parentSpanId: 'b' }),
+      makeSpan({ spanId: 'b', parentSpanId: 'a' }),
+    ];
+    const result = buildSpanTree(spans);
+    expect(result.length).toBe(2);
+  });
 });
 
 // ---------------------------------------------------------------------------

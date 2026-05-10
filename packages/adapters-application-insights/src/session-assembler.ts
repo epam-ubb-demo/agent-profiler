@@ -132,6 +132,7 @@ export function aggregateShutdownMetrics(
   // Use the latest span end time (timestamp + duration) as the shutdown timestamp
   const lastEndTs = [...allSpans]
     .map((s) => new Date(s.timestamp).getTime() + s.durationMs)
+    .filter((t) => Number.isFinite(t))
     .reduce((max, t) => Math.max(max, t), 0);
 
   return {

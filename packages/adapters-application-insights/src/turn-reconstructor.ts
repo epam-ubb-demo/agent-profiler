@@ -122,6 +122,13 @@ export function buildSpanTree(spans: readonly OTelSpan[]): SpanNode[] {
     }
   }
 
+  // Fallback — if all spans form a cycle, promote every node to a root
+  if (roots.length === 0) {
+    for (const node of nodeMap.values()) {
+      roots.push(node);
+    }
+  }
+
   // Phase 3 — assign depth via BFS
   const visited = new Set<string>();
   const queue: { node: MutableSpanNode; depth: number }[] = roots.map((r) => ({

@@ -240,4 +240,22 @@ describe('parseSpanRow — timestamp validation', () => {
     const span = parseSpanRow(makeRawRow({ timestamp: '2025-06-15T12:00:00.000Z' }));
     expect(span.timestamp).toBe('2025-06-15T12:00:00.000Z');
   });
+
+  it('normalises parseable timestamp string to ISO-8601', () => {
+    const row = makeRawRow({ timestamp: '2024-01-15 10:30:00' });
+    const span = parseSpanRow(row);
+    expect(span.timestamp).toBe(new Date('2024-01-15 10:30:00').toISOString());
+  });
+
+  it('normalises empty operation_ParentId to null', () => {
+    const row = makeRawRow({ operation_ParentId: '' });
+    const span = parseSpanRow(row);
+    expect(span.parentSpanId).toBeNull();
+  });
+
+  it('normalises whitespace-only operation_ParentId to null', () => {
+    const row = makeRawRow({ operation_ParentId: '   ' });
+    const span = parseSpanRow(row);
+    expect(span.parentSpanId).toBeNull();
+  });
 });

@@ -372,6 +372,40 @@ describe('aggregateShutdownMetrics', () => {
     // MAX should be T+10s = 2025-01-01T00:00:10.000Z
     expect(shutdown!.timestamp).toBe('2025-01-01T00:00:10.000Z');
   });
+
+  it('tolerates NaN end timestamps from unparseable dates', () => {
+    const llmNode = makeNode(
+      {
+        spanId: 'llm-nan',
+        durationMs: 100,
+        timestamp: '2025-01-01T00:00:00.000Z',
+        dims: {
+          'gen_ai.response.model': 'claude-4',
+          'gen_ai.usage.input_tokens': '10',
+          'gen_ai.usage.output_tokens': '5',
+        },
+      },
+      { kind: 'llm' },
+    );
+
+    const goodSpan = makeSpan({
+      spanId: 'good',
+      timestamp: '2025-01-01T00:00:01.000Z',
+      durationMs: 50,
+    });
+
+    const badSpan = makeSpan({
+      spanId: 'bad',
+      timestamp: 'not-a-date',
+      durationMs: 100,
+    });
+
+    const shutdown = aggregateShutdownMetrics([llmNode], [goodSpan, badSpan]);
+
+    expect(shutdown).not.toBeNull();
+    // timestamp must be a valid ISO string, not NaN
+    expect(Number.isNaN(new Date(shutdown!.timestamp).getTime())).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------

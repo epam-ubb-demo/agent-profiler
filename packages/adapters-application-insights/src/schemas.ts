@@ -38,12 +38,12 @@ export interface OTelSpan {
 const RawSpanRowSchema = z.object({
   id: z.string(),
   operation_Id: z.string(),
-  operation_ParentId: z.string().nullish().transform((v) => v ?? null),
+  operation_ParentId: z.string().nullish().transform((v) => (v == null || v.trim() === '') ? null : v),
   name: z.string(),
   timestamp: z.union([
     z.string().transform((s) => {
       const d = new Date(s);
-      return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : s;
+      return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
     }),
     z.date().transform((d) => d.toISOString()),
   ]),
