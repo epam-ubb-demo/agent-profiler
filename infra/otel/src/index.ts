@@ -93,7 +93,6 @@ void new WorkbookStack("workbooks", {
   resourceGroupName: resourceGroup.name,
   tags,
   appInsightsId: monitoring.appInsightsId,
-  logAnalyticsWorkspaceId: monitoring.logAnalyticsWorkspaceId,
 });
 
 // Application Gateway stack (prod only, when enabled)

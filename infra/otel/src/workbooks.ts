@@ -1,14 +1,13 @@
 // Application Insights workbook dashboards for OTel Gateway observability
 // Provides overview, Copilot usage, and health dashboards as Azure Workbooks
 
+import * as crypto from "node:crypto";
 import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
 import type { SharedArgs } from "./types.js";
-import { azureName } from "./naming.js";
 
 export interface WorkbookArgs extends SharedArgs {
   appInsightsId: pulumi.Output<string>;
-  logAnalyticsWorkspaceId: pulumi.Output<string>;
 }
 
 export class WorkbookStack extends pulumi.ComponentResource {
@@ -19,17 +18,26 @@ export class WorkbookStack extends pulumi.ComponentResource {
   ) {
     super("agent-profiler:dashboards:WorkbookStack", name, {}, opts);
 
-    const namingArgs = {
-      environment: args.environment,
-      region: args.region,
-      instance: args.instance,
+    /**
+     * Generates a deterministic GUID from a seed string.
+     * Azure Workbooks require a GUID for `resourceName`; we derive one from the
+     * Pulumi stack name and the workbook logical name so it remains stable across
+     * deployments yet unique per workbook.
+     */
+    const deterministicGuid = (workbookName: string): string => {
+      const hex = crypto
+        .createHash("sha256")
+        .update(`${name}-${workbookName}`)
+        .digest("hex")
+        .slice(0, 32);
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
     };
 
     // 1. OTel Gateway Overview workbook
     new azure.insights.Workbook(
       "wb-otel-overview",
       {
-        resourceName: azureName("wb", "otel-overview", namingArgs),
+        resourceName: deterministicGuid("otel-overview"),
         resourceGroupName: args.resourceGroupName,
         location: args.region,
         kind: "shared",
@@ -61,7 +69,7 @@ export class WorkbookStack extends pulumi.ComponentResource {
                 version: "KqlItem/1.0",
                 query: [
                   "customMetrics",
-                  '| where name == "gen_ai.client.token.usage"',
+                  '| where name in ("gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens")',
                   '| extend model = tostring(customDimensions["gen_ai.response.model"])',
                   "| summarize totalTokens = sum(value) by model",
                   "| top 10 by totalTokens desc",
@@ -95,14 +103,14 @@ export class WorkbookStack extends pulumi.ComponentResource {
         }),
         tags: args.tags,
       },
-      { parent: this },
+      { parent: this, ignoreChanges: ["serializedData"] },
     );
 
     // 2. Copilot Usage Dashboard
     new azure.insights.Workbook(
       "wb-copilot-usage",
       {
-        resourceName: azureName("wb", "copilot-usage", namingArgs),
+        resourceName: deterministicGuid("copilot-usage"),
         resourceGroupName: args.resourceGroupName,
         location: args.region,
         kind: "shared",
@@ -118,7 +126,7 @@ export class WorkbookStack extends pulumi.ComponentResource {
                 version: "KqlItem/1.0",
                 query: [
                   "customMetrics",
-                  '| where name == "gen_ai.client.token.usage"',
+                  '| where name in ("gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens")',
                   '| extend model = tostring(customDimensions["gen_ai.response.model"])',
                   "| summarize totalTokens = sum(value) by model, bin(timestamp, 1h)",
                   "| render timechart",
@@ -135,10 +143,10 @@ export class WorkbookStack extends pulumi.ComponentResource {
               content: {
                 version: "KqlItem/1.0",
                 query: [
-                  "requests",
-                  '| extend pseudoId = tostring(customDimensions["enduser.pseudo.id"]),',
-                  '         cost = todouble(customDimensions["github.copilot.cost"])',
-                  "| summarize totalCost = sum(cost) by pseudoId",
+                  "customMetrics",
+                  '| where name == "github.copilot.cost"',
+                  '| extend pseudoId = tostring(customDimensions["enduser.pseudo.id"])',
+                  "| summarize totalCost = sum(value) by pseudoId",
                   "| top 20 by totalCost desc",
                 ].join("\n"),
                 size: 1,
@@ -154,7 +162,7 @@ export class WorkbookStack extends pulumi.ComponentResource {
                 version: "KqlItem/1.0",
                 query: [
                   "dependencies",
-                  '| where type == "execute_tool"',
+                  '| where name startswith "execute_tool"',
                   '| extend toolName = tostring(customDimensions["tool.name"]),',
                   '         success = tobool(customDimensions["tool.success"])',
                   "| summarize calls = count(), failures = countif(success == false) by toolName",
@@ -189,14 +197,14 @@ export class WorkbookStack extends pulumi.ComponentResource {
         }),
         tags: args.tags,
       },
-      { parent: this },
+      { parent: this, ignoreChanges: ["serializedData"] },
     );
 
     // 3. Gateway Health Dashboard
     new azure.insights.Workbook(
       "wb-gateway-health",
       {
-        resourceName: azureName("wb", "gateway-health", namingArgs),
+        resourceName: deterministicGuid("gateway-health"),
         resourceGroupName: args.resourceGroupName,
         location: args.region,
         kind: "shared",
@@ -278,7 +286,7 @@ export class WorkbookStack extends pulumi.ComponentResource {
         }),
         tags: args.tags,
       },
-      { parent: this },
+      { parent: this, ignoreChanges: ["serializedData"] },
     );
 
     this.registerOutputs({});

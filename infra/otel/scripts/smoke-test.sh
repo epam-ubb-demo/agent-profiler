@@ -6,6 +6,7 @@
 # The script sends a minimal OTLP/HTTP JSON trace payload containing GenAI
 # semantic convention attributes and checks the HTTP response code.
 set -euo pipefail
+shopt -s inherit_errexit
 
 ENDPOINT="${1:-http://localhost:4318}"
 TRACE_ID=$(openssl rand -hex 16)
@@ -50,6 +51,11 @@ HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
       }]
     }]
   }')
+
+if [ -z "${HTTP_CODE}" ]; then
+  echo "❌ Failed to connect to ${ENDPOINT}"
+  exit 1
+fi
 
 if [ "${HTTP_CODE}" -eq 200 ]; then
   echo "✅ Trace accepted (HTTP ${HTTP_CODE})"
