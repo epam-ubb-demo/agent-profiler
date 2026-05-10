@@ -36,9 +36,15 @@ export interface SessionCache {
 
 const DEFAULT_DAYS = 7;
 
-/** Sanitize a session ID to prevent KQL injection. */
-function sanitizeSessionId(raw: string): string {
-  return raw.replace(/[^a-zA-Z0-9_-]/g, '');
+/** Pattern for valid session IDs — alphanumeric, hyphens, underscores, and dots. */
+const SESSION_ID_PATTERN = /^[a-zA-Z0-9_.\-]+$/;
+
+/** Validate a session ID. Returns the ID if valid, or `null` for invalid input. */
+function validateSessionId(raw: string): string | null {
+  if (raw.length === 0 || !SESSION_ID_PATTERN.test(raw)) {
+    return null;
+  }
+  return raw;
 }
 
 /** Build a default time range covering the last N days from now. */
@@ -72,8 +78,8 @@ sessionSpans
 | take 200`;
 
 function buildGetSessionKql(sessionId: string): string {
-  const safe = sanitizeSessionId(sessionId);
-  return `let targetSession = "${safe}";
+  // sessionId is already validated by validateSessionId
+  return `let targetSession = "${sessionId}";
 AppDependencies
 | union AppRequests
 | where operation_Id == targetSession
@@ -140,21 +146,24 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
       const range = this.timeRange ?? defaultTimeRange();
       const result = await this.queryClient.query(LIST_SESSIONS_KQL, range);
 
-      return result.rows.map((row) => {
-        const sessionId = String(row['sessionId'] ?? '');
-        const rawDate = new Date(String(row['startTs'] ?? ''));
-        const createdAt = Number.isFinite(rawDate.getTime())
-          ? rawDate
-          : new Date(0);
+      return result.rows
+        .map((row) => {
+          const sessionId = String(row['sessionId'] ?? '');
+          const rawStartTs = row['startTs'];
+          const createdAt =
+            rawStartTs instanceof Date
+              ? rawStartTs
+              : new Date(String(rawStartTs ?? ''));
 
-        return {
-          id: sessionId,
-          name: sessionId,
-          path: `ai://${this.workspaceId}/${sessionId}`,
-          createdAt,
-          adapter: 'application-insights' as const,
-        };
-      });
+          return {
+            id: sessionId,
+            name: sessionId,
+            path: `ai://${this.workspaceId}/${sessionId}`,
+            createdAt: Number.isFinite(createdAt.getTime()) ? createdAt : new Date(0),
+            adapter: 'application-insights' as const,
+          };
+        })
+        .filter((item) => item.id !== '');
     } catch {
       return [];
     }
@@ -162,13 +171,19 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
 
   async getSession(sessionId: string): Promise<Session | null> {
     try {
+      const validId = validateSessionId(sessionId);
+      if (validId === null) {
+        return null;
+      }
+
       // Check cache first
-      if (this.cache?.has(sessionId)) {
-        return this.cache.get(sessionId) ?? null;
+      const cached = this.cache?.get(validId);
+      if (cached !== undefined) {
+        return cached;
       }
 
       const range = this.timeRange ?? defaultTimeRange();
-      const kql = buildGetSessionKql(sessionId);
+      const kql = buildGetSessionKql(validId);
       const result = await this.queryClient.query(kql, range);
 
       if (result.rows.length === 0) {
@@ -179,7 +194,7 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
 
       // Store in cache if available
       if (this.cache) {
-        this.cache.set(sessionId, session);
+        this.cache.set(validId, session);
       }
 
       return session;

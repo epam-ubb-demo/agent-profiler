@@ -56,5 +56,5 @@ export interface SessionListItemIpc {
   name: string;
   path: string;
   createdAt: string;
-  adapter: 'copilot-cli' | 'vscode-chat' | 'vscode-agent' | 'ctb';
+  adapter: 'copilot-cli' | 'vscode-chat' | 'vscode-agent' | 'ctb' | 'application-insights';
 }

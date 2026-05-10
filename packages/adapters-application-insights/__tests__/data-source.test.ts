@@ -162,6 +162,34 @@ describe('ApplicationInsightsDataSource', () => {
 
       await expect(ds.listSessions()).resolves.toEqual([]);
     });
+
+    it('filters out rows with empty sessionId', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.query.mockResolvedValueOnce({
+        rows: [
+          { sessionId: '', startTs: '2024-06-15T10:00:00Z', spanCount: 5, selectedModel: 'gpt-4' },
+          { sessionId: 'valid-session', startTs: '2024-06-15T11:00:00Z', spanCount: 10, selectedModel: 'gpt-4' },
+        ],
+      });
+
+      const items = await ds.listSessions();
+      expect(items).toHaveLength(1);
+      expect(items[0]!.id).toBe('valid-session');
+    });
+
+    it('handles Date objects from Azure SDK in startTs', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      const dateObj = new Date('2024-06-15T10:00:00Z');
+      mock.query.mockResolvedValueOnce({
+        rows: [{ sessionId: 'session-1', startTs: dateObj, spanCount: 5, selectedModel: 'gpt-4' }],
+      });
+
+      const items = await ds.listSessions();
+      expect(items).toHaveLength(1);
+      expect(items[0]!.createdAt).toEqual(dateObj);
+    });
   });
 
   // -----------------------------------------------------------------------
@@ -208,11 +236,22 @@ describe('ApplicationInsightsDataSource', () => {
       await expect(ds.getSession('session-abc-123')).resolves.toBeNull();
     });
 
+    it('returns null for invalid session ID', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      // Session ID with KQL injection attempt
+      await expect(ds.getSession('"; drop table spans; //')).resolves.toBeNull();
+      // Empty session ID
+      await expect(ds.getSession('')).resolves.toBeNull();
+      // getMockInstance query should NOT have been called for invalid IDs
+      expect(mock.query).not.toHaveBeenCalled();
+    });
+
     it('returns cached session when cache has entry', async () => {
       const mockCache: SessionCache = {
         get: vi.fn().mockReturnValue(FAKE_SESSION),
         set: vi.fn(),
-        has: vi.fn().mockReturnValue(true),
+        has: vi.fn(),
         delete: vi.fn(),
         clear: vi.fn(),
       };
@@ -222,16 +261,15 @@ describe('ApplicationInsightsDataSource', () => {
       const session = await ds.getSession('session-abc-123');
 
       expect(session).toBe(FAKE_SESSION);
-      expect(mockCache.has).toHaveBeenCalledWith('session-abc-123');
       expect(mockCache.get).toHaveBeenCalledWith('session-abc-123');
       expect(mock.query).not.toHaveBeenCalled();
     });
 
     it('stores session in cache after successful query', async () => {
       const mockCache: SessionCache = {
-        get: vi.fn(),
+        get: vi.fn().mockReturnValue(undefined),
         set: vi.fn(),
-        has: vi.fn().mockReturnValue(false),
+        has: vi.fn(),
         delete: vi.fn(),
         clear: vi.fn(),
       };
