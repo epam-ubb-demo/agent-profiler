@@ -122,6 +122,7 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
     credential?: TokenCredential | undefined;
     timeRange?: TimeRange | undefined;
     cache?: SessionCache | undefined;
+    maxSpanCount?: number | undefined;
   }) {
     this.workspaceId = config.workspaceId;
     this.timeRange = config.timeRange;
@@ -129,6 +130,7 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
     this.queryClient = new QueryClient({
       workspaceId: config.workspaceId,
       credential: config.credential,
+      maxSpanCount: config.maxSpanCount,
     });
   }
 
@@ -201,13 +203,41 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
 
       const range = this.timeRange ?? defaultTimeRange();
       const kql = buildGetSessionKql(validId);
-      const result = await this.queryClient.query(kql, range);
+      const result = await this.queryClient.queryWithTruncationCheck(kql, range);
 
       if (result.rows.length === 0) {
         return null;
       }
 
-      const session = assembleSession(result.rows);
+      const { truncated } = result;
+
+      const assembled = assembleSession(result.rows);
+
+      // Merge truncation warning into parseStatus without masking existing issues.
+      // Only downgrade 'ok' → 'partial'; if already non-ok, append truncation note.
+      let session: Session;
+      if (!truncated) {
+        session = assembled;
+      } else if (assembled.parseStatus.status === 'ok') {
+        session = {
+          ...assembled,
+          parseStatus: {
+            status: 'partial' as const,
+            error: `Result set truncated at ${result.rows.length} spans — session may be incomplete`,
+          },
+        };
+      } else {
+        const existingError = assembled.parseStatus.error ?? '';
+        session = {
+          ...assembled,
+          parseStatus: {
+            ...assembled.parseStatus,
+            error: existingError
+              ? `${existingError}; result set truncated at ${result.rows.length} spans`
+              : `Result set truncated at ${result.rows.length} spans — session may be incomplete`,
+          },
+        };
+      }
 
       // Store in cache if available — cache write failures must not affect the return value
       if (this.cache) {

@@ -132,6 +132,7 @@ For advanced usage the package also exports the individual pipeline stages:
 | `groupSpansBySession(spans)` | Group spans by session identity (`copilot_chat.session.id`, falling back to `traceId`). |
 | `deduplicateSpans(spans)` | Remove duplicate span IDs, keeping the latest timestamp for each. |
 | `safeInt(value)` | Parse an integer from a string, returning `0` for `null`, `undefined`, empty, or non-numeric values. |
+| `DEFAULT_MAX_SPAN_COUNT` | The default span limit (10 000) used for truncation detection. |
 
 ### Data quality
 
@@ -212,6 +213,9 @@ All `SessionCache` methods are optional. If a method is not provided, that opera
 | `workspaceId` | `string` | Yes | Azure Log Analytics Workspace ID |
 | `credential` | `TokenCredential` | No | Custom Azure credential (defaults to `DefaultAzureCredential`) |
 | `timeoutMs` | `number` | No | Query timeout in milliseconds (default: 60 000) |
+| `maxSpanCount` | `number` | No | Truncation detection threshold — when the result set reaches this count, the session is flagged as potentially truncated (default: 10 000) |
+
+> **Truncation detection:** When a session query returns rows equal to or exceeding `maxSpanCount`, the data source flags the result as truncated and sets `parseStatus` to `{ status: 'partial', error: '…' }`. This avoids silently presenting incomplete sessions. Adjust `maxSpanCount` upward for workspaces with very large sessions.
 
 For authentication setup, see the [Azure Authentication Setup Guide](../../docs/guides/azure-authentication-setup.md).
 
@@ -269,7 +273,22 @@ For the full gap analysis, see [docs/spikes/spike-otel-span-to-session.md](../..
 ## Development
 
 ```bash
-pnpm test          # run unit tests
-pnpm typecheck     # TypeScript strict mode check
-pnpm lint          # ESLint
+pnpm test              # run unit tests
+pnpm test:coverage     # run tests with v8 coverage (thresholds: 80% lines/funcs/stmts, 75% branches)
+pnpm typecheck         # TypeScript strict mode check
+pnpm lint              # ESLint
 ```
+
+### Integration tests
+
+Integration tests exercise the real Azure SDK against a live Log Analytics workspace and are **skipped by default** in CI. To run them locally:
+
+```bash
+APPINSIGHTS_WORKSPACE_ID=<guid> pnpm --filter @agent-profiler/adapters-application-insights test
+```
+
+Prerequisites:
+- A valid Azure Log Analytics workspace GUID
+- Azure credentials available via `DefaultAzureCredential` (e.g. `az login`)
+
+The integration test suite covers `isAvailable()`, `listSessions()`, `getSession()`, and graceful failure with an invalid workspace ID.

@@ -1,6 +1,15 @@
 import { describe, it, expect } from 'vitest';
 
 import { parseSpanRow, parseSpanRows, safeInt, parseKustoDuration } from '../src/schemas';
+import {
+  rowMissingId,
+  rowNonStringOperationId,
+  rowInvalidTimestamp,
+  rowMalformedDimensions,
+  rowEmptyIdentifiers,
+  rowKustoDuration,
+  allMalformedRows,
+} from './fixtures';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -282,5 +291,67 @@ describe('parseSpanRow — timestamp validation', () => {
     const row = makeRawRow({ operation_ParentId: '   ' });
     const span = parseSpanRow(row);
     expect(span.parentSpanId).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fixture-based tests — parseSpanRows with malformed data
+// ---------------------------------------------------------------------------
+
+describe('parseSpanRows — malformed fixture data', () => {
+  it('rejects row missing id field', () => {
+    const { spans, errors } = parseSpanRows([rowMissingId]);
+
+    expect(spans).toHaveLength(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain('Row 0');
+  });
+
+  it('rejects row with non-string operation_Id', () => {
+    const { spans, errors } = parseSpanRows([rowNonStringOperationId]);
+
+    expect(spans).toHaveLength(0);
+    expect(errors).toHaveLength(1);
+  });
+
+  it('accepts row with invalid timestamp (normalised to epoch)', () => {
+    const { spans, errors } = parseSpanRows([rowInvalidTimestamp]);
+
+    expect(spans).toHaveLength(1);
+    expect(errors).toHaveLength(0);
+    expect(spans[0]!.timestamp).toBe('1970-01-01T00:00:00.000Z');
+  });
+
+  it('accepts row with malformed customDimensions (dims = {})', () => {
+    const { spans, errors } = parseSpanRows([rowMalformedDimensions]);
+
+    expect(spans).toHaveLength(1);
+    expect(errors).toHaveLength(0);
+    expect(spans[0]!.dims).toEqual({});
+  });
+
+  it('rejects row with empty string identifiers', () => {
+    const { spans, errors } = parseSpanRows([rowEmptyIdentifiers]);
+
+    expect(spans).toHaveLength(0);
+    expect(errors).toHaveLength(1);
+  });
+
+  it('parses Kusto timespan duration from fixture', () => {
+    const { spans, errors } = parseSpanRows([rowKustoDuration]);
+
+    expect(spans).toHaveLength(1);
+    expect(errors).toHaveLength(0);
+    // '00:00:05.2500000' = 5250ms
+    expect(spans[0]!.durationMs).toBeCloseTo(5250, 0);
+    expect(spans[0]!.dims['gen_ai.request.model']).toBe('claude-4');
+  });
+
+  it('collects errors and successes from mixed batch of malformed rows', () => {
+    const { spans, errors } = parseSpanRows(allMalformedRows);
+
+    // rowMissingId, rowNonStringOperationId, and rowEmptyIdentifiers fail; rest succeed
+    expect(errors).toHaveLength(3);
+    expect(spans).toHaveLength(3);
   });
 });

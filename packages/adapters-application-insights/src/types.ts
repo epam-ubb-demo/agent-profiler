@@ -8,6 +8,8 @@ export interface AppInsightsConfig {
   readonly credential?: TokenCredential | undefined;
   /** Query timeout in milliseconds (default: 60_000). */
   readonly timeoutMs?: number | undefined;
+  /** Maximum expected span count per session — result sets reaching this limit are flagged as truncated (default: 10_000). */
+  readonly maxSpanCount?: number | undefined;
 }
 
 /** Time range for queries. */

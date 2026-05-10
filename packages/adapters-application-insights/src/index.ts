@@ -1,6 +1,7 @@
 export { ApplicationInsightsDataSource } from './data-source';
 export type { SessionCache } from './data-source';
 export { QueryClient } from './query-client';
+export { DEFAULT_MAX_SPAN_COUNT } from './query-client';
 export type { OTelSpan } from './schemas';
 export { parseKustoDuration, parseSpanRow, parseSpanRows, safeInt } from './schemas';
 export { assembleSession } from './session-assembler';
