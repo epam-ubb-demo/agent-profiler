@@ -213,6 +213,31 @@ describe('QueryClient', () => {
     expect(result.rows).toHaveLength(5);
   });
 
+  it('clamps maxSpanCount to minimum of 1 for zero or negative values', async () => {
+    const rows = [['a']];
+    mockQueryWorkspace.mockResolvedValueOnce({
+      status: 'Success',
+      tables: [
+        {
+          columnDescriptors: [{ name: 'id', type: 'string' }],
+          rows,
+        },
+      ],
+    });
+
+    // maxSpanCount of 0 should be clamped to 1
+    const client = new QueryClient({
+      workspaceId: TEST_WORKSPACE_ID,
+      maxSpanCount: 0,
+    });
+
+    const result = await client.queryWithTruncationCheck('TestQuery', TEST_TIME_RANGE);
+
+    // 1 row >= clamped limit of 1, so truncated should be true
+    expect(result.truncated).toBe(true);
+    expect(result.rows).toHaveLength(1);
+  });
+
   it('respects custom maxSpanCount from config', async () => {
     // Create 5 rows — at the custom limit of 5
     const rows = Array.from({ length: 5 }, (_, i) => [`row-${i}`, i]);

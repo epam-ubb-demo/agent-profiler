@@ -30,7 +30,7 @@ export class QueryClient {
   constructor(config: AppInsightsConfig) {
     this.config = config;
     this.timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    this.maxSpanCount = config.maxSpanCount ?? DEFAULT_MAX_SPAN_COUNT;
+    this.maxSpanCount = Math.max(1, config.maxSpanCount ?? DEFAULT_MAX_SPAN_COUNT);
 
     const credential: TokenCredential =
       config.credential ?? new DefaultAzureCredential();
@@ -87,12 +87,12 @@ export class QueryClient {
   /**
    * Execute a KQL query and detect whether the result set was truncated.
    *
-   * This method intentionally performs a single query — KQL handles
-   * server-side pagination natively. The truncation flag detects when
-   * the result set hits the configured {@link maxSpanCount} limit,
-   * signalling potential data loss to callers. Full client-side
-   * pagination was considered and rejected per
-   * {@link https://github.com/epam-ubb-demo/agent-profiler/blob/main/docs/spikes/spike-otel-span-to-session.md spike-otel-span-to-session.md §4}.
+   * This method performs a single KQL query. Log Analytics imposes a
+   * server-side row limit (typically 30 000 rows). The truncation flag
+   * indicates when the result set reaches the configured
+   * {@link maxSpanCount} threshold, signalling potential data loss.
+   * For sessions exceeding this limit, callers should narrow the time
+   * window or increase {@link maxSpanCount}.
    *
    * @param kql - Kusto Query Language expression.
    * @param timeRange - Start and end timestamps for the query window.

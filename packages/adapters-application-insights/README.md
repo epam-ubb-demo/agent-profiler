@@ -213,7 +213,7 @@ All `SessionCache` methods are optional. If a method is not provided, that opera
 | `workspaceId` | `string` | Yes | Azure Log Analytics Workspace ID |
 | `credential` | `TokenCredential` | No | Custom Azure credential (defaults to `DefaultAzureCredential`) |
 | `timeoutMs` | `number` | No | Query timeout in milliseconds (default: 60 000) |
-| `maxSpanCount` | `number` | No | Maximum spans retrieved per session before flagging truncation (default: 10 000) |
+| `maxSpanCount` | `number` | No | Truncation detection threshold — when the result set reaches this count, the session is flagged as potentially truncated (default: 10 000) |
 
 > **Truncation detection:** When a session query returns rows equal to or exceeding `maxSpanCount`, the data source flags the result as truncated and sets `parseStatus` to `{ status: 'partial', error: '…' }`. This avoids silently presenting incomplete sessions. Adjust `maxSpanCount` upward for workspaces with very large sessions.
 
