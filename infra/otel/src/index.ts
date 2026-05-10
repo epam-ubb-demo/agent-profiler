@@ -8,6 +8,8 @@ import { resourceGroupName } from "./naming.js";
 import { NetworkStack } from "./network.js";
 import { MonitoringStack, addDiagnosticSettings } from "./monitoring.js";
 import { ContainerAppStack } from "./container-app.js";
+import { KeyVaultStack } from "./keyvault.js";
+import { IdentityStack } from "./identity.js";
 
 const config = new pulumi.Config();
 const environment = config.require("environment");
@@ -43,6 +45,30 @@ const monitoring = new MonitoringStack("monitoring", {
   tags,
 });
 
+// Key Vault stack
+const keyVault = new KeyVaultStack("keyvault", {
+  environment,
+  region,
+  instance,
+  resourceGroupName: resourceGroup.name,
+  tags,
+  subnetId: network.acaSubnetId,
+  vnetId: network.vnetId,
+  logAnalyticsWorkspaceId: monitoring.logAnalyticsWorkspaceId,
+  appInsightsConnectionString: monitoring.appInsightsConnectionString,
+});
+
+// Identity stack
+const identity = new IdentityStack("identity", {
+  environment,
+  region,
+  instance,
+  resourceGroupName: resourceGroup.name,
+  tags,
+  appInsightsId: monitoring.appInsightsId,
+  keyVaultId: keyVault.keyVaultId,
+});
+
 // Container App stack (OTel Collector)
 const containerApp = new ContainerAppStack("container-app", {
   environment,
@@ -65,3 +91,5 @@ export const vnetId = network.vnetId;
 export const appInsightsConnectionString = monitoring.appInsightsConnectionString;
 export const containerAppFqdn = containerApp.containerAppFqdn;
 export const containerAppId = containerApp.containerAppId;
+export const keyVaultUri = keyVault.keyVaultUri;
+export const managedIdentityClientId = identity.managedIdentityClientId;

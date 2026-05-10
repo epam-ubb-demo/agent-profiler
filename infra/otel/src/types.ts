@@ -27,3 +27,15 @@ export interface ContainerAppOutputs {
   containerAppId: pulumi.Output<string>;
   containerAppFqdn: pulumi.Output<string>;
 }
+
+export interface IdentityOutputs {
+  managedIdentityId: pulumi.Output<string>;
+  managedIdentityClientId: pulumi.Output<string>;
+  managedIdentityPrincipalId: pulumi.Output<string>;
+}
+
+export interface KeyVaultOutputs {
+  keyVaultId: pulumi.Output<string>;
+  keyVaultUri: pulumi.Output<string>;
+  keyVaultName: pulumi.Output<string>;
+}
