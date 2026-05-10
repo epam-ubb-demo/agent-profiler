@@ -1,0 +1,14 @@
+config:
+  azure-native:location: eastus
+  agent-profiler-otel-gateway:environment: demo
+  agent-profiler-otel-gateway:region: eastus
+  agent-profiler-otel-gateway:instance: "001"
+  agent-profiler-otel-gateway:vnetCidr: "10.0.0.0/16"
+  agent-profiler-otel-gateway:acaSubnetCidr: "10.0.2.0/23"
+  agent-profiler-otel-gateway:platformReservedCidr: "10.0.4.0/22"
+  agent-profiler-otel-gateway:platformReservedDnsIP: "10.0.4.2"
+  agent-profiler-otel-gateway:dockerBridgeCidr: "172.17.0.1/16"
+  agent-profiler-otel-gateway:logRetentionDays: "30"
+  agent-profiler-otel-gateway:publicAccess: "true"
+  # Replace with actual demo client IP ranges before deployment
+  agent-profiler-otel-gateway:allowedIpRanges: "203.0.113.0/24"
