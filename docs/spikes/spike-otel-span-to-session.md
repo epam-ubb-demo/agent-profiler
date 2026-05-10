@@ -296,27 +296,42 @@ Shutdown metrics summarise the session's final state. In the JSONL format, these
 
 ```typescript
 function aggregateModelMetrics(llmSpans: OTelSpan[]): ModelMetrics[] {
-  const byModel = new Map<string, ModelMetrics>();
+  // Mutable accumulator — converted to readonly ModelMetrics at the end
+  interface ModelAccumulator {
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+    reasoningTokens: number;
+    requestCount: number;
+    premiumRequestCost: number;
+    apiDurationMs: number;
+  }
+
+  const byModel = new Map<string, ModelAccumulator>();
 
   for (const span of llmSpans) {
     const model = span.dims['gen_ai.response.model']
                ?? span.dims['gen_ai.request.model']
                ?? 'unknown';
-    const existing = byModel.get(model) ?? {
+    const acc = byModel.get(model) ?? {
       model, inputTokens: 0, outputTokens: 0,
       cacheReadTokens: 0, cacheWriteTokens: 0,
-      requestCount: 0, apiDurationMs: 0,
+      reasoningTokens: 0, requestCount: 0,
+      premiumRequestCost: 0, apiDurationMs: 0,
     };
-    existing.inputTokens  += safeInt(span.dims['gen_ai.usage.input_tokens']);
-    existing.outputTokens += safeInt(span.dims['gen_ai.usage.output_tokens']);
-    existing.cacheReadTokens  += safeInt(span.dims['gen_ai.usage.cache_read_tokens']);
-    existing.cacheWriteTokens += safeInt(span.dims['gen_ai.usage.cache_write_tokens']);
-    existing.requestCount += 1;
-    existing.apiDurationMs += span.durationMs;
-    byModel.set(model, existing);
+    acc.inputTokens  += safeInt(span.dims['gen_ai.usage.input_tokens']);
+    acc.outputTokens += safeInt(span.dims['gen_ai.usage.output_tokens']);
+    acc.cacheReadTokens  += safeInt(span.dims['gen_ai.usage.cache_read_tokens']);
+    acc.cacheWriteTokens += safeInt(span.dims['gen_ai.usage.cache_write_tokens']);
+    acc.requestCount += 1;
+    acc.apiDurationMs += span.durationMs;
+    byModel.set(model, acc);
   }
 
-  return [...byModel.values()];
+  // Freeze into readonly ModelMetrics
+  return [...byModel.values()].map((acc): ModelMetrics => ({ ...acc }));
 }
 ```
 
@@ -608,10 +623,11 @@ function extractTurns(roots: SpanNode[], allSpans: OTelSpan[]): TurnBucket[] {
     for (const root of roots) visitWithTurnId(root);
   } else {
     // Strategy B: Depth-1 children of root = turns
+    let turnIndex = 0;
     for (const root of roots) {
       if (root.children.length === 0) {
         // Single-span trace — one turn
-        const turnId = 'turn-0';
+        const turnId = `turn-${turnIndex++}`;
         buckets.set(turnId, {
           turnId,
           spans: [root],
@@ -621,8 +637,8 @@ function extractTurns(roots: SpanNode[], allSpans: OTelSpan[]): TurnBucket[] {
       } else {
         root.children
           .sort((a, b) => a.span.timestamp.localeCompare(b.span.timestamp))
-          .forEach((child, index) => {
-            const turnId = `turn-${index}`;
+          .forEach((child) => {
+            const turnId = `turn-${turnIndex++}`;
             const bucket: TurnBucket = {
               turnId,
               spans: [],
