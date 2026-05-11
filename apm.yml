@@ -3,7 +3,8 @@ version: 1.0.0
 description: APM project for agent-profiler
 author: Sergio Sisternes
 dependencies:
-  apm: []
+  apm:
+  - epam-mbg-demo/agent-forge/content/docs-website#docs-website/v1.0.0
   mcp: []
 includes: auto
 scripts: {}

@@ -1,0 +1,33 @@
+---
+title: Desktop App
+description: Overview of the Agent Profiler desktop application — session timeline, span detail, filtering, and settings.
+---
+
+The Agent Profiler desktop application is an Electron app that ingests OpenTelemetry traces from AI agent sessions and renders them as interactive timeline views.
+
+## Key Features
+
+- **Session Browser** — list, search, and open all locally available agent sessions
+- **Timeline View** — flame-graph style rendering of span hierarchies, colour-coded by span type
+- **Span Detail Panel** — inspect attributes, events, and resource metadata for any selected span
+- **Data Source Configuration** — connect to local log directories, OTel Gateway, or Application Insights
+- **Settings** — configure appearance, data paths, and adapter preferences
+
+## In This Section
+
+| Page | Description |
+|---|---|
+| [Installation](/agent-profiler/desktop/installation/) | Download, install, and first-launch instructions |
+| [Session Browser](/agent-profiler/desktop/session-browser/) | Navigating and filtering your session list |
+| [Data Sources](/agent-profiler/desktop/data-sources/) | Connecting to local files and remote backends |
+| [Settings](/agent-profiler/desktop/settings/) | Configuring the application |
+
+## Supported Platforms
+
+| Platform | Format | Status |
+|---|---|---|
+| macOS | `.dmg` | Supported |
+| Windows | `.exe` (NSIS) | Supported |
+| Linux | `.AppImage`, `.deb` | Supported |
+
+Download the latest release from the [GitHub Releases page](https://github.com/epam-ubb-demo/agent-profiler/releases).

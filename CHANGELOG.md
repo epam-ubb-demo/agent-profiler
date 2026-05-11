@@ -28,6 +28,8 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 - `tooling/validate-sessions.py` script for validating local sessions against the parser.
 - Post-parse validation detects when shutdown metrics exist but all token counts are zero, flagging a possible Copilot CLI event schema mismatch as a `partial` parse status.
 - Schema evolution guidance documented in `DEVELOPING.md`.
+- Documentation site built with Astro + Starlight (`docs/`) — 31 pages covering OTel Gateway, architecture decisions, operations runbooks, and expansion stubs for desktop app and adapters
+- GitHub Actions workflow for automated docs deployment to GitHub Pages (`.github/workflows/docs.yml`)
 
 ### Fixed
 

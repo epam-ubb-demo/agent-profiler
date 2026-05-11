@@ -1,0 +1,40 @@
+---
+title: Contributing
+description: How to contribute code, tests, and documentation to Agent Profiler.
+---
+
+Thank you for your interest in contributing to Agent Profiler. This section explains how to set up a development environment, follow project conventions, and submit pull requests.
+
+## Key Resources
+
+| Document | Description |
+|---|---|
+| [DEVELOPING.md](https://github.com/epam-ubb-demo/agent-profiler/blob/main/DEVELOPING.md) | Full development environment setup, build commands, and project structure |
+| [CONTRIBUTING.md](https://github.com/epam-ubb-demo/agent-profiler/blob/main/CONTRIBUTING.md) | Contribution guidelines, code of conduct, and pull request process |
+| [CODE_OF_CONDUCT.md](https://github.com/epam-ubb-demo/agent-profiler/blob/main/CODE_OF_CONDUCT.md) | Community standards and expected behaviour |
+
+## In This Section
+
+| Page | Description |
+|---|---|
+| [Backlog Conventions](/agent-profiler/contributing/backlog-conventions/) | Issue hierarchy, labels, branch naming, and Definition of Done |
+| [Writing Documentation](/agent-profiler/contributing/writing-documentation/) | How to add and update docs site pages |
+
+## Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/epam-ubb-demo/agent-profiler.git
+cd agent-profiler
+
+# Install dependencies (requires pnpm)
+pnpm install
+
+# Build all packages
+pnpm run build
+
+# Run the desktop app in development mode
+pnpm --filter @agent-profiler/desktop run dev
+```
+
+See [DEVELOPING.md](https://github.com/epam-ubb-demo/agent-profiler/blob/main/DEVELOPING.md) for the full setup guide including prerequisites and IDE configuration.

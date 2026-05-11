@@ -1,0 +1,127 @@
+---
+title: Troubleshooting
+description: Diagnose and resolve common OTel Gateway connectivity, cold-start, and deployment issues.
+---
+
+## Connectivity Issues
+
+### Collector does not respond
+
+1. Verify the FQDN resolves correctly:
+
+   ```bash
+   nslookup ca-ghcp-demo-uksouth-001.braveglacier-03fb7d47.uksouth.azurecontainerapps.io
+   ```
+
+2. Test HTTP connectivity:
+
+   ```bash
+   curl -v https://ca-ghcp-demo-uksouth-001.braveglacier-03fb7d47.uksouth.azurecontainerapps.io
+   ```
+
+   A healthy collector returns `HTTP 200`. Any other status code indicates a deployment or configuration issue.
+
+3. Check that your network allows outbound HTTPS (port 443). Corporate proxies or VPNs may block direct connections to Azure Container Apps.
+
+### Spans not appearing in Application Insights
+
+- Confirm `COPILOT_OTEL_ENABLED=true` is set in your **current** shell session (not just in the file — reload with `source ~/.zshrc`).
+- Allow 1–2 minutes for spans to propagate through the batch processor to Application Insights.
+- Run the [KQL diagnostic query](#kql-diagnostic-queries) below with a wider time window.
+
+## Cold Starts
+
+The demo environment scales to zero when idle (`minReplicas: 0`). The first OTLP request after a period of inactivity triggers a cold start:
+
+- **Expected delay**: 10–30 seconds for the container to initialise.
+- **Symptom**: The CLI appears to hang briefly on the first tool call.
+- **Resolution**: Wait for the cold start to complete. Subsequent requests within the same session are fast.
+
+To avoid cold starts in production workloads, set `minReplicas: 1` or higher in the Pulumi stack configuration.
+
+## KQL Diagnostic Queries
+
+Use these queries in **Application Insights → Logs** to verify telemetry ingestion.
+
+### Check recent spans
+
+```kusto
+dependencies
+| where timestamp > ago(1h)
+| project timestamp, name, duration, resultCode
+| order by timestamp desc
+```
+
+### Count spans by name
+
+```kusto
+dependencies
+| where timestamp > ago(24h)
+| summarize count() by name
+| order by count_ desc
+```
+
+### Find spans from a specific session
+
+```kusto
+dependencies
+| where timestamp > ago(1h)
+| where customDimensions.session_id == "<your-session-id>"
+| project timestamp, name, duration, customDimensions
+| order by timestamp asc
+```
+
+## Common Errors
+
+### 403 Forbidden on Key Vault
+
+**Symptom**: `Pulumi up` or Container App startup fails with a Key Vault 403 error.
+
+**Cause**: Your identity does not have the required RBAC role on the Key Vault resource.
+
+**Resolution**: Elevate your permissions via **Azure PIM (Privileged Identity Management)** and request the `Key Vault Secrets User` role on the relevant Key Vault resource. Allow 5–10 minutes for the role assignment to propagate.
+
+---
+
+### `WorkloadProfilePropertyNotSupportedInApiVersion`
+
+**Symptom**: Pulumi deployment fails with this error when creating or updating the Container App Environment.
+
+**Cause**: The default `azure-native` Pulumi provider version uses an API version that does not support the `workloadProfiles` property.
+
+**Resolution**: Pin the Container App Environment resource to API version `2024-03-01`:
+
+```typescript
+import * as app from "@pulumi/azure-native/app/v20240301";
+```
+
+---
+
+### `ManagedEnvironmentSubnetDelegationError`
+
+**Symptom**: Container App Environment deployment fails when `enablePrivateNetworking: true`.
+
+**Cause**: The subnet assigned to the Container App Environment has not been delegated to `Microsoft.App/environments`.
+
+**Resolution**: Ensure the subnet delegation is configured in the Pulumi stack:
+
+```typescript
+delegations: [{
+  name: "app-environments-delegation",
+  serviceName: "Microsoft.App/environments",
+}],
+```
+
+---
+
+## Collector Health Check
+
+The OTel Collector exposes a health check endpoint at the root path. A `GET /` request to the collector FQDN returns `HTTP 200` when the collector is running and ready to accept traces.
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" \
+  https://ca-ghcp-demo-uksouth-001.braveglacier-03fb7d47.uksouth.azurecontainerapps.io
+# Expected: 200
+```
+
+If the health check fails, check Container App logs in the Azure portal under **Container App → Monitoring → Log stream**.
