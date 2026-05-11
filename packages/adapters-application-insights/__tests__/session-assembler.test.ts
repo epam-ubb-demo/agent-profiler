@@ -846,7 +846,7 @@ describe('aggregateModelMetrics — empty-string model dimension', () => {
     expect(metrics[0]!.outputTokens).toBe(25);
   });
 
-  it('distinguishes between missing and empty-string model in fallback chain', () => {
+  it('aggregates missing and empty-string model into the same empty-key bucket', () => {
     const spans = [
       makeSpan({
         spanId: 'llm-missing',
