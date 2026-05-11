@@ -14,7 +14,7 @@ describe('loadPlugin', () => {
       await loadPlugin('/nonexistent/path/plugin.js');
     } catch (err) {
       expect(err).toBeInstanceOf(PluginLoadError);
-      expect((err as PluginLoadError).pluginPath).toContain('/nonexistent/path/plugin.js');
+      expect((err as PluginLoadError).pluginPath).toContain(join('nonexistent', 'path', 'plugin.js'));
     }
   });
 
