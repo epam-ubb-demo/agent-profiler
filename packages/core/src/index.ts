@@ -64,9 +64,9 @@ export {
   sessionDataSchema,
   adapterTypeSchema,
   sessionListItemSchema,
-  ipcChannels,
   appInsightsSettingsSchema,
   testConnectionResultSchema,
+  ipcChannels,
 } from './ipc-schemas';
 export type {
   SessionSummary,

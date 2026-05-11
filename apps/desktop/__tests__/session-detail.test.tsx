@@ -1,3 +1,4 @@
+import type * as AgentProfilerUi from '@agent-profiler/ui';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ElectronApi } from '../src/preload/api';
@@ -35,7 +36,7 @@ function createMockSession(overrides: Record<string, unknown> = {}) {
 
 // Mock @agent-profiler/ui components
 vi.mock('@agent-profiler/ui', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@agent-profiler/ui')>();
+  const actual = await importOriginal<typeof AgentProfilerUi>();
   return {
     ...actual,
     SessionDetailView: ({ session, onBack }: { session: { sessionId: string; parseStatus: { status: string; error: string | null } }; onBack: () => void }) => (
@@ -147,7 +148,7 @@ describe('SessionErrorFallback', () => {
   it('displays session ID and path in error details when show details is clicked', async () => {
     // Make the mock SessionDetailView throw to trigger the ErrorBoundary fallback
     vi.doMock('@agent-profiler/ui', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@agent-profiler/ui')>();
+      const actual = await importOriginal<typeof AgentProfilerUi>();
       return {
         ...actual,
         SessionDetailView: () => { throw new Error('Test render crash'); },

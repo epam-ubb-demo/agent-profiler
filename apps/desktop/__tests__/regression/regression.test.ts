@@ -6,7 +6,7 @@
  * packages directly and exercise the contracts between them.
  */
 
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 
@@ -269,7 +269,7 @@ describe('Session loading: ctb adapter', () => {
   it('parses a ctb benchmark run directory', async () => {
     if (!existsSync(CTB_FIXTURES)) return;
     const entries = existsSync(CTB_FIXTURES)
-      ? require('node:fs').readdirSync(CTB_FIXTURES)
+      ? readdirSync(CTB_FIXTURES)
       : [];
     const benchDir = entries.find((e: string) => existsSync(join(CTB_FIXTURES, e, 'events.jsonl')));
     if (!benchDir) return;
@@ -291,7 +291,7 @@ describe('Session loading: VS Code Chat adapter', () => {
   it('parses a VS Code chat transcript file', async () => {
     if (!existsSync(VSCODE_FIXTURES)) return;
     const files = existsSync(VSCODE_FIXTURES)
-      ? require('node:fs').readdirSync(VSCODE_FIXTURES).filter((f: string) => f.endsWith('.jsonl'))
+      ? readdirSync(VSCODE_FIXTURES).filter((f: string) => f.endsWith('.jsonl'))
       : [];
     if (files.length === 0) return;
 

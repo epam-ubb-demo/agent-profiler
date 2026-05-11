@@ -39,7 +39,6 @@ export interface ElectronApi {
     get: () => Promise<AppInsightsSettingsIpc>;
     /** Save Application Insights settings and reconfigure the data source. */
     set: (settings: AppInsightsSettingsIpc) => Promise<void>;
-    /** Test the current Application Insights connection. */
     testConnection: () => Promise<TestConnectionResultIpc>;
   };
 }
