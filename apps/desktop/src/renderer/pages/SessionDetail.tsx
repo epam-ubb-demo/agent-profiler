@@ -72,18 +72,18 @@ function SessionErrorFallback({ error, onBack, sessionId }: SessionErrorFallback
           {showDetails && (
             <div className={styles['session-error-details']} role="region" aria-label="Error details">
               <div>
-                <Text size="14" color="secondary">Session</Text>{' '}
+                <Text fontSize={14} color="secondary">Session</Text>{' '}
                 <code style={{ fontFamily: 'var(--uui-font-mono, monospace)', fontSize: '13px' }}>
                   {sessionId}
                 </code>
               </div>
               <div>
-                <Text size="14" color="secondary">Path</Text>{' '}
+                <Text fontSize={14} color="secondary">Path</Text>{' '}
                 <code style={{ fontFamily: 'var(--uui-font-mono, monospace)', fontSize: '13px' }}>
                   ~/.copilot/session-state/{sessionId}
                 </code>
               </div>
-              <Text size="14" fontWeight="600">
+              <Text fontSize={14} fontWeight="600">
                 {error.message}
               </Text>
               <pre className={styles['session-error-stack']}>

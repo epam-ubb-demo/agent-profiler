@@ -295,7 +295,7 @@ describe('Session loading: VS Code Chat adapter', () => {
       : [];
     if (files.length === 0) return;
 
-    const session = await parseVsCodeChatSession(join(VSCODE_FIXTURES, files[0]));
+    const session = await parseVsCodeChatSession(join(VSCODE_FIXTURES, files[0]!));
     expect(session.parseStatus.status).not.toBe(undefined);
     expect(session.sessionId).toBeDefined();
   });

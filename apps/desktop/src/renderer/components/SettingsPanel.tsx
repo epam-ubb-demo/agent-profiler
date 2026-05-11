@@ -140,9 +140,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
               borderRadius: 6,
               overflow: 'hidden',
             }}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="settings-dialog-title"
+            rawProps={{ role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'settings-dialog-title' }}
           >
             <ModalHeader
               title={<span id="settings-dialog-title">Application Insights Settings</span>}

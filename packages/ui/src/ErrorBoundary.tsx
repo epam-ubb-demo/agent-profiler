@@ -5,9 +5,8 @@
  * Must be a class component because React hooks cannot catch render errors.
  */
 
-import errorIcon from '@epam/assets/icons/common/notification-error-fill-24.svg';
 import { Button, FlexRow, Panel, Text } from '@epam/uui';
-import type { ErrorInfo, ReactNode } from 'react';
+import type { ErrorInfo, ReactNode, SVGProps } from 'react';
 import { Component } from 'react';
 
 import styles from './ErrorBoundary.module.css';
@@ -36,7 +35,20 @@ interface ErrorBoundaryState {
 /*  Icon helper                                                        */
 /* ------------------------------------------------------------------ */
 
-const ErrorIcon = errorIcon as React.FC<React.SVGProps<SVGSVGElement>>;
+/** Inline error icon — avoids relying on @epam/assets SVG type declarations. */
+function ErrorIcon({ width = 24, height = 24 }: SVGProps<SVGSVGElement>): ReactNode {
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+    </svg>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
