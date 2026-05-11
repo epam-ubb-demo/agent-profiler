@@ -844,7 +844,7 @@ describe('aggregateModelMetrics — missing model dimensions', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Edge case: Empty-string model treated same as missing (via ?? operator)
+// Edge case: Empty-string model aggregated into same bucket as missing
 // ---------------------------------------------------------------------------
 
 describe('aggregateModelMetrics — empty-string model dimension', () => {
