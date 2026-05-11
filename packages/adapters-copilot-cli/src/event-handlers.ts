@@ -18,7 +18,6 @@ import type {
 
 import { normaliseModelMetrics, safeInt } from './normalise-model-metrics.js';
 import type { RawEvent, RawSessionContext } from './types';
-import { normaliseModelMetrics, safeInt } from './normalise-model-metrics.js';
 
 // ---------------------------------------------------------------------------
 // Session builder — mutable accumulator used during event processing
