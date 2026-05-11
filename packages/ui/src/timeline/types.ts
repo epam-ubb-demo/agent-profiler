@@ -56,3 +56,22 @@ export interface ModelSegment {
   readonly endTs: string;
   readonly durationMs: number;
 }
+
+/** A single row in the tooltip content. */
+export interface TooltipRow {
+  readonly key: string;
+  readonly value: string;
+}
+
+/** Structured tooltip content with a header and key-value rows. */
+export interface TooltipContent {
+  readonly header: string;
+  readonly rows: readonly TooltipRow[];
+}
+
+/** Callback signatures passed down to lane components for tooltip interaction. */
+export interface TooltipHandlers {
+  readonly show: (content: TooltipContent, event: React.MouseEvent) => void;
+  readonly move: (event: React.MouseEvent) => void;
+  readonly hide: () => void;
+}

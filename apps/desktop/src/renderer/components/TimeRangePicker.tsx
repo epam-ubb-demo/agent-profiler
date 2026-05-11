@@ -1,5 +1,4 @@
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { Button, FlexRow, Text } from '@epam/uui';
 
 /** The set of allowed time-range presets. */
 export type TimeRangePreset = '24h' | '7d' | '30d' | 'custom';
@@ -37,66 +36,52 @@ export function TimeRangePicker({ value, onChange }: TimeRangePickerProps) {
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <label className="text-sm font-medium">Time Range</label>
-      <div className="flex gap-2">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Text fontSize="14" fontWeight="600">Time Range</Text>
+      <FlexRow spacing="6">
         {PRESETS.map((preset) => (
           <Button
             key={preset.value}
-            type="button"
-            size="sm"
-            variant={value.timeRangePreset === preset.value ? 'default' : 'outline'}
-            aria-pressed={value.timeRangePreset === preset.value}
+            caption={preset.label}
+            size="30"
+            color={value.timeRangePreset === preset.value ? 'primary' : 'secondary'}
+            fill={value.timeRangePreset === preset.value ? 'solid' : 'outline'}
+            rawProps={{ 'aria-pressed': value.timeRangePreset === preset.value }}
             onClick={() => handlePresetClick(preset.value)}
-          >
-            {preset.label}
-          </Button>
+          />
         ))}
-      </div>
+      </FlexRow>
       {value.timeRangePreset === 'custom' && (
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="custom-start-date" className="text-xs text-muted-foreground">
-              Start
-            </label>
+        <FlexRow spacing="12" alignItems="top">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <Text fontSize="12" color="secondary">Start</Text>
             <input
               id="custom-start-date"
+              aria-label="Start"
               type="date"
               value={value.customStartDate ?? ''}
               onChange={(e) =>
-                onChange({
-                  ...value,
-                  customStartDate: e.target.value || undefined,
-                })
+                onChange({ ...value, customStartDate: e.target.value || undefined })
               }
-              className={cn(
-                'rounded-md border border-input bg-background px-3 py-1.5 text-sm',
-                'focus:outline-none focus:ring-1 focus:ring-ring',
-              )}
+              style={{ padding: '6px 8px', borderRadius: 4, border: '1px solid var(--uui-neutral-40)', fontSize: 14 }}
             />
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="custom-end-date" className="text-xs text-muted-foreground">
-              End
-            </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <Text fontSize="12" color="secondary">End</Text>
             <input
               id="custom-end-date"
+              aria-label="End"
               type="date"
               value={value.customEndDate ?? ''}
               onChange={(e) =>
-                onChange({
-                  ...value,
-                  customEndDate: e.target.value || undefined,
-                })
+                onChange({ ...value, customEndDate: e.target.value || undefined })
               }
-              className={cn(
-                'rounded-md border border-input bg-background px-3 py-1.5 text-sm',
-                'focus:outline-none focus:ring-1 focus:ring-ring',
-              )}
+              style={{ padding: '6px 8px', borderRadius: 4, border: '1px solid var(--uui-neutral-40)', fontSize: 14 }}
             />
           </div>
-        </div>
+        </FlexRow>
       )}
     </div>
   );
 }
+

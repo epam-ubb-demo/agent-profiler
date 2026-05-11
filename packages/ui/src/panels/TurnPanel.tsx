@@ -6,6 +6,7 @@
  */
 
 import type { ToolCall, Turn } from '@agent-profiler/core';
+import { FlexRow, Text } from '@epam/uui';
 import { memo, useCallback, useState } from 'react';
 
 /** Maximum characters shown in collapsed user message. */
@@ -50,35 +51,69 @@ export const TurnPanel = memo(function TurnPanel({
   return (
     <div
       data-testid="turn-panel"
-      className={`rounded-lg border transition-all duration-200 ${
-        isSelected ? 'border-blue-400 bg-blue-50/50' : 'border-slate-200'
-      }`}
+      style={{
+        borderRadius: 6,
+        border: `1px solid ${isSelected ? 'var(--uui-info-50)' : 'var(--uui-neutral-40)'}`,
+        background: isSelected ? 'var(--uui-info-5)' : undefined,
+        transition: 'all 200ms',
+      }}
     >
       {/* Header */}
       <button
         data-testid="turn-panel-header"
-        className="flex w-full items-center gap-3 px-4 py-3 text-left"
         onClick={toggle}
         aria-expanded={expanded}
+        style={{
+          display: 'flex',
+          width: '100%',
+          alignItems: 'center',
+          gap: 12,
+          padding: '12px 16px',
+          textAlign: 'left',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+        }}
       >
-        <span className="text-xs font-bold text-slate-900">#{turn.turnId}</span>
-        {relativeTime && <span className="text-xs text-slate-500">{relativeTime}</span>}
-        {model && <span className="text-xs text-slate-500">{model}</span>}
-        <span className="ml-auto text-xs text-slate-400">{expanded ? '▲' : '▼'}</span>
+        <Text size="18" fontWeight="600">#{turn.turnId}</Text>
+        {relativeTime && <Text size="18" color="secondary">{relativeTime}</Text>}
+        {model && <Text size="18" color="secondary">{model}</Text>}
+        <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--uui-text-disabled)' }}>
+          {expanded ? '▲' : '▼'}
+        </span>
       </button>
 
       {/* Body */}
       {expanded && (
-        <div data-testid="turn-panel-body" className="border-t border-slate-100 px-4 py-3 space-y-3">
+        <div
+          data-testid="turn-panel-body"
+          style={{
+            borderTop: '1px solid var(--uui-neutral-40)',
+            padding: '12px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
           {/* User message */}
           {userContent && (
             <section>
-              <h4 className="mb-1 text-xs font-semibold text-slate-700">User</h4>
-              <p className="whitespace-pre-wrap text-sm text-slate-900">{displayMessage}</p>
+              <Text size="18" fontWeight="600" rawProps={{ style: { marginBottom: 4 } }}>User</Text>
+              <p style={{ whiteSpace: 'pre-wrap', fontSize: '0.875rem', color: 'var(--uui-text-primary)', margin: 0 }}>
+                {displayMessage}
+              </p>
               {isTruncated && (
                 <button
                   data-testid="show-more-btn"
-                  className="mt-1 text-xs text-blue-600 hover:underline"
+                  style={{
+                    marginTop: 4,
+                    fontSize: '0.75rem',
+                    color: 'var(--uui-info-50)',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
                   onClick={(e) => {
                     e.stopPropagation();
                     setExpanded(true);
@@ -93,12 +128,12 @@ export const TurnPanel = memo(function TurnPanel({
           {/* Assistant messages */}
           {turn.assistantMessages.length > 0 && (
             <section>
-              <h4 className="mb-1 text-xs font-semibold text-slate-700">Assistant</h4>
+              <Text size="18" fontWeight="600" rawProps={{ style: { marginBottom: 4 } }}>Assistant</Text>
               {turn.assistantMessages.map((msg, i) => (
-                <p key={i} className="text-sm text-slate-900">
+                <p key={i} style={{ fontSize: '0.875rem', color: 'var(--uui-text-primary)', margin: 0 }}>
                   {msg.content.slice(0, MESSAGE_PREVIEW_LENGTH)}
                   {msg.content.length > MESSAGE_PREVIEW_LENGTH ? '…' : ''}
-                  <span className="ml-2 text-xs text-slate-500">
+                  <span style={{ marginLeft: 8, fontSize: '0.75rem', color: 'var(--uui-text-secondary)' }}>
                     ({msg.outputTokens} tokens)
                   </span>
                 </p>
@@ -109,29 +144,48 @@ export const TurnPanel = memo(function TurnPanel({
           {/* Tool calls */}
           {turn.toolCalls.length > 0 && (
             <section>
-              <h4 className="mb-1 text-xs font-semibold text-slate-700">Tool Calls</h4>
-              <ul className="space-y-1" data-testid="tool-calls-list">
+              <Text size="18" fontWeight="600" rawProps={{ style: { marginBottom: 4 } }}>Tool Calls</Text>
+              <ul
+                data-testid="tool-calls-list"
+                style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}
+              >
                 {turn.toolCalls.map((tc) => (
                   <li key={tc.toolCallId}>
                     <button
-                      className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-slate-50"
                       onClick={(e) => {
                         e.stopPropagation();
                         onToolCallClick?.(tc);
                       }}
+                      style={{
+                        display: 'flex',
+                        width: '100%',
+                        alignItems: 'center',
+                        gap: 8,
+                        borderRadius: 6,
+                        padding: '4px 8px',
+                        textAlign: 'left',
+                        fontSize: '0.875rem',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
                     >
-                      <span className="font-medium text-slate-900">{tc.toolName}</span>
+                      <Text size="24" fontWeight="600">{tc.toolName}</Text>
                       {tc.durationMs != null && (
-                        <span className="text-xs text-slate-500">{tc.durationMs}ms</span>
+                        <Text size="18" color="secondary">{tc.durationMs}ms</Text>
                       )}
                       <span
-                        className={`ml-auto text-xs font-medium ${
-                          tc.success === true
-                            ? 'text-green-600'
-                            : tc.success === false
-                              ? 'text-red-600'
-                              : 'text-slate-500'
-                        }`}
+                        style={{
+                          marginLeft: 'auto',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          color:
+                            tc.success === true
+                              ? 'var(--uui-success-50)'
+                              : tc.success === false
+                                ? 'var(--uui-critical-50)'
+                                : 'var(--uui-text-secondary)',
+                        }}
                       >
                         {tc.success === true ? '✓' : tc.success === false ? '✗' : '?'}
                       </span>
@@ -144,11 +198,11 @@ export const TurnPanel = memo(function TurnPanel({
 
           {/* Token summary */}
           {(totalInput > 0 || totalOutput > 0) && (
-            <section data-testid="token-summary" className="flex gap-4 text-xs text-slate-500">
-              <span>In: {totalInput}</span>
-              <span>Out: {totalOutput}</span>
-              {totalCache > 0 && <span>Cache: {totalCache}</span>}
-            </section>
+            <FlexRow data-testid="token-summary" columnGap="18" rawProps={{ 'data-testid': 'token-summary' }}>
+              <Text size="18" color="secondary">In: {totalInput}</Text>
+              <Text size="18" color="secondary">Out: {totalOutput}</Text>
+              {totalCache > 0 && <Text size="18" color="secondary">Cache: {totalCache}</Text>}
+            </FlexRow>
           )}
         </div>
       )}

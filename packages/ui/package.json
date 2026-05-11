@@ -14,11 +14,17 @@
   },
   "dependencies": {
     "@agent-profiler/core": "workspace:*",
+    "@agent-profiler/pricing": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@agent-profiler/tsconfig-base": "workspace:*",
+    "@epam/assets": "^6.4.4",
+    "@epam/loveship": "^6.4.4",
+    "@epam/uui": "^6.4.4",
+    "@epam/uui-components": "^6.4.4",
+    "@epam/uui-core": "^6.4.4",
     "@testing-library/react": "^16.0.0",
     "@testing-library/jest-dom": "^6.6.0",
     "@types/react": "^19.0.0",
@@ -28,6 +34,10 @@
     "vitest": "^3.0.0"
   },
   "peerDependencies": {
+    "@epam/loveship": "^6.0.0",
+    "@epam/uui": "^6.0.0",
+    "@epam/uui-components": "^6.0.0",
+    "@epam/uui-core": "^6.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   }

@@ -3,10 +3,12 @@
  */
 
 import type { Session } from '@agent-profiler/core';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { fireEvent, screen, cleanup } from '@testing-library/react';
 import { describe, expect, it, afterEach } from 'vitest';
 
 import { Timeline } from '../src/timeline/Timeline';
+
+import { render } from './test-utils';
 
 
 afterEach(cleanup);

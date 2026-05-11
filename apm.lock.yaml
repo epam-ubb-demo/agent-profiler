@@ -1,0 +1,9 @@
+lockfile_version: '1'
+generated_at: '2026-05-07T15:24:49.985928+00:00'
+dependencies: []
+local_deployed_files:
+- .github/agents/epam-uui-ux-designer.agent.md
+- .github/instructions/development.instructions.md
+local_deployed_file_hashes:
+  .github/agents/epam-uui-ux-designer.agent.md: sha256:52f4f005f179dbfc9139a31053a604ba16dfc8b71596b4b84473477897fd9e1a
+  .github/instructions/development.instructions.md: sha256:f3fe30ea25effece5c90934bb03516ffb5d3f09c46460484bfc30b3782c87f8d

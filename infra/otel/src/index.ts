@@ -1,16 +1,17 @@
 // Main Pulumi entry point for the OTel Gateway infrastructure
 // Orchestrates resource group, networking, and monitoring stacks
 
-import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
-import { createTags, registerAutoTagging } from "./tags.js";
+import * as pulumi from "@pulumi/pulumi";
+
+import { ContainerAppStack } from "./container-app.js";
+import { GatewayStack } from "./gateway.js";
+import { IdentityStack } from "./identity.js";
+import { KeyVaultStack } from "./keyvault.js";
+import { MonitoringStack, addDiagnosticSettings } from "./monitoring.js";
 import { resourceGroupName } from "./naming.js";
 import { NetworkStack } from "./network.js";
-import { MonitoringStack, addDiagnosticSettings } from "./monitoring.js";
-import { ContainerAppStack } from "./container-app.js";
-import { KeyVaultStack } from "./keyvault.js";
-import { IdentityStack } from "./identity.js";
-import { GatewayStack } from "./gateway.js";
+import { createTags, registerAutoTagging } from "./tags.js";
 import { WorkbookStack } from "./workbooks.js";
 
 const config = new pulumi.Config();

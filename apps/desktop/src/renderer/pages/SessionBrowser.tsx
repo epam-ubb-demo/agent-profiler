@@ -1,11 +1,11 @@
-import { FolderOpen } from 'lucide-react';
+import { Badge, Button, FlexRow, Panel, Spinner, Text } from '@epam/uui';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { SessionListItemIpc } from '../../preload/api';
 
 import { EmptyState } from '@/components/EmptyState';
+import { FolderOpenIcon } from '@/components/icons';
 import { SettingsPanel } from '@/components/SettingsPanel';
-import { Button } from '@/components/ui/button';
 
 export interface SessionBrowserProps {
   /** Called when the user selects a session to view. */
@@ -48,9 +48,9 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
   if (loading) {
     return (
-      <div data-testid="session-browser-loading" className="flex items-center justify-center p-12">
-        <p className="text-sm text-muted-foreground">Loading sessions…</p>
-      </div>
+      <FlexRow justifyContent="center" padding="24" rawProps={{ 'data-testid': 'session-browser-loading' }}>
+        <Spinner />
+      </FlexRow>
     );
   }
 
@@ -59,38 +59,31 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
   }
 
   return (
-    <div data-testid="session-browser" className="flex flex-col gap-4 p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Sessions</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleOpenFolder}>
-            <FolderOpen className="mr-2 h-4 w-4" />
-            Open Folder…
-          </Button>
+    <div data-testid="session-browser" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px' }}>
+      <FlexRow alignItems="center" spacing="12">
+        <Text size="42" fontWeight="600">Sessions</Text>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <Button fill="outline" size="30" icon={FolderOpenIcon} caption="Open Folder…" onClick={handleOpenFolder} />
           <SettingsPanel onSettingsSaved={handleSettingsSaved} />
         </div>
-      </div>
-      <ul className="flex flex-col gap-2" data-testid="session-list">
+      </FlexRow>
+      <div data-testid="session-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {sessions.map((session) => (
-          <li key={session.id}>
-            <button
-              type="button"
-              className="w-full rounded-md border p-3 text-left transition-colors hover:bg-muted"
-              onClick={() => onSelectSession(session.id)}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{session.name}</span>
-                <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium">
-                  {session.adapter}
-                </span>
+          <Panel key={session.id} shadow onClick={() => onSelectSession(session.id)}>
+            <FlexRow padding="12" spacing="12" alignItems="center">
+              <Text size="30" fontWeight="600">{session.name}</Text>
+              <div style={{ marginLeft: 'auto' }}>
+                <Badge color="info" fill="outline" caption={session.adapter} size="18" />
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
+            </FlexRow>
+            <FlexRow padding="12">
+              <Text size="18" color="secondary">
                 {new Date(session.createdAt).toLocaleString()}
-              </p>
-            </button>
-          </li>
+              </Text>
+            </FlexRow>
+          </Panel>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

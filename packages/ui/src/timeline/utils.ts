@@ -235,3 +235,23 @@ export function isTickVisible(density: 'major' | 'medium' | 'minor' | 'finest', 
       return zoom >= 8;
   }
 }
+
+/**
+ * Formats a timestamp as HH:MM:SS.mmm with an offset from session start.
+ * Example: "23:44:25.319 (+29.5m)"
+ */
+export function formatTimeWithOffset(isoString: string, sessionStartMs: number): string {
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return '--:--:--.---';
+  const ts = d.toISOString().slice(11, 23); // HH:MM:SS.mmm
+  const offsetMs = d.getTime() - sessionStartMs;
+  const sign = offsetMs >= 0 ? '+' : '';
+  return `${ts} (${sign}${formatDuration(offsetMs)})`;
+}
+
+/**
+ * Formats a number with thousands separators.
+ */
+export function formatNumber(n: number): string {
+  return n.toLocaleString('en-GB');
+}

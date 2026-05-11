@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
 import { join } from 'node:path';
+
+import { describe, expect, it } from 'vitest';
 
 import { discoverPlugins, loadPlugin, PluginLoadError } from '../loader';
 
@@ -13,7 +14,7 @@ describe('loadPlugin', () => {
       await loadPlugin('/nonexistent/path/plugin.js');
     } catch (err) {
       expect(err).toBeInstanceOf(PluginLoadError);
-      expect((err as PluginLoadError).pluginPath).toContain('/nonexistent/path/plugin.js');
+      expect((err as PluginLoadError).pluginPath).toContain(join('nonexistent', 'path', 'plugin.js'));
     }
   });
 

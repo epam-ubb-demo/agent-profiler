@@ -1,6 +1,9 @@
+import { ErrorBoundary } from '@agent-profiler/ui';
+import { ContextProvider } from '@epam/uui-core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
+import { AppShell } from '@/components/AppShell';
 import { SessionBrowser } from '@/pages/SessionBrowser';
 import { SessionDetail } from '@/pages/SessionDetail';
 
@@ -27,14 +30,18 @@ export function App() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen">
-        {route.view === 'list' && <SessionBrowser onSelectSession={handleSelectSession} />}
-        {route.view === 'detail' && (
-          <SessionDetail sessionId={route.sessionId} onBack={handleBack} />
-        )}
-      </div>
-    </QueryClientProvider>
+    <ContextProvider onInitCompleted={() => {}}>
+      <QueryClientProvider client={queryClient}>
+        <AppShell>
+          <ErrorBoundary>
+            {route.view === 'list' && <SessionBrowser onSelectSession={handleSelectSession} />}
+            {route.view === 'detail' && (
+              <SessionDetail sessionId={route.sessionId} onBack={handleBack} onSessionNavigate={handleSelectSession} />
+            )}
+          </ErrorBoundary>
+        </AppShell>
+      </QueryClientProvider>
+    </ContextProvider>
   );
 }
 

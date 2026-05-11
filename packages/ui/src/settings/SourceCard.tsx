@@ -2,6 +2,7 @@
  * SourceCard — displays a single session source with toggle and status.
  */
 
+import { FlexRow, FlexCell, Text, Badge } from '@epam/uui';
 import { memo, useCallback } from 'react';
 
 import type { DiscoveryStatus, SourceConfig } from './types';
@@ -15,19 +16,19 @@ export interface SourceCardProps {
   readonly onToggle: (enabled: boolean) => void;
 }
 
-/** Returns semantic colour class name for the status badge. */
-function getStatusColor(status: DiscoveryStatus): string {
+/** Returns UUI Badge color for the status. */
+function getStatusBadgeColor(status: DiscoveryStatus): 'success' | 'warning' | 'critical' | 'neutral' {
   switch (status.state) {
     case 'found':
-      return 'color: #16a34a'; // green
+      return 'success';
     case 'scanning':
-      return 'color: #ca8a04'; // yellow
+      return 'warning';
     case 'error':
-      return 'color: #dc2626'; // red
+      return 'critical';
     case 'not-found':
     case 'idle':
     default:
-      return 'color: #6b7280'; // grey
+      return 'neutral';
   }
 }
 
@@ -60,49 +61,50 @@ export const SourceCard = memo(function SourceCard({
   );
 
   const statusText = getStatusText(status);
-  const statusColor = getStatusColor(status);
+  const badgeColor = getStatusBadgeColor(status);
 
   return (
-    <div
-      data-testid={`source-card-${source.type}`}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        padding: '12px 16px',
-        borderRadius: '8px',
-        border: '1px solid #e2e8f0',
-      }}
+    <FlexRow
+      columnGap="12"
+      padding="12"
+      alignItems="center"
+      rawProps={{ 'data-testid': `source-card-${source.type}`, style: { borderRadius: '8px', border: '1px solid var(--uui-neutral-40)' } }}
     >
       {/* Source info */}
-      <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span data-testid={`source-label-${source.type}`} style={{ fontWeight: 600, fontSize: '14px' }}>
-            {source.label}
-          </span>
-          <span
-            data-testid={`source-status-${source.type}`}
-            style={{ fontSize: '12px', ...parseStyle(statusColor) }}
-            aria-label={`Status: ${statusText}`}
+      <FlexCell grow={1}>
+        <FlexRow columnGap="6" alignItems="center">
+          <Text
+            size="24"
+            fontWeight="600"
+            rawProps={{ 'data-testid': `source-label-${source.type}` }}
           >
-            {statusText}
-          </span>
-        </div>
-        <p
-          data-testid={`source-description-${source.type}`}
-          style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b' }}
+            {source.label}
+          </Text>
+          <Badge
+            color={badgeColor}
+            fill="outline"
+            size="18"
+            caption={statusText}
+            rawProps={{ 'data-testid': `source-status-${source.type}`, 'aria-label': `Status: ${statusText}` }}
+          />
+        </FlexRow>
+        <Text
+          size="18"
+          color="secondary"
+          rawProps={{ 'data-testid': `source-description-${source.type}`, style: { marginTop: '4px' } }}
         >
           {source.description}
-        </p>
+        </Text>
         {status.state === 'found' && (
-          <span
-            data-testid={`source-path-${source.type}`}
-            style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace' }}
+          <Text
+            size="18"
+            color="disabled"
+            rawProps={{ 'data-testid': `source-path-${source.type}`, style: { fontFamily: 'monospace' } }}
           >
             {status.path}
-          </span>
+          </Text>
         )}
-      </div>
+      </FlexCell>
 
       {/* Toggle switch */}
       <input
@@ -113,13 +115,6 @@ export const SourceCard = memo(function SourceCard({
         aria-label={`Enable ${source.label}`}
         data-testid={`source-toggle-${source.type}`}
       />
-    </div>
+    </FlexRow>
   );
 });
-
-/** Parses inline style string (e.g. "color: #fff") into a style object. */
-function parseStyle(style: string): React.CSSProperties {
-  const [key, value] = style.split(':').map((s) => s.trim());
-  if (!key || !value) return {};
-  return { [key]: value };
-}

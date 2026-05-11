@@ -1,20 +1,10 @@
 import type { AppInsightsSettingsIpc, TestConnectionResultIpc } from '@agent-profiler/core';
+import { Button, FlexRow, ModalFooter, ModalHeader, Panel, Text, TextInput } from '@epam/uui';
 import { CheckCircle, Loader2, Settings, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import { TimeRangePicker } from '@/components/TimeRangePicker';
 import type { TimeRangeValue } from '@/components/TimeRangePicker';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
 
 export interface SettingsPanelProps {
   /** Called after settings are saved so the parent can refresh data. */
@@ -109,117 +99,138 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
     }
   }, [buildSettings, onSettingsSaved]);
 
+  const handleClose = useCallback(() => setOpen(false), []);
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="icon" aria-label="Settings">
-          <Settings className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Application Insights Settings</DialogTitle>
-          <DialogDescription>
-            Connect to Azure Application Insights to browse cloud-hosted sessions.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Button
+        caption="Settings"
+        icon={Settings}
+        fill="none"
+        color="secondary"
+        size="36"
+        aria-label="Settings"
+        onClick={() => setOpen(true)}
+      />
 
-        <div className="flex flex-col gap-4 py-2">
-          {/* Workspace ID */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="workspace-id" className="text-sm font-medium">
-              Workspace ID
-            </label>
-            <input
-              id="workspace-id"
-              type="text"
-              value={workspaceId}
-              onChange={(e) => {
-                setWorkspaceId(e.target.value);
-                setTestResult(null);
-                setSaveError(null);
-              }}
-              placeholder="Enter your Log Analytics Workspace ID"
-              className={cn(
-                'rounded-md border border-input bg-background px-3 py-2 text-sm',
-                'placeholder:text-muted-foreground',
-                'focus:outline-none focus:ring-1 focus:ring-ring',
-              )}
+      {open && (
+        <>
+          {/* Backdrop */}
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.4)',
+              zIndex: 1000,
+            }}
+            onClick={handleClose}
+            aria-hidden="true"
+          />
+
+          {/* Dialog */}
+          <Panel
+            shadow
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 460,
+              zIndex: 1001,
+              borderRadius: 6,
+              overflow: 'hidden',
+            }}
+            rawProps={{ role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'settings-dialog-title' }}
+          >
+            <ModalHeader
+              title={<span id="settings-dialog-title">Application Insights Settings</span>}
+              onClose={handleClose}
             />
-          </div>
 
-          {/* Time Range Picker */}
-          <TimeRangePicker value={timeRange} onChange={setTimeRange} />
+            <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <Text color="secondary" fontSize="14">
+                Connect to Azure Application Insights to browse cloud-hosted sessions.
+              </Text>
 
-          {/* Test Connection */}
-          <div className="flex flex-col gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void handleTestConnection()}
-              disabled={testing || !workspaceId.trim()}
-            >
-              {testing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Testing…
-                </>
-              ) : (
-                'Test Connection'
-              )}
-            </Button>
+              {/* Workspace ID */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <Text fontSize="14" fontWeight="600">
+                  <label htmlFor="workspace-id">Workspace ID</label>
+                </Text>
+                <TextInput
+                  id="workspace-id"
+                  value={workspaceId}
+                  onValueChange={(v) => {
+                    setWorkspaceId(v ?? '');
+                    setTestResult(null);
+                    setSaveError(null);
+                  }}
+                  placeholder="Enter your Log Analytics Workspace ID"
+                  size="36"
+                />
+              </div>
 
-            {testResult && (
-              <div
-                className={cn(
-                  'flex items-center gap-2 rounded-md px-3 py-2 text-sm',
-                  testResult.success
-                    ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
-                    : 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
-                )}
-              >
-                {testResult.success ? (
-                  <>
-                    <CheckCircle className="h-4 w-4 shrink-0" />
-                    <span>
-                      Connected — {testResult.sessionCount ?? 0} sessions found
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-4 w-4 shrink-0" />
-                    <span>{testResult.error ?? 'Connection failed'}</span>
-                  </>
+              {/* Time Range Picker */}
+              <TimeRangePicker value={timeRange} onChange={setTimeRange} />
+
+              {/* Test Connection */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Button
+                  caption={
+                    testing ? 'Testing…' : 'Test Connection'
+                  }
+                  icon={testing ? Loader2 : undefined}
+                  fill="outline"
+                  color="secondary"
+                  size="30"
+                  isDisabled={testing || !workspaceId.trim()}
+                  onClick={() => void handleTestConnection()}
+                />
+
+                {testResult && (
+                  <FlexRow spacing="6" alignItems="center">
+                    {testResult.success ? (
+                      <>
+                        <CheckCircle size={16} style={{ color: 'var(--uui-success-50)', flexShrink: 0 }} />
+                        <Text fontSize="13" color="success">
+                          Connected — {testResult.sessionCount ?? 0} sessions found
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle size={16} style={{ color: 'var(--uui-critical-50)', flexShrink: 0 }} />
+                        <Text fontSize="13" color="critical">
+                          {testResult.error ?? 'Connection failed'}
+                        </Text>
+                      </>
+                    )}
+                  </FlexRow>
                 )}
               </div>
-            )}
-          </div>
-        </div>
-
-        <DialogFooter className="flex flex-col gap-2">
-          {saveError && (
-            <div className="flex items-center gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-              <XCircle className="h-4 w-4 shrink-0" />
-              <span>{saveError}</span>
             </div>
-          )}
-          <Button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saving}
-          >
-            {saving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving…
-              </>
-            ) : (
-              'Save'
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+
+            <ModalFooter borderTop>
+              <FlexRow spacing="12" justifyContent="end">
+                {saveError && (
+                  <FlexRow spacing="6" alignItems="center">
+                    <XCircle size={16} style={{ color: 'var(--uui-critical-50)', flexShrink: 0 }} />
+                    <Text fontSize="13" color="critical">{saveError}</Text>
+                  </FlexRow>
+                )}
+                <Button
+                  caption={saving ? 'Saving…' : 'Save'}
+                  icon={saving ? Loader2 : undefined}
+                  color="primary"
+                  size="36"
+                  isDisabled={saving}
+                  onClick={() => void handleSave()}
+                />
+              </FlexRow>
+            </ModalFooter>
+          </Panel>
+        </>
+      )}
+    </>
   );
 }
+

@@ -6,6 +6,7 @@
  */
 
 import type { Session } from '@agent-profiler/core';
+import { FlexRow, FlexCell } from '@epam/uui';
 import { memo, useCallback, useRef } from 'react';
 
 import { useTimelineZoom } from '../hooks/useTimelineZoom';
@@ -15,9 +16,11 @@ import { CompactionLane } from './CompactionLane';
 import { MessageLane } from './MessageLane';
 import { ModelLane } from './ModelLane';
 import { TimelineControls } from './TimelineControls';
+import { TimelineTooltip } from './TimelineTooltip';
 import { TokenHeatmap } from './TokenHeatmap';
 import { ToolLane, getToolLaneCount } from './ToolLane';
 import { DEFAULT_CONFIG } from './types';
+import { useTimelineTooltip } from './useTimelineTooltip';
 
 export interface TimelineProps {
   readonly session: Session;
@@ -27,6 +30,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
   const { zoom, zoomIn, zoomOut, resetZoom, startPan, updatePan, endPan, isPanning } =
     useTimelineZoom();
   const containerRef = useRef<HTMLDivElement>(null);
+  const { state: tooltipState, handlers: tooltipHandlers, tooltipRef } = useTimelineTooltip();
 
   const config = DEFAULT_CONFIG;
 
@@ -49,14 +53,15 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
   const compactionY = messageY + config.laneHeight + config.lanePadding;
   const totalHeight = compactionY + config.laneHeight + config.lanePadding;
 
-  // Pan handlers
+  // Pan handlers — hide tooltip during pan
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (e.button === 0) {
         startPan(e.clientX);
+        tooltipHandlers.hide();
       }
     },
-    [startPan],
+    [startPan, tooltipHandlers],
   );
 
   const handleMouseMove = useCallback(
@@ -72,7 +77,8 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
 
   const handleMouseLeave = useCallback(() => {
     endPan();
-  }, [endPan]);
+    tooltipHandlers.hide();
+  }, [endPan, tooltipHandlers]);
 
   // Lane labels
   const labels = [
@@ -84,14 +90,14 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
   ];
 
   return (
-    <div data-testid="timeline" className="flex flex-col w-full" style={{ background: '#fafbff' }}>
+    <div data-testid="timeline" style={{ display: 'flex', flexDirection: 'column', width: '100%', background: 'var(--uui-surface-main)' }}>
       <TimelineControls zoom={zoom.scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} />
-      <div className="flex">
+      <FlexRow>
         {/* Fixed gutter with lane labels */}
-        <div
-          className="flex-shrink-0 flex flex-col"
-          style={{ width: config.gutterWidth }}
-          data-testid="timeline-gutter"
+        <FlexCell
+          width={config.gutterWidth}
+          shrink={0}
+          rawProps={{ 'data-testid': 'timeline-gutter' }}
         >
           <svg width={config.gutterWidth} height={totalHeight}>
             {labels.map((label) => (
@@ -100,7 +106,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
                 x={config.gutterWidth - 8}
                 y={label.y + config.laneHeight / 2}
                 fontSize={10}
-                fill="#34406b"
+                fill="var(--uui-text-primary)"
                 textAnchor="end"
                 dominantBaseline="central"
               >
@@ -108,13 +114,12 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
               </text>
             ))}
           </svg>
-        </div>
+        </FlexCell>
 
         {/* Scrollable timeline area */}
         <div
           ref={containerRef}
-          className="flex-1 overflow-x-auto overflow-y-hidden"
-          style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+          style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden', cursor: isPanning ? 'grabbing' : 'grab' }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -145,6 +150,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
               durationMs={durationMs}
               config={config}
               y={heatmapY}
+              tooltip={tooltipHandlers}
             />
 
             {/* Model lane */}
@@ -157,6 +163,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
               endTs={session.endTs}
               config={config}
               y={modelY}
+              tooltip={tooltipHandlers}
             />
 
             {/* Tool lane */}
@@ -167,6 +174,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
               config={config}
               y={toolY}
               zoom={zoom.scale}
+              tooltip={tooltipHandlers}
             />
 
             {/* Message lane */}
@@ -176,6 +184,7 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
               durationMs={durationMs}
               config={config}
               y={messageY}
+              tooltip={tooltipHandlers}
             />
 
             {/* Compaction lane */}
@@ -185,10 +194,14 @@ export const Timeline = memo(function Timeline({ session }: TimelineProps) {
               durationMs={durationMs}
               config={config}
               y={compactionY}
+              tooltip={tooltipHandlers}
             />
           </svg>
         </div>
-      </div>
+      </FlexRow>
+
+      {/* Floating tooltip — rendered outside SVG for proper HTML layout */}
+      <TimelineTooltip state={tooltipState} tooltipRef={tooltipRef} />
     </div>
   );
 });

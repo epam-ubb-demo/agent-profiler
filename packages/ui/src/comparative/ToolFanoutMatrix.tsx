@@ -3,8 +3,10 @@
  */
 
 import type { ToolUsageSummary } from '@agent-profiler/core';
+import { Badge, Text } from '@epam/uui';
 import { memo, useMemo } from 'react';
 
+import styles from './comparative-tables.module.css';
 import { formatDuration } from './format';
 
 export interface ToolFanoutMatrixProps {
@@ -24,41 +26,45 @@ function ToolFanoutMatrixInner({ toolUsage }: ToolFanoutMatrixProps) {
   );
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse" role="grid">
+    <div style={{ overflowX: 'auto' }}>
+      <table className={styles.styledTable} role="grid">
         <thead>
-          <tr className="bg-slate-50">
-            <th scope="col" className="px-4 py-2 text-left text-sm font-medium text-slate-600">Tool</th>
-            <th scope="col" className="px-4 py-2 text-left text-sm font-medium text-slate-600">Calls</th>
-            <th scope="col" className="px-4 py-2 text-left text-sm font-medium text-slate-600">Duration</th>
-            <th scope="col" className="px-4 py-2 text-left text-sm font-medium text-slate-600">Success Rate</th>
-            <th scope="col" className="px-4 py-2 text-left text-sm font-medium text-slate-600">Models</th>
+          <tr>
+            <th scope="col">Tool</th>
+            <th scope="col">Calls</th>
+            <th scope="col">Duration</th>
+            <th scope="col">Success Rate</th>
+            <th scope="col">Models</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-200">
+        <tbody>
           {sorted.map((row) => {
             const rate = computeSuccessRate(row);
             return (
-              <tr key={row.toolName} className="hover:bg-slate-50">
-                <td className="px-4 py-2 text-sm font-mono">{row.toolName}</td>
-                <td className="px-4 py-2 text-sm">{row.callCount}</td>
-                <td className="px-4 py-2 text-sm">{formatDuration(row.totalDurationMs)}</td>
-                <td className="px-4 py-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-16 h-2 bg-slate-200 rounded-full overflow-hidden" role="progressbar" aria-valuenow={rate} aria-valuemin={0} aria-valuemax={100}>
+              <tr key={row.toolName}>
+                <td><Text size="18" rawProps={{ style: { fontFamily: 'monospace' } }}>{row.toolName}</Text></td>
+                <td><Text size="18">{row.callCount}</Text></td>
+                <td><Text size="18">{formatDuration(row.totalDurationMs)}</Text></td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div
+                      style={{ width: '64px', height: '8px', borderRadius: '4px', overflow: 'hidden', background: 'var(--uui-neutral-30)' }}
+                      role="progressbar"
+                      aria-valuenow={rate}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
                       <div
-                        className="h-full bg-green-500 rounded-full"
-                        style={{ width: `${rate}%` }}
+                        className={styles.proportionBar}
+                        style={{ width: `${rate}%`, background: 'var(--uui-success-50)' }}
                       />
                     </div>
-                    <span>{rate}%</span>
+                    <Text size="18">{rate}%</Text>
                   </div>
                 </td>
-                <td className="px-4 py-2 text-sm">
+                <td>
                   {row.models.map((m) => (
-                    <span key={m} className="inline-block mr-1 px-1.5 py-0.5 text-xs rounded bg-blue-100 text-blue-800">
-                      {m}
-                    </span>
+                    <Badge key={m} color="info" fill="outline" size="18" caption={m} rawProps={{ style: { marginRight: '4px' } }} />
                   ))}
                 </td>
               </tr>

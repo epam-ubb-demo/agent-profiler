@@ -10,6 +10,7 @@ import {
   aggregateShutdownMetrics,
 } from '../src/session-assembler';
 import type { SpanNode } from '../src/turn-reconstructor';
+
 import { validSessionRows, partialOrphanRows, minimalSessionRows } from './fixtures';
 
 // ---------------------------------------------------------------------------

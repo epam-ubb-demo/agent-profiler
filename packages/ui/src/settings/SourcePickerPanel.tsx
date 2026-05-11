@@ -4,6 +4,7 @@
  * Lists all 4 sources with toggles and discovery status indicators.
  */
 
+import { FlexRow, Text } from '@epam/uui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { SourceCard } from './SourceCard';
@@ -100,8 +101,8 @@ export function SourcePickerPanel({
   }, []);
 
   return (
-    <div data-testid="source-picker-panel" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <h2 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 8px' }}>Session Sources</h2>
+    <FlexRow rawProps={{ 'data-testid': 'source-picker-panel', style: { flexDirection: 'column', gap: '8px' } }}>
+      <Text size="36" fontWeight="600" rawProps={{ style: { marginBottom: '8px' } }}>Session Sources</Text>
       {sources.map((source) => (
         <SourceCard
           key={source.type}
@@ -110,6 +111,6 @@ export function SourcePickerPanel({
           onToggle={(enabled) => handleToggle(source.type, enabled)}
         />
       ))}
-    </div>
+    </FlexRow>
   );
 }

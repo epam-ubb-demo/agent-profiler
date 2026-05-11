@@ -90,6 +90,17 @@ Every PR must satisfy the Definition of Done from `.github/PULL_REQUEST_TEMPLATE
 
 Include testing notes, screenshots for UI changes, breaking-change notes, and documentation updates where relevant.
 
+## Submitting ideas
+
+Have a product idea that isn't fully refined? Use the **Idea** issue template to capture it:
+
+1. Open a new issue using the [Idea template](../../issues/new?template=idea.yml).
+2. Describe the problem or opportunity, your proposed approach (if any), and the value it would deliver.
+3. Label it with `idea` — this happens automatically from the template.
+4. Ideas are triaged during backlog refinement and may be promoted to Features when ready.
+
+Ideas are intentionally lightweight — you don't need acceptance criteria, linked tasks, or a delivery phase. The goal is to capture the seed of an idea before it's lost.
+
 ## Questions and discussions
 
 Use [GitHub Discussions](https://github.com/epam-ubb-demo/agent-profiler/discussions) for questions, design proposals, and community coordination. Use the security policy for vulnerability reports instead of public discussions.

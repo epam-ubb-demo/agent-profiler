@@ -7,6 +7,7 @@
  */
 
 import type { BenchRunAggregation, Session } from '@agent-profiler/core';
+import { Text } from '@epam/uui';
 import { memo, useCallback, useState } from 'react';
 
 import { CostSummary } from './CostSummary';
@@ -40,21 +41,21 @@ function ComparativeTableInner({ aggregation, onSessionClick, sessionLoader }: C
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <CostSummary aggregation={aggregation} />
 
       <section>
-        <h3 className="text-sm font-medium text-slate-600 mb-2">Sessions</h3>
+        <h3 style={{ marginBottom: '8px' }}><Text size="18" fontWeight="600" color="secondary">Sessions</Text></h3>
         <SessionListTable sessions={aggregation.sessions} onSessionClick={handleSessionClick} />
       </section>
 
       <section>
-        <h3 className="text-sm font-medium text-slate-600 mb-2">Model Breakdown</h3>
+        <h3 style={{ marginBottom: '8px' }}><Text size="18" fontWeight="600" color="secondary">Model Breakdown</Text></h3>
         <ModelBreakdownTable modelUsage={aggregation.modelUsage} />
       </section>
 
       <section>
-        <h3 className="text-sm font-medium text-slate-600 mb-2">Tool Usage</h3>
+        <h3 style={{ marginBottom: '8px' }}><Text size="18" fontWeight="600" color="secondary">Tool Usage</Text></h3>
         <ToolFanoutMatrix toolUsage={aggregation.toolUsage} />
       </section>
 

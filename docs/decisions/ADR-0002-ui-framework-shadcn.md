@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-0007](ADR-0007-ui-framework-epam-uui.md)
 
 ## Date
 

@@ -110,6 +110,63 @@ pnpm test
 pnpm --filter @agent-profiler/core exec vitest
 ```
 
+## Desktop App UI Stack
+
+The desktop app (`apps/desktop`) uses [EPAM UUI](https://uui.epam.com/) with the **Loveship** skin for all UI components and theming.
+
+### Key packages
+
+| Package | Purpose |
+| ------- | ------- |
+| `@epam/uui-core` | Core services, `ContextProvider` |
+| `@epam/uui` | Higher-level components |
+| `@epam/uui-components` | Base component primitives |
+| `@epam/loveship` | Loveship skin (buttons, modals, etc.) |
+| `@epam/assets` | EPAM brand assets (icons, fonts) |
+
+### Application bootstrap
+
+- The app root in `main.tsx` wraps the component tree with `<ContextProvider>` from `@epam/uui-core`.
+- Loveship CSS is imported in `main.tsx` (global styles for the skin).
+- An `AppShell` component provides the EPAM-branded header, logo, and navigation.
+
+### Theming
+
+Dark and light themes are toggled by switching CSS classes on the root element:
+
+| Theme | CSS class |
+| ----- | --------- |
+| Light | `.uui-theme-loveship` |
+| Dark  | `.uui-theme-loveship_dark` |
+
+The selected theme is persisted in `localStorage`.
+
+### Icons
+
+Inline SVG icon components live in `components/icons.tsx`. Each component is typed as the UUI `Icon` type so it can be passed directly to UUI component `icon` props.
+
+## Desktop App Testing Utilities
+
+The desktop app has a custom test-render wrapper that should be used instead of raw `@testing-library/react` `render`:
+
+```ts
+import { render } from './__tests__/test-utils';
+```
+
+### What it does
+
+- Wraps every rendered component in the UUI `ContextProvider` (required for UUI services).
+- Flushes the asynchronous UUI context initialisation before returning.
+
+### Setup file
+
+The Vitest setup file (`vitest.setup.ts`) provides polyfills needed by UUI in a jsdom environment:
+
+- `ResizeObserver` — stubbed globally.
+- `localStorage` — a simple in-memory implementation.
+
+> **Rule of thumb:** always import `render` from the custom test utilities when writing or updating desktop app tests.
+
 ## Architecture Boundaries
 
 ESLint enforces layered architecture rules:
@@ -118,3 +175,62 @@ ESLint enforces layered architecture rules:
 - **packages/core** must not import from **packages/ui** (core is UI-agnostic)
 
 These rules are configured in the root `eslint.config.mjs`.
+
+## Copilot CLI Event Schema Evolution
+
+### Background
+
+Agent Profiler parses raw `events.jsonl` files produced by the GitHub Copilot CLI.
+The CLI's event format is **not** a stable public API and can change without notice.
+
+For example, the `session.shutdown` event changed from flat fields (`inputTokens`,
+`outputTokens`, `requestCount` directly on each model entry) to nested sub-objects
+(`usage: { inputTokens, … }`, `requests: { count, cost }`).
+
+### Data Flow
+
+- Raw `events.jsonl` files in `~/.copilot/session-state/<uuid>/` are the **immutable source of truth**.
+- Sessions are always re-parsed from raw events on load — there is no persistent cache.
+- This means parser fixes retroactively fix **all** existing sessions. No data migration is ever needed.
+- The parsing entry point is `parseCopilotCliSession()` in `packages/adapters-copilot-cli/src/index.ts`.
+
+### Per-Field Fallback Strategy
+
+Instead of detecting the format version and branching, the parser uses **per-field fallback**: it tries the newest known location first, then falls back to older locations.
+
+All format-specific extraction lives in `normalise-model-metrics.ts`. The normaliser handles **two structural formats**: a dictionary (keys are model names) and a legacy array (`modelId` field on each element). Within each entry, the `extractEntry()` function applies per-field fallback:
+
+```ts
+inputTokens:     safeInt(usage['inputTokens']      ?? flat['inputTokens']),
+cacheReadTokens: safeInt(
+  usage['cacheReadTokens']  ?? usage['cacheReadInputTokens']
+  ?? flat['cacheReadTokens'] ?? flat['cacheReadInputTokens'],
+),
+cacheWriteTokens: safeInt(
+  usage['cacheWriteTokens'] ?? usage['cacheCreationInputTokens']
+  ?? flat['cacheWriteTokens'] ?? flat['cacheCreationInputTokens'],
+),
+reasoningTokens: safeInt(usage['reasoningTokens']   ?? flat['reasoningTokens']),
+requestCount:    safeInt(requests['count']           ?? flat['requestCount']),
+```
+
+This tries the nested `usage` / `requests` sub-objects first, then the flat field on the model entry. Cache field names are also aliased across CLI versions (`cacheCreationInputTokens` → `cacheWriteTokens`, `cacheReadInputTokens` → `cacheReadTokens`). The approach handles old, new, mixed, and partial formats gracefully without explicit version detection.
+
+### Post-Parse Validation
+
+After parsing, `parseCopilotCliSession()` checks whether shutdown metrics exist but all token counts are zero. If so, `parseStatus` is set to `'partial'` with a diagnostic warning about a possible schema mismatch.
+
+This acts as an early-warning system: if the CLI changes format again and the fallback chain does not cover it, the validation will catch it and surface a visible warning in the UI.
+
+### Adding Support for a New Format
+
+When the Copilot CLI changes its event format again:
+
+1. **Obtain a sample** — capture a session with the new format and inspect the raw `events.jsonl`.
+2. **Update the fallback chain** — in `normalise-model-metrics.ts`, extend the field extraction in `extractEntry()` to try the new location first, keeping existing fallback paths. Note that `event-handlers.ts` no longer contains format-specific logic — it delegates to `normaliseModelMetrics()`.
+3. **Add test fixtures** — create a new fixture file in `__tests__/fixtures/` with the new format. Add tests covering the new format and verify that old-format tests still pass.
+4. **Verify post-parse validation** — confirm that the validation check in `index.ts` does not trigger a false warning for the new format.
+5. **Run all tests**:
+   ```bash
+   pnpm --filter @agent-profiler/adapters-copilot-cli test
+   ```

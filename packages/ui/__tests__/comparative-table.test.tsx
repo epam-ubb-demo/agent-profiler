@@ -3,7 +3,6 @@
  */
 
 import type { BenchRunAggregation, SessionSummaryRow, ModelUsageRollup, ToolUsageSummary } from '@agent-profiler/core';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 
 import { ComparativeTable } from '../src/comparative/ComparativeTable';
@@ -11,6 +10,8 @@ import { CostSummary } from '../src/comparative/CostSummary';
 import { ModelBreakdownTable } from '../src/comparative/ModelBreakdownTable';
 import { SessionListTable } from '../src/comparative/SessionListTable';
 import { ToolFanoutMatrix } from '../src/comparative/ToolFanoutMatrix';
+
+import { render, screen, fireEvent, cleanup } from './test-utils';
 
 afterEach(cleanup);
 
@@ -84,10 +85,10 @@ describe('SessionListTable', () => {
       makeSession({ sessionId: 's2', label: 'B' }),
       makeSession({ sessionId: 's3', label: 'C' }),
     ];
-    render(<SessionListTable sessions={sessions} />);
-    const rows = screen.getAllByRole('row');
-    // 1 header + 3 data rows
-    expect(rows).toHaveLength(4);
+    const { container } = render(<SessionListTable sessions={sessions} />);
+    // 1 header row + 3 data rows (data rows use role="button" for keyboard accessibility)
+    const allTrs = container.querySelectorAll('tr');
+    expect(allTrs).toHaveLength(4);
   });
 
   it('sorts sessions by column on header click', () => {
@@ -109,9 +110,9 @@ describe('SessionListTable', () => {
   it('calls onSessionClick when row clicked', () => {
     const handler = vi.fn();
     const sessions = [makeSession({ sessionId: 'click-test', label: 'Test' })];
-    render(<SessionListTable sessions={sessions} onSessionClick={handler} />);
+    const { container } = render(<SessionListTable sessions={sessions} onSessionClick={handler} />);
 
-    const row = screen.getAllByRole('row')[1]!; // first data row
+    const row = container.querySelector('tbody tr')!; // first data row
     fireEvent.click(row);
     expect(handler).toHaveBeenCalledWith('click-test');
   });
@@ -120,7 +121,7 @@ describe('SessionListTable', () => {
     const sessions = [
       makeSession({ sessionId: 's1', label: 'OK', parseStatus: 'ok' }),
       makeSession({ sessionId: 's2', label: 'Partial', parseStatus: 'partial' }),
-      makeSession({ sessionId: 's3', label: 'Error', parseStatus: 'error' }),
+      makeSession({ sessionId: 's3', label: 'Failed', parseStatus: 'failed' }),
     ];
     render(<SessionListTable sessions={sessions} />);
     expect(screen.getByText('✓')).toBeInTheDocument();
@@ -240,12 +241,11 @@ describe('ComparativeTable', () => {
   it('passes onSessionClick to session list', () => {
     const handler = vi.fn();
     const agg = makeAggregation();
-    render(<ComparativeTable aggregation={agg} onSessionClick={handler} />);
+    const { container } = render(<ComparativeTable aggregation={agg} onSessionClick={handler} />);
 
-    const rows = screen.getAllByRole('row');
-    // Click first data row in sessions table (skip headers from multiple tables)
-    const sessionRows = rows.filter((r) => r.textContent?.includes('Alpha') || r.textContent?.includes('Beta'));
-    if (sessionRows[0]) fireEvent.click(sessionRows[0]);
+    // Data rows use role="button"; find the first session data row in tbody
+    const firstDataRow = container.querySelector('tbody tr')!;
+    fireEvent.click(firstDataRow);
     expect(handler).toHaveBeenCalled();
   });
 });

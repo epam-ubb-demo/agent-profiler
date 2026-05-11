@@ -9,7 +9,9 @@ import {
 import type { AppInsightsSettingsIpc } from '@agent-profiler/core';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 
+import { AppUpdater } from './auto-updater';
 import { DataSourceManager } from './data-source-manager';
+import { registerPdfExportHandlers, registerPdfDialogHandler } from './pdf-export';
 import {
   DEFAULT_ROOT_DIR,
   getAppInsightsSettings,
@@ -17,8 +19,6 @@ import {
   getSessionRootDir,
   setSessionRootDir,
 } from './settings-store';
-import { registerPdfExportHandlers, registerPdfDialogHandler } from './pdf-export';
-import { AppUpdater } from './auto-updater';
 
 // ---------------------------------------------------------------------------
 // Data-source manager

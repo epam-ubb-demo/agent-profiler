@@ -3,8 +3,10 @@
  */
 
 import type { SessionSummaryRow } from '@agent-profiler/core';
+import { Badge, Text } from '@epam/uui';
 import { memo, useCallback, useMemo, useState } from 'react';
 
+import styles from './comparative-tables.module.css';
 import { formatCost, formatWallTime } from './format';
 
 export interface SessionListTableProps {
@@ -15,15 +17,17 @@ export interface SessionListTableProps {
 type SortKey = 'label' | 'parseStatus' | 'wallTimeMs' | 'turnCount' | 'toolCallCount' | 'models' | 'totalCost';
 type SortDir = 'asc' | 'desc';
 
+const STATUS_BADGE_COLOR: Record<string, 'success' | 'warning' | 'critical'> = {
+  ok: 'success',
+  partial: 'warning',
+  failed: 'critical',
+};
+
 const STATUS_ICON: Record<string, string> = {
   ok: '✓',
   partial: '⚠',
-  error: '✗',
+  failed: '✗',
 };
-
-function getStatusIcon(parseStatus: string): string {
-  return STATUS_ICON[parseStatus] ?? '?';
-}
 
 function compareRows(a: SessionSummaryRow, b: SessionSummaryRow, key: SortKey): number {
   switch (key) {
@@ -83,17 +87,15 @@ function SessionListTableInner({ sessions, onSessionClick }: SessionListTablePro
   }, [sessions, sortKey, sortDir]);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse" role="grid">
+    <div style={{ overflowX: 'auto' }}>
+      <table className={styles.styledTable} role="grid">
         <thead>
-          <tr className="bg-slate-50 divide-y divide-slate-200">
+          <tr>
             {COLUMNS.map((col) => (
               <th
                 key={col.key}
                 scope="col"
-                className={`px-4 py-2 text-left text-sm font-medium text-slate-600 cursor-pointer select-none${
-                  col.key === 'label' ? ' sticky left-0 bg-slate-50 z-10' : ''
-                }`}
+                className={`${styles.sortButton}${col.key === 'label' ? ` ${styles.stickyColHeader}` : ''}`}
                 aria-sort={sortKey === col.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
                 onClick={() => handleHeaderClick(col.key)}
               >
@@ -103,26 +105,43 @@ function SessionListTableInner({ sessions, onSessionClick }: SessionListTablePro
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-200">
+        <tbody>
           {sorted.map((row) => (
             <tr
               key={row.sessionId}
-              className="hover:bg-slate-50 cursor-pointer"
+              className={styles.clickableRow}
+              role="button"
+              tabIndex={0}
               onClick={() => onSessionClick?.(row.sessionId)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSessionClick?.(row.sessionId);
+                }
+              }}
             >
-              <td className="px-4 py-2 text-sm sticky left-0 bg-white z-10">{row.label}</td>
-              <td className="px-4 py-2 text-sm">{getStatusIcon(row.parseStatus)}</td>
-              <td className="px-4 py-2 text-sm">{formatWallTime(row.wallTimeMs)}</td>
-              <td className="px-4 py-2 text-sm">{row.turnCount}</td>
-              <td className="px-4 py-2 text-sm">{row.toolCallCount}</td>
-              <td className="px-4 py-2 text-sm">
+              <td className={styles.stickyCol}>
+                <Text size="18">{row.label}</Text>
+              </td>
+              <td>
+                <Badge
+                  color={STATUS_BADGE_COLOR[row.parseStatus] ?? 'info'}
+                  fill="solid"
+                  size="18"
+                  caption={STATUS_ICON[row.parseStatus] ?? '?'}
+                />
+              </td>
+              <td><Text size="18">{formatWallTime(row.wallTimeMs)}</Text></td>
+              <td><Text size="18">{row.turnCount}</Text></td>
+              <td><Text size="18">{row.toolCallCount}</Text></td>
+              <td>
                 {row.models.map((m) => (
-                  <span key={m} className="inline-block mr-1 px-1.5 py-0.5 text-xs rounded bg-blue-100 text-blue-800">
+                  <span key={m} className={styles.modelBadge}>
                     {m}
                   </span>
                 ))}
               </td>
-              <td className="px-4 py-2 text-sm">{formatCost(row.totalCost)}</td>
+              <td><Text size="18">{formatCost(row.totalCost)}</Text></td>
             </tr>
           ))}
         </tbody>

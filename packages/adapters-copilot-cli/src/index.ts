@@ -64,12 +64,37 @@ export async function parseCopilotCliSession(path: string): Promise<Session> {
   const postShutdownCount = countPostShutdownEvents(sb);
   const shutdownFresh = postShutdownCount === 0;
 
+  // Detect possible schema mismatch: shutdown exists but all token counts are zero
+  const metricsEmpty =
+    sb.shutdown !== null &&
+    sb.shutdown.modelMetrics.length > 0 &&
+    sb.shutdown.modelMetrics.every(
+      (m) =>
+        m.inputTokens === 0 &&
+        m.outputTokens === 0 &&
+        m.cacheReadTokens === 0 &&
+        m.cacheWriteTokens === 0 &&
+        m.reasoningTokens === 0,
+    );
+
   // Add metadata about shutdown discrepancy if relevant
-  const finalError =
-    parseStatus.error ??
-    (!shutdownFresh && sb.shutdown
-      ? `Shutdown metrics may be stale: ${postShutdownCount} event(s) occurred after shutdown`
-      : null);
+  const warnings: string[] = [];
+  if (parseStatus.error) warnings.push(parseStatus.error);
+  if (!shutdownFresh && sb.shutdown) {
+    warnings.push(
+      `Shutdown metrics may be stale: ${postShutdownCount} event(s) occurred after shutdown`,
+    );
+  }
+  if (metricsEmpty) {
+    warnings.push(
+      'Shutdown metrics present but all token counts are zero — possible event schema mismatch',
+    );
+  }
+  const finalError = warnings.length > 0 ? warnings.join('; ') : null;
+
+  // Escalate status to 'partial' if we detected a schema mismatch warning
+  const finalStatus =
+    metricsEmpty && parseStatus.status === 'ok' ? ('partial' as const) : parseStatus.status;
 
   return {
     sessionId: sb.sessionId,
@@ -91,7 +116,7 @@ export async function parseCopilotCliSession(path: string): Promise<Session> {
     success,
     fanoutTurns,
     turns,
-    parseStatus: { status: parseStatus.status, error: finalError },
+    parseStatus: { status: finalStatus, error: finalError },
     utilisation: [], // Utilisation requires process log parsing, not yet implemented
   };
 }

@@ -6,6 +6,7 @@
  */
 
 import type { AssistantMessage, ToolCall, Turn } from '@agent-profiler/core';
+import { Badge, Button, Text } from '@epam/uui';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 /** Tabs available in the detail modal. */
@@ -67,39 +68,64 @@ export const DetailModal = memo(function DetailModal({
     <dialog
       ref={dialogRef}
       data-testid="detail-modal"
-      className="fixed inset-0 m-auto w-full max-w-2xl rounded-lg border border-slate-200 p-0 backdrop:bg-black/40"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        margin: 'auto',
+        width: '100%',
+        maxWidth: '42rem',
+        borderRadius: 6,
+        border: '1px solid var(--uui-neutral-40)',
+        padding: 0,
+      }}
       onClose={handleClose}
       onClick={handleBackdropClick}
     >
-      <div className="flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div style={{ display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-          <h2 className="text-lg font-semibold text-slate-900">
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid var(--uui-neutral-40)',
+            padding: '12px 16px',
+          }}
+        >
+          <Text size="36" fontWeight="600">
             {toolCall ? `Tool: ${toolCall.toolName}` : turn ? `Turn ${turn.turnId}` : 'Details'}
-          </h2>
-          <button
-            data-testid="detail-modal-close"
-            className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+          </Text>
+          <Button
+            fill="ghost"
+            size="24"
+            caption="✕"
             onClick={onClose}
-            aria-label="Close"
-          >
-            ✕
-          </button>
+            rawProps={{ 'data-testid': 'detail-modal-close', 'aria-label': 'Close' }}
+          />
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-200" role="tablist">
+        <div
+          style={{ display: 'flex', borderBottom: '1px solid var(--uui-neutral-40)' }}
+          role="tablist"
+        >
           {tabs.map((tab) => (
             <button
               key={tab.id}
               role="tab"
               aria-selected={activeTab === tab.id}
               data-testid={`tab-${tab.id}`}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-slate-500 hover:text-slate-900'
-              }`}
+              style={{
+                padding: '8px 16px',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeTab === tab.id ? '2px solid var(--uui-info-50)' : '2px solid transparent',
+                color: activeTab === tab.id ? 'var(--uui-info-50)' : 'var(--uui-text-secondary)',
+                cursor: 'pointer',
+                transition: 'color 150ms',
+              }}
               onClick={() => setActiveTab(tab.id)}
             >
               {tab.label}
@@ -108,7 +134,10 @@ export const DetailModal = memo(function DetailModal({
         </div>
 
         {/* Tab Content */}
-        <div className="max-h-[60vh] overflow-y-auto p-4" data-testid="detail-modal-content">
+        <div
+          data-testid="detail-modal-content"
+          style={{ maxHeight: '60vh', overflowY: 'auto', padding: 16 }}
+        >
           {activeTab === 'message' && <MessageTab turn={turn ?? null} />}
           {activeTab === 'toolcall' && <ToolCallTab toolCall={toolCall ?? null} />}
           {activeTab === 'metadata' && <MetadataTab turn={turn ?? null} toolCall={toolCall ?? null} />}
@@ -122,26 +151,45 @@ export const DetailModal = memo(function DetailModal({
 
 function MessageTab({ turn }: { readonly turn?: Turn | null }) {
   if (!turn) {
-    return <p className="text-sm text-slate-500">No message data available.</p>;
+    return <Text size="24" color="secondary">No message data available.</Text>;
   }
 
   return (
-    <div className="space-y-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {turn.userMessage && (
         <section>
-          <h3 className="mb-1 text-sm font-semibold text-slate-700">User Message</h3>
-          <pre className="whitespace-pre-wrap rounded bg-slate-50 p-3 text-sm text-slate-900">
+          <Text size="24" fontWeight="600" rawProps={{ style: { marginBottom: 4 } }}>User Message</Text>
+          <pre
+            style={{
+              whiteSpace: 'pre-wrap',
+              borderRadius: 6,
+              background: 'var(--uui-surface-section)',
+              padding: 12,
+              fontSize: '0.875rem',
+              color: 'var(--uui-text-primary)',
+              margin: 0,
+            }}
+          >
             {turn.userMessage.content || '(empty)'}
           </pre>
         </section>
       )}
       {turn.assistantMessages.length > 0 && (
         <section>
-          <h3 className="mb-1 text-sm font-semibold text-slate-700">Assistant Messages</h3>
+          <Text size="24" fontWeight="600" rawProps={{ style: { marginBottom: 4 } }}>Assistant Messages</Text>
           {turn.assistantMessages.map((msg: AssistantMessage, i: number) => (
             <pre
               key={i}
-              className="mt-2 whitespace-pre-wrap rounded bg-slate-50 p-3 text-sm text-slate-900"
+              style={{
+                whiteSpace: 'pre-wrap',
+                borderRadius: 6,
+                background: 'var(--uui-surface-section)',
+                padding: 12,
+                fontSize: '0.875rem',
+                color: 'var(--uui-text-primary)',
+                margin: 0,
+                marginTop: i > 0 ? 8 : 0,
+              }}
             >
               {msg.content || '(empty)'}
             </pre>
@@ -154,34 +202,47 @@ function MessageTab({ turn }: { readonly turn?: Turn | null }) {
 
 function ToolCallTab({ toolCall }: { readonly toolCall?: ToolCall | null }) {
   if (!toolCall) {
-    return <p className="text-sm text-slate-500">No tool call data available.</p>;
+    return <Text size="24" color="secondary">No tool call data available.</Text>;
   }
 
   return (
-    <div className="space-y-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <section>
-        <h3 className="mb-1 text-sm font-semibold text-slate-700">Tool Name</h3>
-        <p className="text-sm text-slate-900">{toolCall.toolName}</p>
+        <Text size="24" fontWeight="600" rawProps={{ style: { marginBottom: 4 } }}>Tool Name</Text>
+        <Text size="24">{toolCall.toolName}</Text>
       </section>
       <section>
-        <h3 className="mb-1 text-sm font-semibold text-slate-700">Arguments</h3>
-        <pre className="whitespace-pre-wrap rounded bg-slate-50 p-3 text-sm text-slate-900">
+        <Text size="24" fontWeight="600" rawProps={{ style: { marginBottom: 4 } }}>Arguments</Text>
+        <pre
+          style={{
+            whiteSpace: 'pre-wrap',
+            borderRadius: 6,
+            background: 'var(--uui-surface-section)',
+            padding: 12,
+            fontSize: '0.875rem',
+            color: 'var(--uui-text-primary)',
+            margin: 0,
+          }}
+        >
           {toolCall.argumentsPreview || '(none)'}
         </pre>
       </section>
       <section>
-        <h3 className="mb-1 text-sm font-semibold text-slate-700">Status</h3>
-        <span
-          className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
+        <Text size="24" fontWeight="600" rawProps={{ style: { marginBottom: 4 } }}>Status</Text>
+        <Badge
+          size="18"
+          fill="solid"
+          color={
             toolCall.success === true
-              ? 'bg-green-100 text-green-600'
+              ? 'success'
               : toolCall.success === false
-                ? 'bg-red-100 text-red-600'
-                : 'bg-slate-100 text-slate-500'
-          }`}
-        >
-          {toolCall.success === true ? 'Success' : toolCall.success === false ? 'Failed' : 'Unknown'}
-        </span>
+                ? 'critical'
+                : 'neutral'
+          }
+          caption={
+            toolCall.success === true ? 'Success' : toolCall.success === false ? 'Failed' : 'Unknown'
+          }
+        />
       </section>
     </div>
   );
@@ -218,16 +279,16 @@ function MetadataTab({
   }
 
   if (rows.length === 0) {
-    return <p className="text-sm text-slate-500">No metadata available.</p>;
+    return <Text size="24" color="secondary">No metadata available.</Text>;
   }
 
   return (
-    <table className="w-full text-sm" data-testid="metadata-table">
+    <table style={{ width: '100%', fontSize: '0.875rem' }} data-testid="metadata-table">
       <tbody>
         {rows.map((row) => (
-          <tr key={row.label} className="border-b border-slate-100">
-            <td className="py-1.5 pr-4 font-medium text-slate-700">{row.label}</td>
-            <td className="py-1.5 text-slate-900">{row.value}</td>
+          <tr key={row.label} style={{ borderBottom: '1px solid var(--uui-neutral-40)' }}>
+            <td style={{ padding: '6px 16px 6px 0', fontWeight: 500, color: 'var(--uui-text-secondary)' }}>{row.label}</td>
+            <td style={{ padding: '6px 0', color: 'var(--uui-text-primary)' }}>{row.value}</td>
           </tr>
         ))}
       </tbody>

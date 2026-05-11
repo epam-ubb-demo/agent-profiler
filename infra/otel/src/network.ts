@@ -1,12 +1,13 @@
 // Networking resources for the OTel Gateway infrastructure
 // Creates VNet, subnets, NSGs, and conditionally an Application Gateway public IP
 
-import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
-import type { SharedArgs } from "./types.js";
-import { nsgName, pipName, subnetName, vnetName } from "./naming.js";
+import * as pulumi from "@pulumi/pulumi";
 
-export interface NetworkArgs extends SharedArgs {}
+import { nsgName, pipName, subnetName, vnetName } from "./naming.js";
+import type { SharedArgs } from "./types.js";
+
+export type NetworkArgs = SharedArgs;
 
 /**
  * Network stack component resource.

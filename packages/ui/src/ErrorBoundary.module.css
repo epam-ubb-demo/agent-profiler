@@ -1,0 +1,66 @@
+.error-boundary-fallback {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 48px 24px;
+}
+
+.error-boundary-panel {
+  max-width: 640px;
+  width: 100%;
+}
+
+.error-boundary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+}
+
+.error-boundary-icon-container {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--uui-critical-10, rgba(229, 67, 34, 0.08));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--uui-critical-50);
+}
+
+.error-boundary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.error-boundary-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.error-boundary-stack-panel {
+  border: 1px solid var(--uui-neutral-40);
+  border-radius: 6px;
+  background: var(--uui-surface-higher);
+  overflow: hidden;
+}
+
+.error-boundary-stack-trace {
+  font-family: var(--uui-font-mono, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--uui-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 12px 16px;
+  margin: 0;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.error-boundary-actions {
+  padding-top: 4px;
+}

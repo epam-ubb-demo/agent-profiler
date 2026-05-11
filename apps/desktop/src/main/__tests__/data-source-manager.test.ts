@@ -1,6 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
+import { ApplicationInsightsDataSource } from '@agent-profiler/adapters-application-insights';
 import type { SessionDataSource, SessionListItem } from '@agent-profiler/data-source';
+import { LocalFsDataSource } from '@agent-profiler/data-source';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -15,9 +16,6 @@ vi.mock('@agent-profiler/adapters-application-insights', () => ({
 vi.mock('@azure/identity', () => ({
   DefaultAzureCredential: vi.fn(),
 }));
-
-import { LocalFsDataSource } from '@agent-profiler/data-source';
-import { ApplicationInsightsDataSource } from '@agent-profiler/adapters-application-insights';
 
 import { DataSourceManager } from '../data-source-manager';
 

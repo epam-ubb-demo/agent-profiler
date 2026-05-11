@@ -7,6 +7,7 @@
  */
 
 import type { FanoutTurn, Session } from '@agent-profiler/core';
+import { Text } from '@epam/uui';
 import { memo } from 'react';
 
 import { FanoutNode } from './FanoutNode';
@@ -24,8 +25,8 @@ export const FanoutTree = memo(function FanoutTree({ session, onNodeClick }: Fan
   }
 
   return (
-    <div data-testid="fanout-tree" className="space-y-1 p-2">
-      <h3 className="mb-2 text-sm font-semibold text-slate-700">Fan-out Tree</h3>
+    <div data-testid="fanout-tree" style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: 8 }}>
+      <Text size="24" fontWeight="600" rawProps={{ style: { marginBottom: 8 } }}>Fan-out Tree</Text>
       {session.fanoutTurns.map((ft) => (
         <FanoutNode key={ft.turnId} turn={ft} depth={0} onNodeClick={onNodeClick} />
       ))}

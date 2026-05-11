@@ -1,6 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import '@epam/uui-components/styles.css';
+import '@epam/loveship/styles.css';
+import '@epam/uui/styles.css';
+
 import { App } from './App';
 import './globals.css';
 

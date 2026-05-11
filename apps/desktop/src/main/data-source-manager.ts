@@ -6,12 +6,11 @@
  * errors are caught and safe defaults are returned.
  */
 
+import type { TimeRange } from '@agent-profiler/adapters-application-insights';
+import { ApplicationInsightsDataSource } from '@agent-profiler/adapters-application-insights';
 import type { Session } from '@agent-profiler/core';
 import type { SessionListItem } from '@agent-profiler/data-source';
-import type { TimeRange } from '@agent-profiler/adapters-application-insights';
-
 import { LocalFsDataSource } from '@agent-profiler/data-source';
-import { ApplicationInsightsDataSource } from '@agent-profiler/adapters-application-insights';
 import { DefaultAzureCredential } from '@azure/identity';
 
 export class DataSourceManager {

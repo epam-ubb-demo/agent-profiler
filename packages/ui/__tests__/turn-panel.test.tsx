@@ -3,10 +3,12 @@
  */
 
 import type { Turn } from '@agent-profiler/core';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { fireEvent, screen, cleanup } from '@testing-library/react';
 import { describe, expect, it, afterEach, vi } from 'vitest';
 
 import { TurnPanel } from '../src/panels/TurnPanel';
+
+import { render } from './test-utils';
 
 afterEach(cleanup);
 
@@ -120,6 +122,6 @@ describe('TurnPanel', () => {
   it('highlights when isSelected is true', () => {
     const { container } = render(<TurnPanel turn={makeTurn()} isSelected={true} />);
     const panel = container.querySelector('[data-testid="turn-panel"]');
-    expect(panel?.className).toContain('border-blue-400');
+    expect(panel).toHaveStyle({ border: '1px solid var(--uui-info-50)' });
   });
 });

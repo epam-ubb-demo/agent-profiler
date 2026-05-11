@@ -3,10 +3,11 @@
  */
 
 import type { Compaction } from '@agent-profiler/core';
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 
-import type { TimelineConfig } from './types';
-import { formatTime, modelColour, timeFraction } from './utils';
+import { compactionTipContent } from './tooltip-content';
+import type { TimelineConfig, TooltipHandlers } from './types';
+import { modelColour, timeFraction } from './utils';
 
 export interface CompactionLaneProps {
   readonly compactions: readonly Compaction[];
@@ -14,6 +15,7 @@ export interface CompactionLaneProps {
   readonly durationMs: number;
   readonly config: TimelineConfig;
   readonly y: number;
+  readonly tooltip: TooltipHandlers;
 }
 
 export const CompactionLane = memo(function CompactionLane({
@@ -22,9 +24,30 @@ export const CompactionLane = memo(function CompactionLane({
   durationMs,
   config,
   y,
+  tooltip,
 }: CompactionLaneProps) {
   const midY = y + config.laneHeight / 2;
   const size = 6;
+
+  const handleEnter = useCallback(
+    (i: number, e: React.MouseEvent) => {
+      const c = compactions[i];
+      if (!c?.timestamp) return;
+      tooltip.show(
+        compactionTipContent(
+          c.timestamp,
+          c.inputTokens,
+          c.outputTokens,
+          c.cacheRead,
+          c.cacheWrite,
+          c.model,
+          startMs,
+        ),
+        e,
+      );
+    },
+    [compactions, startMs, tooltip],
+  );
 
   return (
     <g data-testid="compaction-lane">
@@ -48,11 +71,11 @@ export const CompactionLane = memo(function CompactionLane({
             fill={modelColour(c.model)}
             stroke="#34406b"
             strokeWidth={0.5}
-          >
-            <title>
-              {`Compaction @ ${formatTime(c.timestamp)}\nModel: ${c.model ?? 'unknown'}\nInput: ${String(c.inputTokens)} | Output: ${String(c.outputTokens)} | Cache: ${String(c.cacheWrite)}`}
-            </title>
-          </polygon>
+            style={{ cursor: 'crosshair' }}
+            onMouseEnter={(e) => { handleEnter(i, e); }}
+            onMouseMove={tooltip.move}
+            onMouseLeave={tooltip.hide}
+          />
         );
       })}
     </g>

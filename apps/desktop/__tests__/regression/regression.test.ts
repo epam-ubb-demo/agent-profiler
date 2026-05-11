@@ -6,10 +6,9 @@
  * packages directly and exercise the contracts between them.
  */
 
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseCopilotCliSession } from '@agent-profiler/adapters-copilot-cli';
 import { parseCtbBenchRun } from '@agent-profiler/adapters-ctb';
@@ -37,6 +36,7 @@ import {
   PluginLoadError,
 } from '@agent-profiler/plugins';
 import { calculateCost, loadPricingTable } from '@agent-profiler/pricing';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // ─── Test fixtures ───────────────────────────────────────────────────────────
 
@@ -110,7 +110,9 @@ function createMockSession(overrides: Partial<Session> = {}): Session {
           outputTokens: 2000,
           cacheReadTokens: 1000,
           cacheWriteTokens: 500,
+          reasoningTokens: 0,
           requestCount: 5,
+          premiumRequestCost: 0,
           apiDurationMs: 15000,
         },
       ],
@@ -186,7 +188,9 @@ function createMockShutdownMetrics(): ShutdownMetrics {
         outputTokens: 4000,
         cacheReadTokens: 2000,
         cacheWriteTokens: 800,
+        reasoningTokens: 0,
         requestCount: 7,
+        premiumRequestCost: 0,
         apiDurationMs: 20000,
       },
       {
@@ -195,7 +199,9 @@ function createMockShutdownMetrics(): ShutdownMetrics {
         outputTokens: 1500,
         cacheReadTokens: 1000,
         cacheWriteTokens: 0,
+        reasoningTokens: 0,
         requestCount: 3,
+        premiumRequestCost: 0,
         apiDurationMs: 10000,
       },
     ],
@@ -263,7 +269,7 @@ describe('Session loading: ctb adapter', () => {
   it('parses a ctb benchmark run directory', async () => {
     if (!existsSync(CTB_FIXTURES)) return;
     const entries = existsSync(CTB_FIXTURES)
-      ? require('node:fs').readdirSync(CTB_FIXTURES)
+      ? readdirSync(CTB_FIXTURES)
       : [];
     const benchDir = entries.find((e: string) => existsSync(join(CTB_FIXTURES, e, 'events.jsonl')));
     if (!benchDir) return;
@@ -285,11 +291,11 @@ describe('Session loading: VS Code Chat adapter', () => {
   it('parses a VS Code chat transcript file', async () => {
     if (!existsSync(VSCODE_FIXTURES)) return;
     const files = existsSync(VSCODE_FIXTURES)
-      ? require('node:fs').readdirSync(VSCODE_FIXTURES).filter((f: string) => f.endsWith('.jsonl'))
+      ? readdirSync(VSCODE_FIXTURES).filter((f: string) => f.endsWith('.jsonl'))
       : [];
     if (files.length === 0) return;
 
-    const session = await parseVsCodeChatSession(join(VSCODE_FIXTURES, files[0]));
+    const session = await parseVsCodeChatSession(join(VSCODE_FIXTURES, files[0]!));
     expect(session.parseStatus.status).not.toBe(undefined);
     expect(session.sessionId).toBeDefined();
   });
@@ -349,7 +355,9 @@ describe('Pricing calculation for loaded sessions', () => {
           outputTokens: 500,
           cacheReadTokens: 100,
           cacheWriteTokens: 0,
+          reasoningTokens: 0,
           requestCount: 1,
+          premiumRequestCost: 0,
           apiDurationMs: 5000,
         },
       ],

@@ -13,7 +13,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 /** @type {import('eslint').Linter.Config[]} */
 const config = [
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/.turbo/**'],
+    ignores: ['**/node_modules/**', '**/dist/**', '**/out/**', '**/.turbo/**'],
   },
   {
     files: ['**/*.{ts,tsx,mts,cts}'],

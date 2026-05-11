@@ -8,10 +8,11 @@
 // status codes 200–499 — the OTLP endpoint returns 400 for empty GET
 // requests, which confirms the collector is running and reachable.
 
-import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
-import type { SharedArgs } from "./types.js";
+import * as pulumi from "@pulumi/pulumi";
+
 import { agwName } from "./naming.js";
+import type { SharedArgs } from "./types.js";
 
 export interface GatewayArgs extends SharedArgs {
   agwSubnetId: pulumi.Output<string>;

@@ -1,4 +1,6 @@
+import { Button, FlexRow, Text } from '@epam/uui';
 import React, { useCallback, useEffect, useState } from 'react';
+
 
 /**
  * State shape received from the main process via IPC.
@@ -100,8 +102,8 @@ export function UpdateNotification({ ipc, className = '' }: UpdateNotificationPr
         maxWidth: '400px',
         padding: '1rem',
         borderRadius: '0.5rem',
-        backgroundColor: 'var(--update-bg, #1e293b)',
-        color: 'var(--update-fg, #f8fafc)',
+        backgroundColor: 'var(--uui-surface-higher)',
+        color: 'var(--uui-text-primary)',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
         zIndex: 9999,
         fontFamily: 'system-ui, sans-serif',
@@ -110,33 +112,27 @@ export function UpdateNotification({ ipc, className = '' }: UpdateNotificationPr
     >
       {state.status === 'available' && state.info && (
         <>
-          <p style={{ margin: '0 0 0.75rem' }}>
-            <strong>Update available:</strong> v{state.info.version}
-          </p>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button onClick={handleDownload} style={buttonStyle('primary')}>
-              Download
-            </button>
-            <button onClick={handleLater} style={buttonStyle('secondary')}>
-              Later
-            </button>
-            <button onClick={handleSkip} style={buttonStyle('ghost')}>
-              Skip this version
-            </button>
-          </div>
+          <Text size="24" fontWeight="600" rawProps={{ style: { marginBottom: '0.75rem' } }}>
+            Update available: v{state.info.version}
+          </Text>
+          <FlexRow columnGap="6" rawProps={{ style: { flexWrap: 'wrap' } }}>
+            <Button color="primary" caption="Download" onClick={handleDownload} size="30" />
+            <Button color="secondary" fill="outline" caption="Later" onClick={handleLater} size="30" />
+            <Button color="secondary" fill="ghost" caption="Skip this version" onClick={handleSkip} size="30" />
+          </FlexRow>
         </>
       )}
 
       {state.status === 'downloading' && state.progress && (
         <>
-          <p style={{ margin: '0 0 0.5rem' }}>
+          <Text size="24" rawProps={{ style: { marginBottom: '0.5rem' } }}>
             Downloading update… {Math.round(state.progress.percent)}%
-          </p>
+          </Text>
           <div
             style={{
               height: '4px',
               borderRadius: '2px',
-              backgroundColor: 'var(--update-track, #334155)',
+              backgroundColor: 'var(--uui-neutral-30)',
               overflow: 'hidden',
             }}
           >
@@ -144,7 +140,7 @@ export function UpdateNotification({ ipc, className = '' }: UpdateNotificationPr
               style={{
                 height: '100%',
                 width: `${state.progress.percent}%`,
-                backgroundColor: 'var(--update-accent, #3b82f6)',
+                backgroundColor: 'var(--uui-info-50)',
                 transition: 'width 0.3s ease',
               }}
               role="progressbar"
@@ -158,51 +154,25 @@ export function UpdateNotification({ ipc, className = '' }: UpdateNotificationPr
 
       {state.status === 'downloaded' && state.info && (
         <>
-          <p style={{ margin: '0 0 0.75rem' }}>
-            <strong>Ready to install:</strong> v{state.info.version}
-          </p>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button onClick={handleInstall} style={buttonStyle('primary')}>
-              Install &amp; Restart
-            </button>
-            <button onClick={handleLater} style={buttonStyle('secondary')}>
-              Later
-            </button>
-          </div>
+          <Text size="24" fontWeight="600" rawProps={{ style: { marginBottom: '0.75rem' } }}>
+            Ready to install: v{state.info.version}
+          </Text>
+          <FlexRow columnGap="6" rawProps={{ style: { flexWrap: 'wrap' } }}>
+            <Button color="primary" caption="Install &amp; Restart" onClick={handleInstall} size="30" />
+            <Button color="secondary" fill="outline" caption="Later" onClick={handleLater} size="30" />
+          </FlexRow>
         </>
       )}
 
       {state.status === 'error' && (
         <>
-          <p style={{ margin: '0 0 0.5rem', color: '#ef4444' }}>
+          <Text size="24" color="critical" rawProps={{ style: { marginBottom: '0.5rem' } }}>
             Update error: {state.error ?? 'Unknown error'}
-          </p>
-          <button onClick={handleLater} style={buttonStyle('secondary')}>
-            Dismiss
-          </button>
+          </Text>
+          <Button color="secondary" fill="outline" caption="Dismiss" onClick={handleLater} size="30" />
         </>
       )}
     </div>
   );
 }
 
-function buttonStyle(variant: 'primary' | 'secondary' | 'ghost'): React.CSSProperties {
-  const base: React.CSSProperties = {
-    border: 'none',
-    borderRadius: '0.25rem',
-    padding: '0.375rem 0.75rem',
-    fontSize: '0.8125rem',
-    fontWeight: 500,
-    cursor: 'pointer',
-    lineHeight: 1.4,
-  };
-
-  switch (variant) {
-    case 'primary':
-      return { ...base, backgroundColor: '#3b82f6', color: '#fff' };
-    case 'secondary':
-      return { ...base, backgroundColor: '#475569', color: '#f8fafc' };
-    case 'ghost':
-      return { ...base, backgroundColor: 'transparent', color: '#94a3b8', textDecoration: 'underline' };
-  }
-}

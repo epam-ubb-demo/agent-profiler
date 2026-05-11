@@ -3,9 +3,10 @@
  */
 
 import type { AssistantMessage, Compaction } from '@agent-profiler/core';
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 
-import type { TimelineConfig } from './types';
+import { heatmapTipContent } from './tooltip-content';
+import type { TimelineConfig, TooltipHandlers } from './types';
 import { computeHeatmapBins, heatmapColour } from './utils';
 
 export interface TokenHeatmapProps {
@@ -15,6 +16,7 @@ export interface TokenHeatmapProps {
   readonly durationMs: number;
   readonly config: TimelineConfig;
   readonly y: number;
+  readonly tooltip: TooltipHandlers;
 }
 
 export const TokenHeatmap = memo(function TokenHeatmap({
@@ -24,10 +26,23 @@ export const TokenHeatmap = memo(function TokenHeatmap({
   durationMs,
   config,
   y,
+  tooltip,
 }: TokenHeatmapProps) {
   const bins = computeHeatmapBins(messages, compactions, startMs, durationMs, config.heatmapBins);
   const maxTokens = Math.max(1, ...bins);
   const binWidth = config.width / config.heatmapBins;
+  const binDurationMs = durationMs / config.heatmapBins;
+
+  const handleEnter = useCallback(
+    (i: number, e: React.MouseEvent) => {
+      const count = bins[i] ?? 0;
+      const intensity = (count / maxTokens) * 100;
+      const binStartMs = startMs + i * binDurationMs;
+      const binEndMs = binStartMs + binDurationMs;
+      tooltip.show(heatmapTipContent(binStartMs, binEndMs, count, intensity), e);
+    },
+    [bins, maxTokens, startMs, binDurationMs, tooltip],
+  );
 
   return (
     <g data-testid="token-heatmap">
@@ -42,9 +57,11 @@ export const TokenHeatmap = memo(function TokenHeatmap({
             height={config.laneHeight}
             fill={heatmapColour(intensity)}
             opacity={count === 0 ? 0.15 : 0.85}
-          >
-            <title>{`Bin ${String(i + 1)}: ${String(count)} tokens`}</title>
-          </rect>
+            style={{ cursor: 'crosshair' }}
+            onMouseEnter={(e) => { handleEnter(i, e); }}
+            onMouseMove={tooltip.move}
+            onMouseLeave={tooltip.hide}
+          />
         );
       })}
     </g>

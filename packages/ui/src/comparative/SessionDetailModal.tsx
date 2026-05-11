@@ -6,6 +6,7 @@
  */
 
 import type { Session } from '@agent-profiler/core';
+import { Text } from '@epam/uui';
 import { memo, useCallback, useEffect, useRef, lazy, Suspense, useState } from 'react';
 
 const LazySessionDetailContent = lazy(() =>
@@ -84,7 +85,18 @@ export const SessionDetailModal = memo(function SessionDetailModal({
     <dialog
       ref={dialogRef}
       data-testid="session-detail-modal"
-      className="fixed inset-0 m-0 h-full w-full max-h-full max-w-full border-0 bg-white p-0 backdrop:bg-black/50"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        margin: 0,
+        height: '100%',
+        width: '100%',
+        maxHeight: '100%',
+        maxWidth: '100%',
+        border: 'none',
+        background: 'var(--uui-surface-higher)',
+        padding: 0,
+      }}
       aria-modal="true"
       role="dialog"
       aria-label={`Session detail: ${sessionId}`}
@@ -92,25 +104,32 @@ export const SessionDetailModal = memo(function SessionDetailModal({
       onClick={handleBackdropClick}
     >
       <div
-        className="flex h-full w-full flex-col"
+        style={{ display: 'flex', height: '100%', width: '100%', flexDirection: 'column' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--uui-neutral-40)', padding: '16px 24px' }}>
           <div>
-            <h2 className="text-lg font-semibold text-slate-900" data-testid="session-detail-title">
+            <Text size="24" fontWeight="600" color="primary" rawProps={{ 'data-testid': 'session-detail-title' }}>
               Session: {sessionId}
-            </h2>
+            </Text>
             {loadState.status === 'loaded' && (
-              <p className="text-sm text-slate-500">
+              <Text size="18" color="secondary">
                 {loadState.session.selectedModel}
                 {loadState.session.branch && ` • ${loadState.session.branch}`}
-              </p>
+              </Text>
             )}
           </div>
           <button
             data-testid="session-detail-modal-close"
-            className="rounded p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+            style={{
+              borderRadius: '6px',
+              padding: '8px',
+              color: 'var(--uui-text-secondary)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+            }}
             onClick={onClose}
             aria-label="Close session detail"
           >
@@ -119,7 +138,7 @@ export const SessionDetailModal = memo(function SessionDetailModal({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6" data-testid="session-detail-body">
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }} data-testid="session-detail-body">
           {loadState.status === 'loading' && <LoadingSkeleton />}
           {loadState.status === 'error' && <ErrorState message={loadState.error} />}
           {loadState.status === 'loaded' && (
@@ -135,19 +154,19 @@ export const SessionDetailModal = memo(function SessionDetailModal({
 
 function LoadingSkeleton() {
   return (
-    <div data-testid="session-detail-loading" className="space-y-4 animate-pulse">
-      <div className="h-10 rounded bg-slate-200" />
-      <div className="h-40 rounded bg-slate-200" />
-      <div className="h-20 rounded bg-slate-200" />
+    <div data-testid="session-detail-loading" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ height: '40px', borderRadius: '6px', background: 'var(--uui-neutral-40)' }} />
+      <div style={{ height: '160px', borderRadius: '6px', background: 'var(--uui-neutral-40)' }} />
+      <div style={{ height: '80px', borderRadius: '6px', background: 'var(--uui-neutral-40)' }} />
     </div>
   );
 }
 
 function ErrorState({ message }: { readonly message: string }) {
   return (
-    <div data-testid="session-detail-error" className="rounded border border-red-200 bg-red-50 p-4">
-      <p className="text-sm font-medium text-red-800">Failed to load session</p>
-      <p className="mt-1 text-sm text-red-600">{message}</p>
+    <div data-testid="session-detail-error" style={{ borderRadius: '6px', border: '1px solid var(--uui-warning-50)', background: 'var(--uui-surface-section)', padding: '16px' }}>
+      <Text size="18" fontWeight="600" color="primary">Failed to load session</Text>
+      <Text size="18" color="secondary" rawProps={{ style: { marginTop: '4px' } }}>{message}</Text>
     </div>
   );
 }

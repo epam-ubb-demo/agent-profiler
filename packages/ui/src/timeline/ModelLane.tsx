@@ -3,10 +3,11 @@
  */
 
 import type { ModelChange } from '@agent-profiler/core';
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 
-import type { TimelineConfig } from './types';
-import { computeModelSegments, formatDuration, formatTime, modelColour } from './utils';
+import { modelTipContent } from './tooltip-content';
+import type { TimelineConfig, TooltipHandlers } from './types';
+import { computeModelSegments, modelColour } from './utils';
 
 export interface ModelLaneProps {
   readonly selectedModel: string;
@@ -17,6 +18,7 @@ export interface ModelLaneProps {
   readonly endTs: string | null;
   readonly config: TimelineConfig;
   readonly y: number;
+  readonly tooltip: TooltipHandlers;
 }
 
 export const ModelLane = memo(function ModelLane({
@@ -28,8 +30,21 @@ export const ModelLane = memo(function ModelLane({
   endTs,
   config,
   y,
+  tooltip,
 }: ModelLaneProps) {
   const segments = computeModelSegments(selectedModel, modelChanges, startMs, durationMs, startTs, endTs);
+
+  const handleEnter = useCallback(
+    (i: number, e: React.MouseEvent) => {
+      const seg = segments[i];
+      if (!seg) return;
+      tooltip.show(
+        modelTipContent(seg.model, seg.startTs, seg.endTs, seg.durationMs, startMs),
+        e,
+      );
+    },
+    [segments, startMs, tooltip],
+  );
 
   return (
     <g data-testid="model-lane">
@@ -46,11 +61,11 @@ export const ModelLane = memo(function ModelLane({
             fill={modelColour(seg.model)}
             rx={3}
             ry={3}
-          >
-            <title>
-              {`${seg.model}\n${formatTime(seg.startTs)} → ${formatTime(seg.endTs)}\nDuration: ${formatDuration(seg.durationMs)}`}
-            </title>
-          </rect>
+            style={{ cursor: 'crosshair' }}
+            onMouseEnter={(e) => { handleEnter(i, e); }}
+            onMouseMove={tooltip.move}
+            onMouseLeave={tooltip.hide}
+          />
         );
       })}
     </g>

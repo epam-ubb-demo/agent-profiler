@@ -1,8 +1,9 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ElectronApi } from '../src/preload/api';
 import { SessionBrowser } from '../src/renderer/pages/SessionBrowser';
+
+import { cleanup, render, screen, waitFor } from './test-utils';
 
 // Mock the electronApi on window
 const mockElectronApi: ElectronApi = {
@@ -19,6 +20,11 @@ const mockElectronApi: ElectronApi = {
     get: vi.fn(),
     set: vi.fn(),
     testConnection: vi.fn(),
+  },
+  pdf: {
+    selectOutputPath: vi.fn(),
+    exportCurrentView: vi.fn(),
+    exportSession: vi.fn(),
   },
 } as unknown as ElectronApi;
 
@@ -51,7 +57,7 @@ describe('SessionBrowser', () => {
     ]);
 
     const onSelect = vi.fn();
-    render(<SessionBrowser onSelectSession={onSelect} />);
+    await render(<SessionBrowser onSelectSession={onSelect} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('session-browser')).toBeDefined();
@@ -64,7 +70,7 @@ describe('SessionBrowser', () => {
     vi.mocked(mockElectronApi.session.list).mockResolvedValue([]);
 
     const onSelect = vi.fn();
-    render(<SessionBrowser onSelectSession={onSelect} />);
+    await render(<SessionBrowser onSelectSession={onSelect} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('empty-state')).toBeDefined();
@@ -79,7 +85,7 @@ describe('SessionBrowser', () => {
     vi.mocked(mockElectronApi.session.setRootDir).mockResolvedValue(true);
 
     const onSelect = vi.fn();
-    render(<SessionBrowser onSelectSession={onSelect} />);
+    await render(<SessionBrowser onSelectSession={onSelect} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('empty-state')).toBeDefined();

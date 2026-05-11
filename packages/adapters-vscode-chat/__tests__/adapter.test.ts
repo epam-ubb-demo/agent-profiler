@@ -194,7 +194,7 @@ describe('getWorkspaceStoragePaths', () => {
     const paths = getWorkspaceStoragePaths('darwin', '/Users/testuser');
     expect(paths).toHaveLength(2);
     expect(paths[0]!.variant).toBe('stable');
-    expect(paths[0]!.basePath).toContain('Application Support/Code/User/workspaceStorage');
+    expect(paths[0]!.basePath).toContain(join('Application Support', 'Code', 'User', 'workspaceStorage'));
     expect(paths[1]!.variant).toBe('insiders');
     expect(paths[1]!.basePath).toContain('Code - Insiders');
   });
@@ -209,7 +209,7 @@ describe('getWorkspaceStoragePaths', () => {
   it('returns Linux paths for linux platform', () => {
     const paths = getWorkspaceStoragePaths('linux', '/home/testuser');
     expect(paths).toHaveLength(2);
-    expect(paths[0]!.basePath).toContain('.config/Code/User/workspaceStorage');
+    expect(paths[0]!.basePath).toContain(join('.config', 'Code', 'User', 'workspaceStorage'));
   });
 
   it('returns empty array for unknown platform', () => {

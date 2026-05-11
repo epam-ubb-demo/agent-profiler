@@ -16,6 +16,7 @@ import type {
   UserMessage,
 } from '@agent-profiler/core';
 
+import { normaliseModelMetrics, safeInt } from './normalise-model-metrics.js';
 import type { RawEvent, RawSessionContext } from './types';
 
 // ---------------------------------------------------------------------------
@@ -80,12 +81,6 @@ function turnIdOf(event: RawEvent): string | null {
   const data = (event.data ?? {}) as Record<string, unknown>;
   const raw = data['turnId'] ?? event.turnId;
   return raw == null ? null : String(raw);
-}
-
-function safeInt(value: unknown, fallback = 0): number {
-  if (value == null) return fallback;
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.round(n) : fallback;
 }
 
 function safeStr(value: unknown, fallback = ''): string {
@@ -358,19 +353,7 @@ function onShutdown(
   _pending: Map<string, ToolCall>,
   currentModel: string | null,
 ): string | null {
-  const rawModelMetrics = (data['modelMetrics'] ?? {}) as Record<string, unknown>;
-  const modelMetrics = Object.entries(rawModelMetrics).map(([model, raw]) => {
-    const m = (raw ?? {}) as Record<string, unknown>;
-    return {
-      model,
-      inputTokens: safeInt(m['inputTokens']),
-      outputTokens: safeInt(m['outputTokens']),
-      cacheReadTokens: safeInt(m['cacheReadTokens']),
-      cacheWriteTokens: safeInt(m['cacheWriteTokens']),
-      requestCount: safeInt(m['requestCount']),
-      apiDurationMs: safeInt(m['apiDurationMs']),
-    };
-  });
+  const modelMetrics = normaliseModelMetrics(data['modelMetrics']);
 
   sb.shutdown = {
     totalPremiumRequests: safeInt(data['totalPremiumRequests']),

@@ -2,10 +2,11 @@
 // Creates a User-assigned Managed Identity with RBAC role assignments
 // for Monitoring Metrics Publisher and Key Vault Secrets User.
 
-import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
-import type { SharedArgs } from "./types.js";
+import * as pulumi from "@pulumi/pulumi";
+
 import { managedIdentityName } from "./naming.js";
+import type { SharedArgs } from "./types.js";
 
 export interface IdentityArgs extends SharedArgs {
   appInsightsId: pulumi.Output<string>;

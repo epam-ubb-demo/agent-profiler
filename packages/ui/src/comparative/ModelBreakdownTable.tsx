@@ -3,8 +3,10 @@
  */
 
 import type { ModelUsageRollup } from '@agent-profiler/core';
+import { Text } from '@epam/uui';
 import { memo, useMemo } from 'react';
 
+import styles from './comparative-tables.module.css';
 import { formatCost, formatTokenCount } from './format';
 
 export interface ModelBreakdownTableProps {
@@ -40,45 +42,43 @@ function ModelBreakdownTableInner({ modelUsage }: ModelBreakdownTableProps) {
   }, [modelUsage]);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse" role="grid">
+    <div style={{ overflowX: 'auto' }}>
+      <table className={styles.styledTable} role="grid">
         <thead>
-          <tr className="bg-slate-50">
-            <th scope="col" className="px-4 py-2 text-left text-sm font-medium text-slate-600">Model</th>
-            <th scope="col" className="px-4 py-2 text-left text-sm font-medium text-slate-600">Sessions</th>
-            <th scope="col" className="px-4 py-2 text-left text-sm font-medium text-slate-600">Input Tokens</th>
-            <th scope="col" className="px-4 py-2 text-left text-sm font-medium text-slate-600">Output Tokens</th>
-            <th scope="col" className="px-4 py-2 text-left text-sm font-medium text-slate-600">Cache Read</th>
-            <th scope="col" className="px-4 py-2 text-left text-sm font-medium text-slate-600">Cache Write</th>
-            <th scope="col" className="px-4 py-2 text-left text-sm font-medium text-slate-600">Cost</th>
+          <tr>
+            <th scope="col">Model</th>
+            <th scope="col">Sessions</th>
+            <th scope="col">Input Tokens</th>
+            <th scope="col">Output Tokens</th>
+            <th scope="col">Cache Read</th>
+            <th scope="col">Cache Write</th>
+            <th scope="col">Cost</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-200">
+        <tbody>
           {sorted.map((row) => (
-            <tr key={row.model} className="hover:bg-slate-50">
-              <td className="px-4 py-2 text-sm">
-                <span className="inline-block mr-1 px-1.5 py-0.5 text-xs rounded bg-blue-100 text-blue-800">
-                  {row.model}
-                </span>
+            <tr key={row.model}>
+              <td>
+                <span className={styles.modelBadge}>{row.model}</span>
               </td>
-              <td className="px-4 py-2 text-sm">{row.sessionCount}</td>
-              <td className="px-4 py-2 text-sm">{formatTokenCount(row.totalInputTokens)}</td>
-              <td className="px-4 py-2 text-sm">{formatTokenCount(row.totalOutputTokens)}</td>
-              <td className="px-4 py-2 text-sm">{formatTokenCount(row.totalCacheReadTokens)}</td>
-              <td className="px-4 py-2 text-sm">{formatTokenCount(row.totalCacheWriteTokens)}</td>
-              <td className="px-4 py-2 text-sm">{formatCost(row.totalCost)}</td>
+              <td><Text size="18">{row.sessionCount}</Text></td>
+              <td><Text size="18">{formatTokenCount(row.totalInputTokens)}</Text></td>
+              <td><Text size="18">{formatTokenCount(row.totalOutputTokens)}</Text></td>
+              <td><Text size="18">{formatTokenCount(row.totalCacheReadTokens)}</Text></td>
+              <td><Text size="18">{formatTokenCount(row.totalCacheWriteTokens)}</Text></td>
+              <td><Text size="18">{formatCost(row.totalCost)}</Text></td>
             </tr>
           ))}
         </tbody>
         <tfoot>
-          <tr className="bg-slate-50 font-medium" data-testid="model-totals-row">
-            <td className="px-4 py-2 text-sm">Total</td>
-            <td className="px-4 py-2 text-sm">{totals.sessions}</td>
-            <td className="px-4 py-2 text-sm">{formatTokenCount(totals.inputTokens)}</td>
-            <td className="px-4 py-2 text-sm">{formatTokenCount(totals.outputTokens)}</td>
-            <td className="px-4 py-2 text-sm">{formatTokenCount(totals.cacheRead)}</td>
-            <td className="px-4 py-2 text-sm">{formatTokenCount(totals.cacheWrite)}</td>
-            <td className="px-4 py-2 text-sm">{formatCost(totals.cost)}</td>
+          <tr className={styles.totalRow} data-testid="model-totals-row">
+            <td><Text size="18" fontWeight="600">Total</Text></td>
+            <td><Text size="18" fontWeight="600">{totals.sessions}</Text></td>
+            <td><Text size="18" fontWeight="600">{formatTokenCount(totals.inputTokens)}</Text></td>
+            <td><Text size="18" fontWeight="600">{formatTokenCount(totals.outputTokens)}</Text></td>
+            <td><Text size="18" fontWeight="600">{formatTokenCount(totals.cacheRead)}</Text></td>
+            <td><Text size="18" fontWeight="600">{formatTokenCount(totals.cacheWrite)}</Text></td>
+            <td><Text size="18" fontWeight="600">{formatCost(totals.cost)}</Text></td>
           </tr>
         </tfoot>
       </table>

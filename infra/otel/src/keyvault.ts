@@ -2,11 +2,12 @@
 // Creates Key Vault with Private Endpoint, DNS zone, diagnostic settings,
 // secret storage, and conditional resource locks.
 
-import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
-import type { SharedArgs } from "./types.js";
-import { kvName, privateEndpointName } from "./naming.js";
+import * as pulumi from "@pulumi/pulumi";
+
 import { addDiagnosticSettings } from "./monitoring.js";
+import { kvName, privateEndpointName } from "./naming.js";
+import type { SharedArgs } from "./types.js";
 
 export interface KeyVaultArgs extends SharedArgs {
   subnetId: pulumi.Output<string>;

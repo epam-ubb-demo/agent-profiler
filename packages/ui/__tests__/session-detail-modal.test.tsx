@@ -3,11 +3,13 @@
  */
 
 import type { Session } from '@agent-profiler/core';
-import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
+import { screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 import { describe, expect, it, afterEach, vi, beforeEach } from 'vitest';
 
 import { SessionDetailModal } from '../src/comparative/SessionDetailModal';
 import { useDeepLink } from '../src/hooks/useDeepLink';
+
+import { render } from './test-utils';
 
 afterEach(() => {
   cleanup();

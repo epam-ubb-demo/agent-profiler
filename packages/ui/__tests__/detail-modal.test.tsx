@@ -3,10 +3,12 @@
  */
 
 import type { ToolCall, Turn } from '@agent-profiler/core';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { fireEvent, screen, cleanup } from '@testing-library/react';
 import { describe, expect, it, afterEach, vi, beforeEach } from 'vitest';
 
 import { DetailModal } from '../src/panels/DetailModal';
+
+import { render } from './test-utils';
 
 afterEach(cleanup);
 

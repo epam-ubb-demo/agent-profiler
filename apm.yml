@@ -1,0 +1,9 @@
+name: agent-profiler
+version: 1.0.0
+description: APM project for agent-profiler
+author: Sergio Sisternes
+dependencies:
+  apm: []
+  mcp: []
+includes: auto
+scripts: {}
