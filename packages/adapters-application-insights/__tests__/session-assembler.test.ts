@@ -739,6 +739,30 @@ describe('assembleSession', () => {
     expect(session.shutdown!.modelMetrics).toHaveLength(1);
     expect(session.shutdown!.modelMetrics[0]!.inputTokens).toBe(500);
   });
+
+  it('falls back to traceId when copilot_chat.session.id is empty string', () => {
+    const rows = [
+      makeRawRow({
+        id: 'span-a',
+        operation_Id: 'trace-abc',
+        operation_ParentId: '',
+        name: 'root',
+        customDimensions: JSON.stringify({ 'copilot_chat.session.id': '' }),
+      }),
+      makeRawRow({
+        id: 'span-b',
+        operation_Id: 'trace-abc',
+        operation_ParentId: 'span-a',
+        name: 'child',
+        customDimensions: JSON.stringify({ 'copilot_chat.session.id': '' }),
+      }),
+    ];
+
+    const session = assembleSession(rows);
+
+    // sessionId should be traceId, not empty string
+    expect(session.sessionId).toBe('trace-abc');
+  });
 });
 
 // ---------------------------------------------------------------------------

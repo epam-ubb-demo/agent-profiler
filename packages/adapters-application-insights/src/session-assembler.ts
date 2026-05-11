@@ -319,7 +319,7 @@ export function assembleSession(
     '';
 
   // Session identity and context from span dimensions
-  const sessionId = spans.find((s) => s.dims['copilot_chat.session.id'] != null)
+  const sessionId = spans.find((s) => s.dims['copilot_chat.session.id'] != null && s.dims['copilot_chat.session.id'] !== '')
     ?.dims['copilot_chat.session.id']
     ?? spans[0]?.traceId
     ?? '';
