@@ -1,9 +1,9 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ElectronApi } from '../src/preload/api';
 import { SettingsPanel } from '../src/renderer/components/SettingsPanel';
 
+import { cleanup, fireEvent, render, screen, waitFor } from './test-utils';
 // ─── Mock electronApi ─────────────────────────────────────────────────────────
 
 const mockElectronApi: ElectronApi = {
@@ -53,14 +53,14 @@ async function openSettingsDialog() {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('SettingsPanel', () => {
-  it('renders settings trigger button', () => {
-    render(<SettingsPanel />);
+  it('renders settings trigger button', async () => {
+    await render(<SettingsPanel />);
 
     expect(screen.getByRole('button', { name: /settings/i })).toBeInTheDocument();
   });
 
   it('opens dialog when settings button is clicked', async () => {
-    render(<SettingsPanel />);
+    await render(<SettingsPanel />);
 
     await openSettingsDialog();
 
@@ -68,7 +68,7 @@ describe('SettingsPanel', () => {
   });
 
   it('loads saved settings on open', async () => {
-    render(<SettingsPanel />);
+    await render(<SettingsPanel />);
 
     await openSettingsDialog();
 
@@ -81,7 +81,7 @@ describe('SettingsPanel', () => {
   });
 
   it('shows green status with session count on successful test connection', async () => {
-    render(<SettingsPanel />);
+    await render(<SettingsPanel />);
 
     await openSettingsDialog();
 
@@ -105,7 +105,7 @@ describe('SettingsPanel', () => {
       error: 'Invalid workspace ID',
     });
 
-    render(<SettingsPanel />);
+    await render(<SettingsPanel />);
 
     await openSettingsDialog();
 
@@ -122,7 +122,7 @@ describe('SettingsPanel', () => {
   });
 
   it('calls settings.set with correct settings on save', async () => {
-    render(<SettingsPanel />);
+    await render(<SettingsPanel />);
 
     await openSettingsDialog();
 
@@ -142,7 +142,7 @@ describe('SettingsPanel', () => {
 
   it('triggers onSettingsSaved callback after save', async () => {
     const onSaved = vi.fn();
-    render(<SettingsPanel onSettingsSaved={onSaved} />);
+    await render(<SettingsPanel onSettingsSaved={onSaved} />);
 
     await openSettingsDialog();
 

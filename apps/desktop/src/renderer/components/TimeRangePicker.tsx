@@ -57,6 +57,7 @@ export function TimeRangePicker({ value, onChange }: TimeRangePickerProps) {
             <Text fontSize="12" color="secondary">Start</Text>
             <input
               id="custom-start-date"
+              aria-label="Start"
               type="date"
               value={value.customStartDate ?? ''}
               onChange={(e) =>
@@ -69,6 +70,7 @@ export function TimeRangePicker({ value, onChange }: TimeRangePickerProps) {
             <Text fontSize="12" color="secondary">End</Text>
             <input
               id="custom-end-date"
+              aria-label="End"
               type="date"
               value={value.customEndDate ?? ''}
               onChange={(e) =>
