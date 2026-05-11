@@ -42,7 +42,7 @@ function ToolFanoutMatrixInner({ toolUsage }: ToolFanoutMatrixProps) {
             const rate = computeSuccessRate(row);
             return (
               <tr key={row.toolName}>
-                <td><Text size="18" cx="font-mono">{row.toolName}</Text></td>
+                <td><Text size="18" rawProps={{ style: { fontFamily: 'monospace' } }}>{row.toolName}</Text></td>
                 <td><Text size="18">{row.callCount}</Text></td>
                 <td><Text size="18">{formatDuration(row.totalDurationMs)}</Text></td>
                 <td>

@@ -68,7 +68,14 @@ export async function parseCopilotCliSession(path: string): Promise<Session> {
   const metricsEmpty =
     sb.shutdown !== null &&
     sb.shutdown.modelMetrics.length > 0 &&
-    sb.shutdown.modelMetrics.every((m) => m.inputTokens === 0 && m.outputTokens === 0);
+    sb.shutdown.modelMetrics.every(
+      (m) =>
+        m.inputTokens === 0 &&
+        m.outputTokens === 0 &&
+        m.cacheReadTokens === 0 &&
+        m.cacheWriteTokens === 0 &&
+        m.reasoningTokens === 0,
+    );
 
   // Add metadata about shutdown discrepancy if relevant
   const warnings: string[] = [];

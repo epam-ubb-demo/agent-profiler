@@ -24,7 +24,7 @@ import type { ModelMetrics } from '@agent-profiler/core';
 // Safe coercion helpers
 // ---------------------------------------------------------------------------
 
-/** Coerce an unknown value to a non-negative integer, defaulting to `fallback`. */
+/** Returns a safe integer from a possibly-undefined numeric value, defaulting to `fallback`. */
 export function safeInt(value: unknown, fallback = 0): number {
   if (value == null) return fallback;
   const n = Number(value);

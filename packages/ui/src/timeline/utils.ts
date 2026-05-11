@@ -245,7 +245,8 @@ export function formatTimeWithOffset(isoString: string, sessionStartMs: number):
   if (isNaN(d.getTime())) return '--:--:--.---';
   const ts = d.toISOString().slice(11, 23); // HH:MM:SS.mmm
   const offsetMs = d.getTime() - sessionStartMs;
-  return `${ts} (+${formatDuration(offsetMs)})`;
+  const sign = offsetMs >= 0 ? '+' : '';
+  return `${ts} (${sign}${formatDuration(offsetMs)})`;
 }
 
 /**

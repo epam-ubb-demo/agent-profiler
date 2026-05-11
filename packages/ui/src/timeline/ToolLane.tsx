@@ -3,7 +3,7 @@
  */
 
 import type { ToolCall } from '@agent-profiler/core';
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 
 import { toolTipContent } from './tooltip-content';
 import type { TimelineConfig, TooltipHandlers } from './types';
@@ -33,12 +33,15 @@ export const ToolLane = memo(function ToolLane({
   const laneH = config.laneHeight - 4;
   const rowHeight = laneH / Math.max(1, maxLane + 1);
 
+  const argsPreviewMap = useMemo(
+    () => new Map(toolCalls.map((tc) => [tc.toolCallId, tc.argumentsPreview ?? ''])),
+    [toolCalls],
+  );
+
   const handleEnter = useCallback(
     (i: number, e: React.MouseEvent) => {
       const a = assignments[i];
       if (!a) return;
-      // Find the original tool call for args preview
-      const tc = toolCalls.find((t) => t.toolCallId === a.toolCallId);
       tooltip.show(
         toolTipContent(
           a.toolName,
@@ -46,13 +49,13 @@ export const ToolLane = memo(function ToolLane({
           a.startTs,
           a.durationMs,
           a.success,
-          tc?.argumentsPreview ?? '',
+          argsPreviewMap.get(a.toolCallId) ?? '',
           startMs,
         ),
         e,
       );
     },
-    [assignments, toolCalls, startMs, tooltip],
+    [assignments, argsPreviewMap, startMs, tooltip],
   );
 
   return (

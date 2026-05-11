@@ -20,13 +20,13 @@ type SortDir = 'asc' | 'desc';
 const STATUS_BADGE_COLOR: Record<string, 'success' | 'warning' | 'critical'> = {
   ok: 'success',
   partial: 'warning',
-  error: 'critical',
+  failed: 'critical',
 };
 
 const STATUS_ICON: Record<string, string> = {
   ok: '✓',
   partial: '⚠',
-  error: '✗',
+  failed: '✗',
 };
 
 function compareRows(a: SessionSummaryRow, b: SessionSummaryRow, key: SortKey): number {
@@ -110,7 +110,15 @@ function SessionListTableInner({ sessions, onSessionClick }: SessionListTablePro
             <tr
               key={row.sessionId}
               className={styles.clickableRow}
+              role="button"
+              tabIndex={0}
               onClick={() => onSessionClick?.(row.sessionId)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSessionClick?.(row.sessionId);
+                }
+              }}
             >
               <td className={styles.stickyCol}>
                 <Text size="18">{row.label}</Text>

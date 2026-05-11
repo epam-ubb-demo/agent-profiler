@@ -44,6 +44,7 @@ declare const styles: {
   readonly sectionDescription: string;
   readonly sectionHeading: string;
   readonly sortableHeader: string;
+  readonly sortButton: string;
   readonly sortIndicator: string;
   readonly sortIndicatorActive: string;
   readonly statCard: string;

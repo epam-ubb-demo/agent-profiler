@@ -28,7 +28,7 @@ function getStringValue<T>(item: T, key: keyof T | string): string {
 
 export function useFilterableData<T>(
   data: readonly T[],
-  filterKeys: (keyof T | string)[],
+  filterKeys: readonly (keyof T | string)[],
   options?: UseFilterableDataOptions,
 ): UseFilterableDataResult<T> {
   const caseSensitive = options?.caseSensitive ?? false;

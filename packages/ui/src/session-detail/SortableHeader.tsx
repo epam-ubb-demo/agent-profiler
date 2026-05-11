@@ -52,6 +52,7 @@ function SortableHeaderInner({
     <th scope="col" className={thClassName} aria-sort={ariaSort(direction)}>
       <button
         type="button"
+        className={styles.sortButton}
         onClick={() => onSort(sortKey)}
         style={{
           all: 'unset',

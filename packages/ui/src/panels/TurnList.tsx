@@ -95,9 +95,8 @@ export const TurnList = memo(function TurnList({
     >
       <div style={totalHeight != null ? { height: totalHeight, position: 'relative' } : undefined}>
         <FlexRow
-          cx="p-2"
-          columnGap="6"
-          rawProps={{ style: shouldVirtualize ? { flexDirection: 'column', transform: `translateY(${offsetTop}px)` } : { flexDirection: 'column' } }}
+          rowGap="6"
+          rawProps={{ style: shouldVirtualize ? { flexDirection: 'column', padding: '12px', transform: `translateY(${offsetTop}px)` } : { flexDirection: 'column', padding: '12px' } }}
         >
           {turns.slice(startIndex, endIndex).map((turn) => (
             <TurnPanel

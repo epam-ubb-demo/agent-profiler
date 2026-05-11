@@ -533,6 +533,15 @@
   background: var(--uui-neutral-10);
 }
 
+.sortButton {
+  /* restores keyboard focus indicator removed by all: unset */
+}
+
+.sortButton:focus-visible {
+  outline: 2px solid var(--uui-focus, #008ACE);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
 .sortIndicator {
   display: inline-block;
   margin-left: 4px;
