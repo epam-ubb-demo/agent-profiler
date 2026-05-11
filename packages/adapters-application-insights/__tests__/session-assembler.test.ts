@@ -740,3 +740,152 @@ describe('assembleSession', () => {
     expect(session.shutdown!.modelMetrics[0]!.inputTokens).toBe(500);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Edge case: Model aggregation with missing model dimensions
+// ---------------------------------------------------------------------------
+
+describe('aggregateModelMetrics — missing model dimensions', () => {
+  it('produces empty-string key when both gen_ai.response.model and gen_ai.request.model are missing', () => {
+    const spans = [
+      makeSpan({
+        spanId: 'llm-1',
+        durationMs: 50,
+        dims: {
+          'gen_ai.usage.input_tokens': '10',
+          'gen_ai.usage.output_tokens': '20',
+          // No gen_ai.response.model
+          // No gen_ai.request.model
+        },
+      }),
+      makeSpan({
+        spanId: 'llm-2',
+        durationMs: 100,
+        dims: {
+          'gen_ai.usage.input_tokens': '30',
+          'gen_ai.usage.output_tokens': '40',
+          // No gen_ai.response.model
+          // No gen_ai.request.model
+        },
+      }),
+    ];
+
+    const metrics = aggregateModelMetrics(spans);
+
+    // Should produce exactly one entry with empty-string model key
+    expect(metrics).toHaveLength(1);
+    expect(metrics[0]!.model).toBe('');
+    expect(metrics[0]!.inputTokens).toBe(40);
+    expect(metrics[0]!.outputTokens).toBe(60);
+    expect(metrics[0]!.requestCount).toBe(2);
+    expect(metrics[0]!.apiDurationMs).toBe(150);
+  });
+
+  it('uses fallback from gen_ai.request.model when gen_ai.response.model is missing', () => {
+    const spans = [
+      makeSpan({
+        spanId: 'llm-1',
+        dims: {
+          'gen_ai.usage.input_tokens': '5',
+          'gen_ai.usage.output_tokens': '10',
+          // No gen_ai.response.model
+          'gen_ai.request.model': 'gpt-4',
+        },
+      }),
+    ];
+
+    const metrics = aggregateModelMetrics(spans);
+
+    expect(metrics).toHaveLength(1);
+    expect(metrics[0]!.model).toBe('gpt-4');
+  });
+
+  it('prefers gen_ai.response.model over gen_ai.request.model', () => {
+    const spans = [
+      makeSpan({
+        spanId: 'llm-1',
+        dims: {
+          'gen_ai.usage.input_tokens': '5',
+          'gen_ai.response.model': 'gpt-5-final',
+          'gen_ai.request.model': 'gpt-5-base',
+        },
+      }),
+    ];
+
+    const metrics = aggregateModelMetrics(spans);
+
+    expect(metrics).toHaveLength(1);
+    expect(metrics[0]!.model).toBe('gpt-5-final');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Edge case: Empty-string model treated same as missing (via ?? operator)
+// ---------------------------------------------------------------------------
+
+describe('aggregateModelMetrics — empty-string model dimension', () => {
+  it('creates empty-string key when gen_ai.response.model is empty string', () => {
+    const spans = [
+      makeSpan({
+        spanId: 'llm-1',
+        durationMs: 75,
+        dims: {
+          'gen_ai.usage.input_tokens': '15',
+          'gen_ai.usage.output_tokens': '25',
+          'gen_ai.response.model': '', // Empty string is "present" (not null/undefined)
+        },
+      }),
+    ];
+
+    const metrics = aggregateModelMetrics(spans);
+
+    // Empty string dimension is treated as "present" by ??, so model = ''
+    expect(metrics).toHaveLength(1);
+    expect(metrics[0]!.model).toBe('');
+    expect(metrics[0]!.inputTokens).toBe(15);
+    expect(metrics[0]!.outputTokens).toBe(25);
+  });
+
+  it('distinguishes between missing and empty-string model in fallback chain', () => {
+    const spans = [
+      makeSpan({
+        spanId: 'llm-missing',
+        dims: {
+          'gen_ai.usage.input_tokens': '5',
+          // No response.model, no request.model → key is ''
+        },
+      }),
+      makeSpan({
+        spanId: 'llm-empty',
+        dims: {
+          'gen_ai.usage.input_tokens': '10',
+          'gen_ai.response.model': '', // Empty string is present
+        },
+      }),
+      makeSpan({
+        spanId: 'llm-valid',
+        dims: {
+          'gen_ai.usage.input_tokens': '20',
+          'gen_ai.response.model': 'claude-opus',
+        },
+      }),
+    ];
+
+    const metrics = aggregateModelMetrics(spans);
+
+    // Both empty-string cases aggregate into the same empty-string bucket
+    expect(metrics).toHaveLength(2);
+    const models = metrics.map((m) => m.model).sort();
+    expect(models).toEqual(['', 'claude-opus']);
+
+    // The empty-string bucket should have llm-missing and llm-empty
+    const emptyBucket = metrics.find((m) => m.model === '');
+    expect(emptyBucket!.inputTokens).toBe(15); // 5 + 10
+    expect(emptyBucket!.requestCount).toBe(2);
+
+    // The claude-opus bucket should have only llm-valid
+    const claudeBucket = metrics.find((m) => m.model === 'claude-opus');
+    expect(claudeBucket!.inputTokens).toBe(20);
+    expect(claudeBucket!.requestCount).toBe(1);
+  });
+});

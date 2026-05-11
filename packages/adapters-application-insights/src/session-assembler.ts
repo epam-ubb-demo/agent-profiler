@@ -42,7 +42,7 @@ import {
  *
  * Spans are grouped by the model name extracted from
  * `gen_ai.response.model`, falling back to `gen_ai.request.model`, then
- * to `'unknown'`.
+ * to `''`.
  */
 export function aggregateModelMetrics(
   llmSpans: readonly OTelSpan[],
@@ -64,7 +64,7 @@ export function aggregateModelMetrics(
     const model =
       d['gen_ai.response.model'] ??
       d['gen_ai.request.model'] ??
-      'unknown';
+      '';
 
     let entry = map.get(model);
     if (!entry) {

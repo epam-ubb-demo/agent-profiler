@@ -53,14 +53,14 @@ export function groupSpansBySession(
   if (spans.length === 0) return [];
 
   const SESSION_DIM = 'copilot_chat.session.id';
-  const hasSessionDim = spans.some((s) => s.dims[SESSION_DIM] != null);
+  const hasSessionDim = spans.some((s) => s.dims[SESSION_DIM] != null && s.dims[SESSION_DIM] !== '');
 
   // Build per-trace session ID lookup
   const traceSessionMap = new Map<string, string>();
   if (hasSessionDim) {
     for (const span of spans) {
       const sid = span.dims[SESSION_DIM];
-      if (sid != null && !traceSessionMap.has(span.traceId)) {
+      if (sid != null && sid !== '' && !traceSessionMap.has(span.traceId)) {
         traceSessionMap.set(span.traceId, sid);
       }
     }
