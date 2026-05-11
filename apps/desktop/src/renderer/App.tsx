@@ -3,7 +3,6 @@ import { ContextProvider } from '@epam/uui-core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
-import { ErrorBoundary } from '@agent-profiler/ui';
 import { AppShell } from '@/components/AppShell';
 import { SessionBrowser } from '@/pages/SessionBrowser';
 import { SessionDetail } from '@/pages/SessionDetail';
