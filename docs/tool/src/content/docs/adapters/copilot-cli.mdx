@@ -1,0 +1,44 @@
+---
+title: Copilot CLI Adapter
+description: Ingest GitHub Copilot CLI session logs from local JSONL files into Agent Profiler.
+---
+
+:::note[Coming Soon]
+This page is a stub. Full documentation will be added when the Copilot CLI adapter is implemented.
+:::
+
+## Overview
+
+The Copilot CLI adapter reads session transcript files produced by the GitHub Copilot CLI (`gh copilot`). These are newline-delimited JSON (`.jsonl`) files stored on the local filesystem.
+
+## Log File Location
+
+Copilot CLI session logs are typically stored at:
+
+- **macOS / Linux**: `~/.config/github-copilot/sessions/`
+- **Windows**: `%APPDATA%\GitHub Copilot\sessions\`
+
+Each session is a single `.jsonl` file named by session ID.
+
+## What Is Parsed
+
+The adapter extracts:
+
+- Turn boundaries and user messages
+- Assistant responses with token counts (input, output, cache read, cache write)
+- Tool call events (`execute_tool`, `permission`, `report_intent`)
+- Model information (`claude-opus-4.6`, etc.)
+- Session-level metrics (total tokens, duration, compaction events)
+
+## Session vs OTel Traces
+
+The Copilot CLI adapter parses **local log files** and does not require the [OTel Gateway](/agent-profiler/tool/otel-gateway/). For centralised, cross-machine visibility, combine both: use the CLI adapter for local sessions and the [Application Insights adapter](/agent-profiler/tool/adapters/application-insights/) for gateway-collected traces.
+
+## Configuration
+
+Point the adapter at your log directory in **Settings → Data Sources → Copilot CLI**:
+
+| Setting | Description |
+|---|---|
+| Log directory | Path to the directory containing `.jsonl` session files |
+| Watch for new files | Automatically reload when new sessions are detected |

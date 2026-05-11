@@ -23,14 +23,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install and build
-        working-directory: docs
+      - name: Build project docs
+        working-directory: docs/project
         run: |
           npm ci
           npm run build
+      - name: Build tool docs
+        working-directory: docs/tool
+        run: |
+          npm ci
+          npm run build
+      - name: Merge dist directories
+        run: |
+          mkdir -p _site
+          cp -r docs/project/dist/* _site/
+          cp -r docs/tool/dist/* _site/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/dist
+          path: _site
 
   deploy:
     needs: build

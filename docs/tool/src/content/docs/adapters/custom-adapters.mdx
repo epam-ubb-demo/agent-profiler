@@ -1,0 +1,43 @@
+---
+title: Custom Adapters
+description: Build and register a custom session data source adapter using the Agent Profiler plugin contract.
+---
+
+:::note[Coming Soon]
+This page is a stub. Full documentation will be added when the plugin contract is stabilised.
+:::
+
+## Overview
+
+Agent Profiler supports third-party session sources via the plugin contract defined in [ADR-0006](/agent-profiler/project/decisions/adr-0006-plugin-contract/). A custom adapter is an ES module that exports a `PluginManifest` and implements the `SessionDataSource` interface.
+
+## Plugin Contract
+
+```typescript
+interface PluginManifest {
+  apiVersion: '1.0';
+  sessionSource?: SessionSourcePlugin;
+  visualiser?: VisualiserPlugin;
+}
+
+interface SessionSourcePlugin {
+  name: string;
+  displayName: string;
+  factory: () => SessionDataSource;
+}
+```
+
+## Getting Started
+
+1. Create a new npm package with the `"agent-profiler-plugin"` keyword in `package.json`.
+2. Export a `PluginManifest` as the default export from your package's entry point.
+3. Implement `SessionDataSource` — return `Session` objects from `@agent-profiler/core`.
+4. Install your package into Agent Profiler's plugins directory (see Settings).
+
+## Plugin Discovery
+
+Agent Profiler scans the configured plugins directory at startup for `package.json` files containing the `"agent-profiler-plugin"` keyword. Matched packages are dynamically imported and their manifests validated with Zod before use.
+
+## Security
+
+Plugins run in the same process as Agent Profiler and have full access to the host environment. Only install plugins from sources you trust. See [ADR-0006](/agent-profiler/project/decisions/adr-0006-plugin-contract/) for the full security rationale.

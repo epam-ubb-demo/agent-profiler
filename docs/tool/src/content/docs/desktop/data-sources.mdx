@@ -1,0 +1,29 @@
+---
+title: Data Sources
+description: Configure local file directories, OTel Gateway, and Application Insights as data sources in Agent Profiler.
+---
+
+:::note[Coming Soon]
+This page is a stub. Full data source configuration documentation will be added as the feature is implemented.
+:::
+
+## Overview
+
+Agent Profiler supports multiple data source types. You can configure one or more sources, and sessions from all sources appear together in the [Session Browser](/agent-profiler/tool/desktop/session-browser/).
+
+## Supported Data Sources
+
+| Source | Description | Status |
+|---|---|---|
+| Local file system | Read Copilot CLI `.jsonl` logs from a directory | Planned |
+| OTel Gateway | Connect to an OTLP collector endpoint | Planned |
+| Application Insights | Query spans from an Azure Application Insights workspace | Planned |
+| VS Code storage | Read VS Code Copilot transcripts | Planned |
+
+## Adding a Data Source
+
+Data sources are configured in **Settings → Data Sources**. See [Settings](/agent-profiler/tool/desktop/settings/) for the full configuration reference.
+
+## OTel Gateway Connection
+
+To connect to the OTel Gateway, you will need the collector FQDN and (for private environments) credentials. See the [OTel Gateway section](/agent-profiler/tool/otel-gateway/) for setup details.

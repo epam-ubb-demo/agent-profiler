@@ -1,0 +1,8 @@
+/* Agent Profiler — Starlight custom styles */
+
+:root {
+  /* Brand accent — slate-blue */
+  --sl-color-accent-low: #1e3a5f;
+  --sl-color-accent: #3b82f6;
+  --sl-color-accent-high: #93c5fd;
+}

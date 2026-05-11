@@ -1,0 +1,73 @@
+---
+title: OTel Gateway
+description: Centralised telemetry collection for GitHub Copilot CLI sessions — receives OTLP signals and routes them to Azure Application Insights.
+---
+
+The OTel Gateway is a managed OpenTelemetry Collector deployment on Azure Container Apps that acts as the telemetry bridge between developer machines running the Copilot CLI and Azure Application Insights.
+
+## Purpose
+
+Every Copilot CLI session emits rich telemetry — tool invocations, model calls, permission checks, and latency data. The gateway collects these signals centrally so that teams can query and analyse agent behaviour across all sessions without requiring each developer to configure their own observability backend.
+
+## Architecture
+
+```
+Copilot CLI (developer machine)
+        │ OTLP/HTTP traces
+        ▼
+OTel Collector (Azure Container App)
+        │ azuremonitor exporter
+        ▼
+Azure Application Insights
+        │ KQL queries
+        ▼
+Azure Monitor / Workbooks
+```
+
+### Data flow
+
+1. The Copilot CLI emits `OTLP/HTTP` traces to the collector's FQDN on port 443.
+2. The collector receives signals via the `otlp` receiver.
+3. The `azuremonitor` exporter forwards processed spans to Application Insights.
+4. Spans land in the `dependencies` table in the Application Insights workspace.
+
+## Signals Captured
+
+The gateway captures **traces** (spans). Each span represents a discrete unit of work within a Copilot CLI session:
+
+| Span name | Description |
+|---|---|
+| `chat claude-opus-4.6` | Top-level model invocation with the specified model |
+| `execute_tool bash` | Shell command execution via the bash tool |
+| `execute_tool report_intent` | Intent reporting tool call |
+| `permission` | Permission check before a sensitive tool is invoked |
+
+Metrics and logs are not currently collected.
+
+## Environments
+
+Three deployment environments exist, each with its own Pulumi stack and Azure resource group:
+
+| Environment | Networking | Authentication | Replicas | Use case |
+|---|---|---|---|---|
+| **demo** | Public HTTPS (no auth) | None | 0–2 (scale to zero) | Shared demo access |
+| **dev** | Private (VNet + Private Endpoints) | Key Vault | 1–5 | Development and testing |
+| **prod** | Private (VNet + Private Endpoints) | Key Vault | 3–10 | Production workloads |
+
+### Demo endpoint
+
+The demo environment is publicly accessible at:
+
+```
+https://ca-ghcp-demo-uksouth-001.braveglacier-03fb7d47.uksouth.azurecontainerapps.io
+```
+
+:::caution
+The demo environment scales to zero when idle. The first request after a period of inactivity may take 10–30 seconds as the container starts. See [Troubleshooting](/agent-profiler/tool/otel-gateway/troubleshooting/) for details.
+:::
+
+## Next Steps
+
+- [Client Configuration](/agent-profiler/tool/otel-gateway/client-configuration/) — set up your Copilot CLI to send traces to the gateway
+- [Infrastructure](/agent-profiler/tool/otel-gateway/infrastructure/) — manage Pulumi stacks and Azure resources
+- [Troubleshooting](/agent-profiler/tool/otel-gateway/troubleshooting/) — diagnose connectivity and ingestion issues
