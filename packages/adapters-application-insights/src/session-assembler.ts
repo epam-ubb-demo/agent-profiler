@@ -99,7 +99,9 @@ export function aggregateModelMetrics(
       outputTokens: entry.outputTokens,
       cacheReadTokens: entry.cacheReadTokens,
       cacheWriteTokens: entry.cacheWriteTokens,
+      reasoningTokens: 0,
       requestCount: entry.requestCount,
+      premiumRequestCost: 0,
       apiDurationMs: entry.apiDurationMs,
     });
   }

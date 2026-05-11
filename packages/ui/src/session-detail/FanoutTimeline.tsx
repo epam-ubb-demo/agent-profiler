@@ -294,7 +294,7 @@ function FanoutTimelineInner({ session, modelColours, onSessionNavigate }: Fanou
                 modelColours={modelColours}
                 onToggleInteraction={toggleInteraction}
                 onToggleTurn={toggleTurn}
-                onSessionNavigate={onSessionNavigate}
+                {...(onSessionNavigate ? { onSessionNavigate } : {})}
               />
             );
           })}
@@ -394,7 +394,7 @@ const InteractionRows = memo(function InteractionRows({
                 firstModel={firstModel}
                 modelColours={modelColours}
                 onToggle={onToggleTurn}
-                onSessionNavigate={onSessionNavigate}
+                {...(onSessionNavigate ? { onSessionNavigate } : {})}
               />
             );
           }
@@ -495,7 +495,7 @@ const TurnRows = memo(function TurnRows({
       {turnOpen && (
         <tr>
           <td colSpan={10} style={{ padding: 0 }}>
-            <TurnDetail turn={turn} onSessionNavigate={onSessionNavigate} />
+            <TurnDetail turn={turn} {...(onSessionNavigate ? { onSessionNavigate } : {})} />
           </td>
         </tr>
       )}

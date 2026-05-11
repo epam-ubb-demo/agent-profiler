@@ -26,7 +26,7 @@ function TableFilterInner({ value, onChange, placeholder, className }: TableFilt
         onValueChange={onChange}
         placeholder={placeholder ?? 'Filter…'}
         size="24"
-        onCancel={value ? () => onChange('') : undefined}
+        {...(value ? { onCancel: () => onChange('') } : {})}
         rawProps={{ 'aria-label': 'Filter table' }}
       />
     </div>

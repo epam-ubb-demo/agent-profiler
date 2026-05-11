@@ -173,37 +173,37 @@ describe('computeCostKpis', () => {
     const result = computeCostKpis(makeModelSpend(), makeHotConsumption(), false);
     expect(result).toHaveLength(5);
 
-    expect(result[0].label).toBe('Total Cost');
-    expect(result[0].value).toBe(3.5);
-    expect(result[0].display).toBe('$3.50');
+    expect(result[0]!.label).toBe('Total Cost');
+    expect(result[0]!.value).toBe(3.5);
+    expect(result[0]!.display).toBe('$3.50');
 
-    expect(result[1].label).toBe('Models Used');
-    expect(result[1].value).toBe(1);
+    expect(result[1]!.label).toBe('Models Used');
+    expect(result[1]!.value).toBe(1);
 
-    expect(result[2].label).toBe('API Requests');
-    expect(result[2].value).toBe(5);
+    expect(result[2]!.label).toBe('API Requests');
+    expect(result[2]!.value).toBe(5);
 
-    expect(result[3].label).toBe('Cache Hit Rate');
+    expect(result[3]!.label).toBe('Cache Hit Rate');
     // 200 / 1000 = 20%
-    expect(result[3].value).toBeCloseTo(20, 0);
-    expect(result[3].display).toBe('20%');
+    expect(result[3]!.value).toBeCloseTo(20, 0);
+    expect(result[3]!.display).toBe('20%');
 
-    expect(result[4].label).toBe('Hottest Turn');
-    expect(result[4].value).toBe(5000);
-    expect(result[4].display).toBe('5K');
+    expect(result[4]!.label).toBe('Hottest Turn');
+    expect(result[4]!.value).toBe(5000);
+    expect(result[4]!.display).toBe('5K');
   });
 
   it('handles null modelSpend gracefully', () => {
     const result = computeCostKpis(null, makeHotConsumption(), false);
 
-    expect(result[0].value).toBeNull();
-    expect(result[0].display).toBe('—');
+    expect(result[0]!.value).toBeNull();
+    expect(result[0]!.display).toBe('—');
 
-    expect(result[1].value).toBe(0);
-    expect(result[2].value).toBe(0);
+    expect(result[1]!.value).toBe(0);
+    expect(result[2]!.value).toBe(0);
 
-    expect(result[3].value).toBeNull();
-    expect(result[3].display).toBe('—');
+    expect(result[3]!.value).toBeNull();
+    expect(result[3]!.display).toBe('—');
   });
 
   it('handles empty hotConsumption entries', () => {
@@ -212,18 +212,18 @@ describe('computeCostKpis', () => {
       makeHotConsumption({ entries: [] }),
       false,
     );
-    expect(result[4].value).toBeNull();
-    expect(result[4].display).toBe('—');
+    expect(result[4]!.value).toBeNull();
+    expect(result[4]!.display).toBe('—');
   });
 
   it('marks Total Cost as pending when isLive', () => {
     const result = computeCostKpis(makeModelSpend(), makeHotConsumption(), true);
-    expect(result[0].pending).toBe(true);
+    expect(result[0]!.pending).toBe(true);
   });
 
   it('does not mark Total Cost as pending when not live', () => {
     const result = computeCostKpis(makeModelSpend(), makeHotConsumption(), false);
-    expect(result[0].pending).toBeUndefined();
+    expect(result[0]!.pending).toBeUndefined();
   });
 
   describe('cache hit rate edge cases', () => {
@@ -241,8 +241,8 @@ describe('computeCostKpis', () => {
         },
       });
       const result = computeCostKpis(spend, makeHotConsumption(), false);
-      expect(result[3].value).toBeNull();
-      expect(result[3].display).toBe('—');
+      expect(result[3]!.value).toBeNull();
+      expect(result[3]!.display).toBe('—');
     });
 
     it('returns 100% when all input is cache read', () => {
@@ -259,8 +259,8 @@ describe('computeCostKpis', () => {
         },
       });
       const result = computeCostKpis(spend, makeHotConsumption(), false);
-      expect(result[3].value).toBe(100);
-      expect(result[3].display).toBe('100%');
+      expect(result[3]!.value).toBe(100);
+      expect(result[3]!.display).toBe('100%');
     });
 
     it('returns 0% when no cache reads', () => {
@@ -277,8 +277,8 @@ describe('computeCostKpis', () => {
         },
       });
       const result = computeCostKpis(spend, makeHotConsumption(), false);
-      expect(result[3].value).toBe(0);
-      expect(result[3].display).toBe('0%');
+      expect(result[3]!.value).toBe(0);
+      expect(result[3]!.display).toBe('0%');
     });
   });
 });
@@ -339,25 +339,25 @@ describe('computeToolKpis', () => {
     );
     expect(result).toHaveLength(4);
 
-    expect(result[0].label).toBe('Unique Tools');
-    expect(result[0].value).toBe(12);
+    expect(result[0]!.label).toBe('Unique Tools');
+    expect(result[0]!.value).toBe(12);
 
-    expect(result[1].label).toBe('Total Calls');
-    expect(result[1].value).toBe(45);
+    expect(result[1]!.label).toBe('Total Calls');
+    expect(result[1]!.value).toBe(45);
 
-    expect(result[2].label).toBe('Top Tool');
-    expect(result[2].value).toBe(20);
-    expect(result[2].display).toBe('20');
+    expect(result[2]!.label).toBe('Top Tool');
+    expect(result[2]!.value).toBe(20);
+    expect(result[2]!.display).toBe('20');
 
-    expect(result[3].label).toBe('Def. Tokens');
-    expect(result[3].value).toBe(25000);
-    expect(result[3].display).toBe('25K');
+    expect(result[3]!.label).toBe('Def. Tokens');
+    expect(result[3]!.value).toBe(25000);
+    expect(result[3]!.display).toBe('25K');
   });
 
   it('handles empty frequency rows', () => {
     const result = computeToolKpis(makeToolStats(), [], makeToolInventory());
-    expect(result[2].value).toBeNull();
-    expect(result[2].display).toBe('—');
+    expect(result[2]!.value).toBeNull();
+    expect(result[2]!.display).toBe('—');
   });
 
   it('handles null toolDefinitionsTokens', () => {
@@ -366,8 +366,8 @@ describe('computeToolKpis', () => {
       makeFrequencyRows(5),
       makeToolInventory({ toolDefinitionsTokens: null }),
     );
-    expect(result[3].value).toBeNull();
-    expect(result[3].display).toBe('—');
+    expect(result[3]!.value).toBeNull();
+    expect(result[3]!.display).toBe('—');
   });
 });
 
@@ -409,43 +409,43 @@ describe('computeTimelineKpis', () => {
     const result = computeTimelineKpis(session, false);
     expect(result).toHaveLength(5);
 
-    expect(result[0].label).toBe('Turns');
-    expect(result[0].value).toBe(3);
+    expect(result[0]!.label).toBe('Turns');
+    expect(result[0]!.value).toBe(3);
 
-    expect(result[1].label).toBe('Duration');
+    expect(result[1]!.label).toBe('Duration');
     // 15 minutes = 900_000ms
-    expect(result[1].value).toBe(900_000);
-    expect(result[1].display).toBe('15m');
+    expect(result[1]!.value).toBe(900_000);
+    expect(result[1]!.display).toBe('15m');
 
-    expect(result[2].label).toBe('Compactions');
-    expect(result[2].value).toBe(0);
+    expect(result[2]!.label).toBe('Compactions');
+    expect(result[2]!.value).toBe(0);
 
-    expect(result[3].label).toBe('Fan-outs');
-    expect(result[3].value).toBe(0);
+    expect(result[3]!.label).toBe('Fan-outs');
+    expect(result[3]!.value).toBe(0);
 
-    expect(result[4].label).toBe('Avg Turn');
+    expect(result[4]!.label).toBe('Avg Turn');
     // 900_000 / 3 = 300_000ms = 5m
-    expect(result[4].value).toBe(300_000);
-    expect(result[4].display).toBe('5m');
+    expect(result[4]!.value).toBe(300_000);
+    expect(result[4]!.display).toBe('5m');
   });
 
   it('handles session with no turns (avg turn guard)', () => {
     const session = makeSession({ turns: [] });
     const result = computeTimelineKpis(session, false);
 
-    expect(result[0].value).toBe(0);
-    expect(result[4].value).toBeNull();
-    expect(result[4].display).toBe('—');
+    expect(result[0]!.value).toBe(0);
+    expect(result[4]!.value).toBeNull();
+    expect(result[4]!.display).toBe('—');
   });
 
   it('handles null timestamps', () => {
     const session = makeSession({ startTs: null, endTs: null });
     const result = computeTimelineKpis(session, false);
 
-    expect(result[1].value).toBeNull();
-    expect(result[1].display).toBe('—');
-    expect(result[4].value).toBeNull();
-    expect(result[4].display).toBe('—');
+    expect(result[1]!.value).toBeNull();
+    expect(result[1]!.display).toBe('—');
+    expect(result[4]!.value).toBeNull();
+    expect(result[4]!.display).toBe('—');
   });
 
   it('prefixes duration with ~ when isLive', () => {
@@ -456,19 +456,19 @@ describe('computeTimelineKpis', () => {
     });
     const result = computeTimelineKpis(session, true);
 
-    expect(result[1].display).toMatch(/^~/);
-    expect(result[1].value).toBeGreaterThan(0);
+    expect(result[1]!.display).toMatch(/^~/);
+    expect(result[1]!.value).toBeGreaterThan(0);
   });
 
   it('computes compactions count correctly', () => {
     const session = makeSession({
       compactions: [
-        { timestamp: '2025-01-15T10:05:00Z', beforeTokens: 5000, afterTokens: 2000, turnId: null, eventId: null },
-        { timestamp: '2025-01-15T10:10:00Z', beforeTokens: 4000, afterTokens: 1500, turnId: null, eventId: null },
+        { timestamp: '2025-01-15T10:05:00Z', inputTokens: 5000, outputTokens: 2000, cacheRead: 0, cacheWrite: 0, model: null, turnId: null },
+        { timestamp: '2025-01-15T10:10:00Z', inputTokens: 4000, outputTokens: 1500, cacheRead: 0, cacheWrite: 0, model: null, turnId: null },
       ] as Session['compactions'],
     });
     const result = computeTimelineKpis(session, false);
-    expect(result[2].value).toBe(2);
+    expect(result[2]!.value).toBe(2);
   });
 });
 

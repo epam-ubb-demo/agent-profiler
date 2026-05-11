@@ -29,7 +29,7 @@ describe('useFilterableData', () => {
     const { result } = renderHook(() => useFilterableData(DATA, ['name'], { debounceMs: 0 }));
     act(() => result.current.setFilterText('alpha'));
     expect(result.current.filteredData).toHaveLength(1);
-    expect(result.current.filteredData[0].name).toBe('Alpha Service');
+    expect(result.current.filteredData[0]!.name).toBe('Alpha Service');
   });
 
   it('filters across multiple keys', () => {
@@ -45,14 +45,14 @@ describe('useFilterableData', () => {
     const { result } = renderHook(() => useFilterableData(DATA, ['tag'], { debounceMs: 0 }));
     act(() => result.current.setFilterText('core'));
     expect(result.current.filteredData).toHaveLength(1);
-    expect(result.current.filteredData[0].name).toBe('Gamma API');
+    expect(result.current.filteredData[0]!.name).toBe('Gamma API');
   });
 
   it('converts numeric values to string for matching', () => {
     const { result } = renderHook(() => useFilterableData(DATA, ['value'], { debounceMs: 0 }));
     act(() => result.current.setFilterText('200'));
     expect(result.current.filteredData).toHaveLength(1);
-    expect(result.current.filteredData[0].name).toBe('Beta Component');
+    expect(result.current.filteredData[0]!.name).toBe('Beta Component');
   });
 
   it('supports case-sensitive filtering', () => {

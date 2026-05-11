@@ -69,7 +69,7 @@ const MODEL_SPEND_RESULT: ModelSpendResult = {
     cacheWriteTokens: 17_000,
     estimatedUsd: 0.90,
   },
-  confidence: 'high',
+  confidence: 'known',
   source: 'shutdown',
 };
 
