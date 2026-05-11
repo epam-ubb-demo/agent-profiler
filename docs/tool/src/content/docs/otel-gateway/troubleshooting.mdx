@@ -10,13 +10,13 @@ description: Diagnose and resolve common OTel Gateway connectivity, cold-start, 
 1. Verify the FQDN resolves correctly:
 
    ```bash
-   nslookup ca-ghcp-demo-uksouth-001.braveglacier-03fb7d47.uksouth.azurecontainerapps.io
+   nslookup <your-collector-fqdn>
    ```
 
 2. Test HTTP connectivity:
 
    ```bash
-   curl -v https://ca-ghcp-demo-uksouth-001.braveglacier-03fb7d47.uksouth.azurecontainerapps.io
+   curl -v https://<your-collector-fqdn>
    ```
 
    A healthy collector returns `HTTP 200`. Any other status code indicates a deployment or configuration issue.
@@ -120,7 +120,7 @@ The OTel Collector exposes a health check endpoint at the root path. A `GET /` r
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}" \
-  https://ca-ghcp-demo-uksouth-001.braveglacier-03fb7d47.uksouth.azurecontainerapps.io
+  https://<your-collector-fqdn>
 # Expected: 200
 ```
 

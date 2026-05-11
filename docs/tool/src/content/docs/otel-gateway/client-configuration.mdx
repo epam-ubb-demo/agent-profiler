@@ -19,7 +19,7 @@ Two environment variables control telemetry export from the Copilot CLI:
 ### Demo environment endpoint
 
 ```
-https://ca-ghcp-demo-uksouth-001.braveglacier-03fb7d47.uksouth.azurecontainerapps.io
+https://<your-collector-fqdn>
 ```
 
 ## Shell Setup (macOS / Linux)
@@ -28,7 +28,7 @@ Add the following lines to your `~/.zshrc` (Zsh) or `~/.bashrc` (Bash):
 
 ```bash
 export COPILOT_OTEL_ENABLED=true
-export OTEL_EXPORTER_OTLP_ENDPOINT=https://ca-ghcp-demo-uksouth-001.braveglacier-03fb7d47.uksouth.azurecontainerapps.io
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://<your-collector-fqdn>
 ```
 
 After editing the file, reload your shell:
@@ -47,7 +47,7 @@ If you have access to a private `dev` or `prod` environment, replace the endpoin
 1. **Check that the collector is reachable**
 
    ```bash
-   curl -s -o /dev/null -w "%{http_code}" https://ca-ghcp-demo-uksouth-001.braveglacier-03fb7d47.uksouth.azurecontainerapps.io
+   curl -s -o /dev/null -w "%{http_code}" https://<your-collector-fqdn>
    ```
 
    A response of `200` confirms the collector is healthy and accepting connections. A timeout or connection refusal may indicate a cold start — wait 30 seconds and retry.
