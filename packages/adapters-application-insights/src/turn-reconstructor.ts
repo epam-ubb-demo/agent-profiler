@@ -133,8 +133,9 @@ export function buildSpanTree(spans: readonly OTelSpan[]): SpanNode[] {
     depth: 0,
   }));
 
-  while (queue.length > 0) {
-    const { node, depth } = queue.shift()!;
+  let qi = 0;
+  while (qi < queue.length) {
+    const { node, depth } = queue[qi++]!;
     if (visited.has(node.span.spanId)) continue;
     visited.add(node.span.spanId);
     node.depth = depth;
@@ -201,8 +202,10 @@ function updateBucketBounds(bucket: TurnBucket, span: OTelSpan): void {
 /**
  * Extract turn boundaries from a span tree.
  *
- * **Strategy A** — if any span carries a `copilot_chat.turn.id` dimension,
- * spans are grouped by that attribute (full tree traversal).
+ * **Strategy A** — if any span carries a non-empty `copilot_chat.turn.id`
+ * dimension, spans are grouped by that attribute (full tree traversal).
+ * Empty-string values are treated as missing and fall back to the
+ * `<no-turn>` sentinel.
  *
  * **Strategy B** — otherwise, depth-1 children of each root are treated
  * as individual turns, with synthesised `turn-{N}` identifiers.
@@ -223,7 +226,7 @@ export function extractTurns(
    */
   const NO_TURN_SENTINEL = '<no-turn>';
 
-  const hasTurnDim = allSpans.some((s) => s.dims[TURN_DIM] != null);
+  const hasTurnDim = allSpans.some((s) => s.dims[TURN_DIM] != null && s.dims[TURN_DIM] !== '');
 
   const buckets = new Map<string, TurnBucket>();
 
@@ -231,7 +234,7 @@ export function extractTurns(
     // Strategy A — group by explicit turn id
     const allNodes = flattenTree(roots);
     for (const node of allNodes) {
-      const turnId = node.span.dims[TURN_DIM] ?? NO_TURN_SENTINEL;
+      const turnId = node.span.dims[TURN_DIM] || NO_TURN_SENTINEL;
 
       let bucket = buckets.get(turnId);
       if (!bucket) {

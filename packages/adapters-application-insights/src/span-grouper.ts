@@ -37,8 +37,10 @@ function sortByTimestamp(spans: OTelSpan[]): OTelSpan[] {
 /**
  * Group spans into sessions.
  *
- * **Strategy 1** — if any span carries a `copilot_chat.session.id`
- * custom dimension, all spans are grouped by that attribute.
+ * **Strategy 1** — if any span carries a non-empty `copilot_chat.session.id`
+ * custom dimension, spans sharing the same trace are grouped under that
+ * session ID. Traces without a non-empty session ID fall back to grouping
+ * by `traceId`. Empty-string values are treated as missing.
  *
  * **Strategy 2** — otherwise, spans are grouped by `traceId`
  * (`operation_Id`).
@@ -53,14 +55,14 @@ export function groupSpansBySession(
   if (spans.length === 0) return [];
 
   const SESSION_DIM = 'copilot_chat.session.id';
-  const hasSessionDim = spans.some((s) => s.dims[SESSION_DIM] != null);
+  const hasSessionDim = spans.some((s) => s.dims[SESSION_DIM] != null && s.dims[SESSION_DIM] !== '');
 
   // Build per-trace session ID lookup
   const traceSessionMap = new Map<string, string>();
   if (hasSessionDim) {
     for (const span of spans) {
       const sid = span.dims[SESSION_DIM];
-      if (sid != null && !traceSessionMap.has(span.traceId)) {
+      if (sid != null && sid !== '' && !traceSessionMap.has(span.traceId)) {
         traceSessionMap.set(span.traceId, sid);
       }
     }

@@ -700,3 +700,118 @@ describe('buildTurns — valid-session fixture end-to-end', () => {
     expect(roots[0]!.children.length).toBeGreaterThan(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Edge case: BFS performance correctness with large span sets
+// ---------------------------------------------------------------------------
+
+describe('buildSpanTree — BFS performance with large span chains', () => {
+  it('correctly assigns depth values for deep span chain (500 levels)', () => {
+    // Create a chain: span-0 → span-1 → span-2 → ... → span-499
+    const spans: OTelSpan[] = [];
+    for (let i = 0; i < 500; i++) {
+      spans.push(
+        makeSpan({
+          spanId: `span-${i}`,
+          parentSpanId: i === 0 ? null : `span-${i - 1}`,
+        }),
+      );
+    }
+
+    const roots = buildSpanTree(spans);
+
+    // Should have single root at depth 0
+    expect(roots).toHaveLength(1);
+    expect(roots[0]!.span.spanId).toBe('span-0');
+    expect(roots[0]!.depth).toBe(0);
+
+    // Navigate to the deepest node and verify depth = 499
+    let current = roots[0]!;
+    for (let i = 1; i < 500; i++) {
+      expect(current.children).toHaveLength(1);
+      current = current.children[0]!;
+      expect(current.depth).toBe(i);
+    }
+
+    // Last node should be span-499 at depth 499
+    expect(current.span.spanId).toBe('span-499');
+    expect(current.depth).toBe(499);
+    expect(current.children).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Edge case: Empty-string turn dimension handling
+// ---------------------------------------------------------------------------
+
+describe('extractTurns — empty-string turn IDs treated as sentinel', () => {
+  it('treats empty-string turn ID as <no-turn> sentinel (Strategy A)', () => {
+    const spans = [
+      makeSpan({
+        spanId: 'root',
+        parentSpanId: null,
+        dims: { 'copilot_chat.turn.id': 'turn-a' },
+      }),
+      makeSpan({
+        spanId: 'child-1',
+        parentSpanId: 'root',
+        dims: { 'copilot_chat.turn.id': '' }, // Empty string
+      }),
+      makeSpan({
+        spanId: 'child-2',
+        parentSpanId: 'root',
+        dims: { 'copilot_chat.turn.id': 'turn-a' },
+      }),
+    ];
+    const roots = buildSpanTree(spans);
+
+    const buckets = extractTurns(roots, spans);
+
+    // Empty-string turn IDs should NOT create a separate empty-string bucket;
+    // instead they should fall into the <no-turn> sentinel
+    expect(buckets).toHaveLength(2);
+    const turnIds = buckets.map((b) => b.turnId).sort();
+    expect(turnIds).toEqual(['<no-turn>', 'turn-a']);
+
+    // Verify that the empty-string span is in the <no-turn> bucket
+    const noTurnBucket = buckets.find((b) => b.turnId === '<no-turn>')!;
+    expect(noTurnBucket.spans).toHaveLength(1);
+    expect(noTurnBucket.spans[0]!.span.spanId).toBe('child-1');
+  });
+
+  it('prefers valid turn ID over empty-string within same trace', () => {
+    const spans = [
+      makeSpan({
+        spanId: 'root',
+        parentSpanId: null,
+        dims: { 'copilot_chat.turn.id': 'turn-1' },
+      }),
+      makeSpan({
+        spanId: 'child-a',
+        parentSpanId: 'root',
+        dims: { 'copilot_chat.turn.id': '' },
+      }),
+      makeSpan({
+        spanId: 'child-b',
+        parentSpanId: 'root',
+        dims: { 'copilot_chat.turn.id': 'turn-1' },
+      }),
+    ];
+    const roots = buildSpanTree(spans);
+
+    const buckets = extractTurns(roots, spans);
+
+    // Should have 2 buckets: turn-1 and <no-turn>
+    expect(buckets).toHaveLength(2);
+
+    // turn-1 should contain root and child-b
+    const turn1 = buckets.find((b) => b.turnId === 'turn-1')!;
+    expect(turn1.spans).toHaveLength(2);
+    expect(turn1.spans.map((s) => s.span.spanId).sort()).toEqual(['child-b', 'root']);
+
+    // <no-turn> should contain only child-a (the empty-string one)
+    const noTurn = buckets.find((b) => b.turnId === '<no-turn>')!;
+    expect(noTurn.spans).toHaveLength(1);
+    expect(noTurn.spans[0]!.span.spanId).toBe('child-a');
+  });
+});

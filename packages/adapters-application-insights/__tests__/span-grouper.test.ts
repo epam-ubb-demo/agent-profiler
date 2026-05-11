@@ -183,3 +183,81 @@ describe('deduplicateSpans — fixture duplicates', () => {
     expect(deduped).toHaveLength(spans.length);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Edge case: Empty-string session dimension grouping
+// ---------------------------------------------------------------------------
+
+describe('groupSpansBySession — empty-string session IDs treated as missing', () => {
+  it('falls back to traceId when session ID is empty string', () => {
+    const spans = [
+      makeSpan({
+        spanId: 's1',
+        traceId: 'trace-a',
+        dims: { 'copilot_chat.session.id': '' }, // Empty string should be treated as missing
+      }),
+      makeSpan({
+        spanId: 's2',
+        traceId: 'trace-a',
+        dims: { 'copilot_chat.session.id': '' },
+      }),
+    ];
+
+    const groups = groupSpansBySession(spans);
+
+    // Both spans should be grouped by traceId, not empty-string session ID
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.sessionId).toBe('trace-a');
+    expect(groups[0]!.spans).toHaveLength(2);
+  });
+
+  it('differentiates between empty-string session ID and valid session ID in same trace', () => {
+    const spans = [
+      makeSpan({
+        spanId: 's1',
+        traceId: 'trace-x',
+        dims: { 'copilot_chat.session.id': '' }, // Empty string falls back to traceId
+      }),
+      makeSpan({
+        spanId: 's2',
+        traceId: 'trace-x',
+        dims: { 'copilot_chat.session.id': 'sess-valid' }, // Valid session ID overrides
+      }),
+      makeSpan({
+        spanId: 's3',
+        traceId: 'trace-x',
+        dims: { 'copilot_chat.session.id': 'sess-valid' },
+      }),
+    ];
+
+    const groups = groupSpansBySession(spans);
+
+    // Per-trace session ID resolution: traces with valid session IDs win
+    // Trace trace-x has some spans with 'sess-valid', so they all group by that
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.sessionId).toBe('sess-valid');
+    expect(groups[0]!.spans).toHaveLength(3);
+  });
+
+  it('treats empty-string session separately from missing session in different traces', () => {
+    const spans = [
+      makeSpan({
+        spanId: 's1',
+        traceId: 'trace-a',
+        dims: { 'copilot_chat.session.id': '' }, // Empty string in trace-a
+      }),
+      makeSpan({
+        spanId: 's2',
+        traceId: 'trace-b',
+        dims: {}, // Missing session ID in trace-b
+      }),
+    ];
+
+    const groups = groupSpansBySession(spans);
+
+    // Two groups: one for each traceId (trace-a and trace-b)
+    expect(groups).toHaveLength(2);
+    const ids = groups.map((g) => g.sessionId).sort();
+    expect(ids).toEqual(['trace-a', 'trace-b']);
+  });
+});
