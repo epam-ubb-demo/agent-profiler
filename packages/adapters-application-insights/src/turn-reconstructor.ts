@@ -202,8 +202,10 @@ function updateBucketBounds(bucket: TurnBucket, span: OTelSpan): void {
 /**
  * Extract turn boundaries from a span tree.
  *
- * **Strategy A** — if any span carries a `copilot_chat.turn.id` dimension,
- * spans are grouped by that attribute (full tree traversal).
+ * **Strategy A** — if any span carries a non-empty `copilot_chat.turn.id`
+ * dimension, spans are grouped by that attribute (full tree traversal).
+ * Empty-string values are treated as missing and fall back to the
+ * `<no-turn>` sentinel.
  *
  * **Strategy B** — otherwise, depth-1 children of each root are treated
  * as individual turns, with synthesised `turn-{N}` identifiers.

@@ -37,8 +37,9 @@ function sortByTimestamp(spans: OTelSpan[]): OTelSpan[] {
 /**
  * Group spans into sessions.
  *
- * **Strategy 1** — if any span carries a `copilot_chat.session.id`
- * custom dimension, all spans are grouped by that attribute.
+ * **Strategy 1** — if any span carries a non-empty `copilot_chat.session.id`
+ * custom dimension, all spans are grouped by that attribute. Empty-string
+ * values are treated as missing.
  *
  * **Strategy 2** — otherwise, spans are grouped by `traceId`
  * (`operation_Id`).
