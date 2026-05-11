@@ -1,0 +1,37 @@
+---
+title: Adapters
+description: Connecting AI agent frameworks and data sources to Agent Profiler via OpenTelemetry adapters.
+---
+
+Adapters are the ingestion layer of Agent Profiler. Each adapter knows how to parse session data from a specific source — a log file format, an API, or a live telemetry stream — and converts it into the canonical `Session` domain model defined in `@agent-profiler/core`.
+
+## Available Adapters
+
+| Adapter | Source | Package |
+|---|---|---|
+| [Copilot CLI](/agent-profiler/tool/adapters/copilot-cli/) | GitHub Copilot CLI `.jsonl` logs | `@agent-profiler/adapters-copilot-cli` |
+| [Application Insights](/agent-profiler/tool/adapters/application-insights/) | Azure Application Insights via KQL | `@agent-profiler/adapters-app-insights` |
+| [Custom Adapters](/agent-profiler/tool/adapters/custom-adapters/) | Any source via the plugin contract | See guide |
+
+## How Adapters Work
+
+Every adapter implements the `SessionDataSource` interface from `@agent-profiler/core`:
+
+```typescript
+interface SessionDataSource {
+  listSessions(): Promise<SessionSummary[]>;
+  getSession(id: string): Promise<Session>;
+}
+```
+
+The desktop app calls `listSessions()` to populate the session browser and `getSession()` when a session is opened. The adapter handles all source-specific I/O and parsing internally.
+
+## Parser Conventions
+
+- Adapters never throw on parse errors — they set `parseStatus: 'partial'` on the returned `Session` instead.
+- Token counts unavailable in a source are set to `0`.
+- The golden fixture in `__tests__/fixtures/` defines the expected output shape for each adapter.
+
+## Architecture Decision
+
+See [ADR-0004](/agent-profiler/project/decisions/adr-0004-vscode-adapter-split/) for the rationale behind splitting VS Code Copilot Chat and VS Code coding-agent into separate adapter packages.

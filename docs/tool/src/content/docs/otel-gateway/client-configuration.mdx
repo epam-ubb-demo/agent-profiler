@@ -1,0 +1,84 @@
+---
+title: Client Configuration
+description: Configure the Copilot CLI to send OpenTelemetry traces to the OTel Gateway using environment variables.
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+Configure your shell environment so that the Copilot CLI exports OTLP traces to the gateway on every session.
+
+## Environment Variables
+
+Two environment variables control telemetry export from the Copilot CLI:
+
+| Variable | Value | Description |
+|---|---|---|
+| `COPILOT_OTEL_ENABLED` | `true` | Enables OTLP trace export from the CLI |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `https://<collector-fqdn>` | The full HTTPS URL of the OTel Collector |
+
+### Demo environment endpoint
+
+```
+https://<your-collector-fqdn>
+```
+
+## Shell Setup (macOS / Linux)
+
+Add the following lines to your `~/.zshrc` (Zsh) or `~/.bashrc` (Bash):
+
+```bash
+export COPILOT_OTEL_ENABLED=true
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://<your-collector-fqdn>
+```
+
+After editing the file, reload your shell:
+
+```bash
+source ~/.zshrc   # or source ~/.bashrc
+```
+
+:::tip
+If you have access to a private `dev` or `prod` environment, replace the endpoint with the appropriate collector FQDN from the Pulumi stack outputs.
+:::
+
+## Verification
+
+<Steps>
+1. **Check that the collector is reachable**
+
+   ```bash
+   curl -s -o /dev/null -w "%{http_code}" https://<your-collector-fqdn>
+   ```
+
+   A response of `200` confirms the collector is healthy and accepting connections. A timeout or connection refusal may indicate a cold start — wait 30 seconds and retry.
+
+2. **Start a Copilot CLI session**
+
+   Open a new terminal (so the environment variables are loaded) and run a Copilot CLI command that invokes at least one tool, for example:
+
+   ```bash
+   gh copilot suggest "list all files in the current directory"
+   ```
+
+3. **Verify spans in Application Insights**
+
+   In the Azure portal, navigate to the Application Insights resource and run:
+
+   ```kusto
+   dependencies
+   | where timestamp > ago(15m)
+   | project timestamp, name, duration, resultCode
+   | order by timestamp desc
+   | take 20
+   ```
+
+   You should see spans such as `chat claude-opus-4.6`, `execute_tool bash`, and `permission` appearing within a minute of your session.
+</Steps>
+
+## VS Code Copilot Chat
+
+:::caution
+**VS Code Copilot Chat does not currently support OTEL export.** The `COPILOT_OTEL_ENABLED` environment variable is only respected by the **Copilot CLI** (`gh copilot`). Traces from VS Code Copilot Chat sessions are not forwarded to the gateway.
+:::
+
+For VS Code session data, use the VS Code adapter instead. See [Adapters](/agent-profiler/tool/adapters/) for details.

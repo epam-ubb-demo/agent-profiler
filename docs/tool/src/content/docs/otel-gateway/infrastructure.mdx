@@ -1,0 +1,111 @@
+---
+title: Infrastructure
+description: Pulumi TypeScript stacks, Azure resources, and deployment instructions for the OTel Gateway.
+---
+
+The OTel Gateway infrastructure is defined as code using **Pulumi with TypeScript**. All infrastructure lives in `infra/otel/` within the monorepo.
+
+## Stack Management
+
+Three Pulumi stacks correspond to the three deployment environments:
+
+| Stack file | Environment | Networking |
+|---|---|---|
+| `Pulumi.demo.yaml` | demo | Public |
+| `Pulumi.dev.yaml` | dev | Private (VNet) |
+| `Pulumi.prod.yaml` | prod | Private (VNet) |
+
+### Deploy a stack
+
+```bash
+cd infra/otel
+pulumi up -s demo     # or dev, prod
+```
+
+### Preview changes without deploying
+
+```bash
+pulumi preview -s demo
+```
+
+### Destroy a stack
+
+```bash
+pulumi destroy -s demo
+```
+
+## Key Configuration Flags
+
+Each stack's YAML file exposes the following configuration keys under `config:`:
+
+| Key | Type | Description |
+|---|---|---|
+| `enablePrivateNetworking` | `boolean` | When `true`, provisions a VNet, Private Endpoints, and Key Vault. Required for `dev` and `prod`. |
+| `minReplicas` | `number` | Minimum Container App replicas. Set to `0` in demo to enable scale-to-zero. |
+| `maxReplicas` | `number` | Maximum Container App replicas under load. |
+| `concurrentRequests` | `number` | Scaling threshold — a new replica is added when concurrent HTTP requests exceed this value. |
+
+Example `Pulumi.demo.yaml` excerpt:
+
+```yaml
+config:
+  enablePrivateNetworking: false
+  minReplicas: 0
+  maxReplicas: 2
+  concurrentRequests: 10
+```
+
+## Azure Resources
+
+The following resources are provisioned in every environment:
+
+| Resource | Type | Purpose |
+|---|---|---|
+| Resource Group | `azure-native:resources:ResourceGroup` | Container for all environment resources |
+| Log Analytics Workspace | `azure-native:operationalinsights:Workspace` | Backend storage for Container App logs |
+| Application Insights | `azure-native:insights:Component` | Telemetry destination for processed spans |
+| Container App Environment | `azure-native:app:ManagedEnvironment` | Hosting environment for the collector |
+| Container App | `azure-native:app:ContainerApp` | Runs the OTel Collector image |
+
+When `enablePrivateNetworking: true`, the following are also created:
+
+| Resource | Type | Purpose |
+|---|---|---|
+| Virtual Network | `azure-native:network:VirtualNetwork` | Private network for Container App Environment |
+| Key Vault | `azure-native:keyvault:Vault` | Stores secrets for authenticated environments |
+| Managed Identity | `azure-native:managedidentity:UserAssignedIdentity` | Grants the Container App access to Key Vault |
+
+## Naming Convention
+
+All resources follow the **Cloud Adoption Framework (CAF)** naming pattern:
+
+```
+<abbreviation>-<workload>-<environment>-<region>-<instance>
+```
+
+Examples:
+
+| Resource | Name |
+|---|---|
+| Container App | `ca-<workload>-<environment>-<region>-001` |
+| Container App Environment | `cae-<workload>-<environment>-<region>-001` |
+| Application Insights | `appi-<workload>-<environment>-<region>-001` |
+| Log Analytics Workspace | `log-<workload>-<environment>-<region>-001` |
+
+## Collector Image
+
+The gateway uses the official OpenTelemetry Collector Contrib image:
+
+```
+otel/opentelemetry-collector-contrib:0.102.0
+```
+
+The collector is configured with:
+
+- **Receiver**: `otlp` (HTTP on port 4318)
+- **Exporter**: `azuremonitor` (forwards to Application Insights using the instrumentation key)
+- **Pipeline**: `traces` — receiver → batch processor → exporter
+
+## Pulumi State
+
+Pulumi state is stored remotely. Ensure you are authenticated with the correct Pulumi backend before running `pulumi up`. Contact the platform team for access to the state storage account.

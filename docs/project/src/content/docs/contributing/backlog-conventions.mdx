@@ -1,8 +1,11 @@
-# Backlog conventions
+---
+title: Backlog Conventions
+description: Epic → Feature → Task hierarchy, labels, branch naming, commit conventions, and Definition of Done for Agent Profiler.
+---
 
-Agent Profiler uses a simple Epic → Feature → Task hierarchy backed by GitHub Issues and native sub-issues.
+Agent Profiler uses a simple **Epic → Feature → Task** hierarchy backed by GitHub Issues and native sub-issues.
 
-## Issue hierarchy
+## Issue Hierarchy
 
 - **Epic**: a broad product or delivery outcome. Epics contain Features as native sub-issues.
 - **Feature**: a user-visible capability or coherent slice of value. Features contain Tasks as native sub-issues.
@@ -12,7 +15,7 @@ Agent Profiler uses a simple Epic → Feature → Task hierarchy backed by GitHu
 
 ## Labels
 
-Use the repository label inventory as the source of truth: <https://github.com/epam-ubb-demo/agent-profiler/labels>.
+Use the repository label inventory as the source of truth: [github.com/epam-ubb-demo/agent-profiler/labels](https://github.com/epam-ubb-demo/agent-profiler/labels).
 
 Expected label groups:
 
@@ -23,7 +26,7 @@ Expected label groups:
 - `status:*` — current workflow state, such as needs triage or needs spike.
 - `community` — community-facing or contributor-focused work.
 
-## Branch naming
+## Branch Naming
 
 - Feature work: `feature/<wbs>-<slug>`
 - Bug fixes: `fix/<wbs>-<slug>`
@@ -32,20 +35,20 @@ Expected label groups:
 
 Feature and chore branches always target `main`. Releases are cut from `main` via tags; there are no long-lived release branches.
 
-## Commit convention
+## Commit Convention
 
-Use Conventional Commits for every commit and PR title. Examples:
+Use [Conventional Commits](https://www.conventionalcommits.org/) for every commit and PR title. Examples:
 
 - `feat: add Copilot CLI session importer`
 - `fix: prevent timeline crash on empty runs`
 - `docs: add ADR for local database schema`
 - `chore: bootstrap repository templates`
 
-## PR title format
+## PR Title Format
 
 PR titles must also follow Conventional Commits:
 
-```text
+```
 <type>(optional-scope): <short imperative summary>
 ```
 
@@ -65,12 +68,12 @@ Every Feature and PR must pass these five gates:
 - [ ] Code review feedback received and no errors remain
 - [ ] PR is merged into `main`
 
-## Phase mapping
+## Phase Mapping
 
 Phases are represented by issue labels:
 
 | Phase | Label | Meaning |
-| ----- | ----- | ------- |
+|-------|-------|---------|
 | P0 | `phase:p0` | Repository bootstrap, project conventions, and planning foundations. |
 | P1 | `phase:p1` | Application scaffold and first runnable local shell. |
 | P2 | `phase:p2` | Core ingestion, persistence, and validation workflows. |

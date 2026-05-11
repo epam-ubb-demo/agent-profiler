@@ -49,3 +49,6 @@ yarn-error.log*
 
 # APM dependencies
 apm_modules/
+docs/node_modules
+docs/dist
+docs/.astro

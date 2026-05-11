@@ -1,6 +1,36 @@
 lockfile_version: '1'
-generated_at: '2026-05-07T15:24:49.985928+00:00'
-dependencies: []
+generated_at: '2026-05-11T14:12:34.963765+00:00'
+apm_version: 0.12.4
+dependencies:
+- repo_url: epam-mbg-demo/agent-forge
+  host: github.com
+  resolved_commit: fb144d6fa4acf7d6ca75c89c50f67ed9137c72f1
+  resolved_ref: docs-website/v1.0.0
+  virtual_path: content/docs-website
+  is_virtual: true
+  package_type: apm_package
+  deployed_files:
+  - .agents/skills/docs-websiteadd-page
+  - .agents/skills/docs-websiteadd-section
+  - .agents/skills/docs-websitebuild
+  - .agents/skills/docs-websitedeploy
+  - .agents/skills/docs-websitesetup
+  - .github/instructions/docs-website.instructions.md
+  - .github/prompts/docs-website.add-page.prompt.md
+  - .github/prompts/docs-website.add-section.prompt.md
+  - .github/prompts/docs-website.build.prompt.md
+  - .github/prompts/docs-website.deploy.prompt.md
+  - .github/prompts/docs-website.setup.prompt.md
+  deployed_file_hashes:
+    .github/instructions/docs-website.instructions.md: sha256:b4242690471d2ae261084576a7ba912831f6dff86f84209b13c74ebce21fab8d
+    .github/prompts/docs-website.add-page.prompt.md: sha256:a5b93ea61ed494f27979f7097c97c2833e27452c4a23214589b2b6e8fe3d0596
+    .github/prompts/docs-website.add-section.prompt.md: sha256:27a293db048a0ce7af2e79adbf090b4e90c54277f3a053c8b2c249721303a903
+    .github/prompts/docs-website.build.prompt.md: sha256:f250ec48cab0994e5f2c1b5b7a595bd625dbf84bb973bbbf12e2de5dcfdbb994
+    .github/prompts/docs-website.deploy.prompt.md: sha256:722d88d81808d645779eed104c68a46414676faaa25923b59a9d72feaa2ebc83
+    .github/prompts/docs-website.setup.prompt.md: sha256:677cf5019ef792944064250b3d50a348115edd5f0ec1c726ff2fece708a310f1
+  content_hash: sha256:9f0ac2a412f0d01fa361cae258cd07279fb874652d0db8a9529f2e90f945aeff
+  discovered_via: epam
+  marketplace_plugin_name: docs-website
 local_deployed_files:
 - .github/agents/epam-uui-ux-designer.agent.md
 - .github/instructions/development.instructions.md

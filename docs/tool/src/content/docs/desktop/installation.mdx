@@ -1,0 +1,37 @@
+---
+title: Installation
+description: Download, install, and run Agent Profiler for the first time on macOS, Windows, or Linux.
+---
+
+:::note[Coming Soon]
+This page is a stub. Full installation instructions will be added once the first desktop release is published.
+:::
+
+## Overview
+
+Agent Profiler is distributed as a native desktop installer for macOS, Windows, and Linux. No runtime dependencies are required — the application bundles Node.js via Electron.
+
+## Download
+
+Download the latest release for your platform from the [GitHub Releases page](https://github.com/epam-ubb-demo/agent-profiler/releases):
+
+| Platform | File |
+|---|---|
+| macOS | `Agent-Profiler-x.y.z.dmg` |
+| Windows | `Agent-Profiler-Setup-x.y.z.exe` |
+| Linux (portable) | `Agent-Profiler-x.y.z.AppImage` |
+| Linux (Debian/Ubuntu) | `agent-profiler_x.y.z_amd64.deb` |
+
+## First Launch
+
+After installing, launch Agent Profiler. On first launch you will be prompted to configure your first data source. See [Data Sources](/agent-profiler/tool/desktop/data-sources/) for details.
+
+## Building from Source
+
+```bash
+# Install dependencies
+pnpm install
+
+# Build and launch in development mode
+pnpm --filter @agent-profiler/desktop run dev
+```

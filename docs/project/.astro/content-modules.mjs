@@ -1,0 +1,20 @@
+
+export default new Map([
+["src/content/docs/contributing/writing-documentation.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fcontributing%2Fwriting-documentation.mdx&astroContentModuleFlag=true")],
+["src/content/docs/index.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Findex.mdx&astroContentModuleFlag=true")],
+["src/content/docs/contributing/index.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fcontributing%2Findex.mdx&astroContentModuleFlag=true")],
+["src/content/docs/contributing/backlog-conventions.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fcontributing%2Fbacklog-conventions.mdx&astroContentModuleFlag=true")],
+["src/content/docs/decisions/adr-0002-ui-framework-shadcn.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fdecisions%2Fadr-0002-ui-framework-shadcn.mdx&astroContentModuleFlag=true")],
+["src/content/docs/decisions/adr-0004-vscode-adapter-split.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fdecisions%2Fadr-0004-vscode-adapter-split.mdx&astroContentModuleFlag=true")],
+["src/content/docs/decisions/adr-0003-domain-model.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fdecisions%2Fadr-0003-domain-model.mdx&astroContentModuleFlag=true")],
+["src/content/docs/decisions/adr-0007-ui-framework-epam-uui.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fdecisions%2Fadr-0007-ui-framework-epam-uui.mdx&astroContentModuleFlag=true")],
+["src/content/docs/decisions/adr-0006-plugin-contract.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fdecisions%2Fadr-0006-plugin-contract.mdx&astroContentModuleFlag=true")],
+["src/content/docs/decisions/adr-0005-browser-api-architecture.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fdecisions%2Fadr-0005-browser-api-architecture.mdx&astroContentModuleFlag=true")],
+["src/content/docs/guides/index.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fguides%2Findex.mdx&astroContentModuleFlag=true")],
+["src/content/docs/operations/index.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Foperations%2Findex.mdx&astroContentModuleFlag=true")],
+["src/content/docs/decisions/index.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fdecisions%2Findex.mdx&astroContentModuleFlag=true")],
+["src/content/docs/operations/release-end-to-end.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Foperations%2Frelease-end-to-end.mdx&astroContentModuleFlag=true")],
+["src/content/docs/operations/release-linux.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Foperations%2Frelease-linux.mdx&astroContentModuleFlag=true")],
+["src/content/docs/operations/release-macos.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Foperations%2Frelease-macos.mdx&astroContentModuleFlag=true")],
+["src/content/docs/operations/release-windows.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Foperations%2Frelease-windows.mdx&astroContentModuleFlag=true")]]);
+		

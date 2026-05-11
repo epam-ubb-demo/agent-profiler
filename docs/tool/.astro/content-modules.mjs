@@ -1,0 +1,17 @@
+
+export default new Map([
+["src/content/docs/index.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Findex.mdx&astroContentModuleFlag=true")],
+["src/content/docs/adapters/application-insights.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fadapters%2Fapplication-insights.mdx&astroContentModuleFlag=true")],
+["src/content/docs/adapters/custom-adapters.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fadapters%2Fcustom-adapters.mdx&astroContentModuleFlag=true")],
+["src/content/docs/adapters/copilot-cli.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fadapters%2Fcopilot-cli.mdx&astroContentModuleFlag=true")],
+["src/content/docs/desktop/index.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fdesktop%2Findex.mdx&astroContentModuleFlag=true")],
+["src/content/docs/desktop/data-sources.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fdesktop%2Fdata-sources.mdx&astroContentModuleFlag=true")],
+["src/content/docs/desktop/installation.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fdesktop%2Finstallation.mdx&astroContentModuleFlag=true")],
+["src/content/docs/desktop/session-browser.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fdesktop%2Fsession-browser.mdx&astroContentModuleFlag=true")],
+["src/content/docs/desktop/settings.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fdesktop%2Fsettings.mdx&astroContentModuleFlag=true")],
+["src/content/docs/adapters/index.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fadapters%2Findex.mdx&astroContentModuleFlag=true")],
+["src/content/docs/otel-gateway/client-configuration.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fotel-gateway%2Fclient-configuration.mdx&astroContentModuleFlag=true")],
+["src/content/docs/otel-gateway/index.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fotel-gateway%2Findex.mdx&astroContentModuleFlag=true")],
+["src/content/docs/otel-gateway/troubleshooting.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fotel-gateway%2Ftroubleshooting.mdx&astroContentModuleFlag=true")],
+["src/content/docs/otel-gateway/infrastructure.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fotel-gateway%2Finfrastructure.mdx&astroContentModuleFlag=true")]]);
+		
