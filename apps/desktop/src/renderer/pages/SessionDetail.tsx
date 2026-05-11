@@ -3,9 +3,10 @@ import { ErrorBoundary, SessionDetailView } from '@agent-profiler/ui';
 import { Button, FlexRow, Panel, Spinner, Text } from '@epam/uui';
 import { useCallback, useEffect, useState } from 'react';
 
+import styles from './SessionError.module.css';
+
 import { ArrowLeftIcon } from '@/components/icons';
 
-import styles from './SessionError.module.css';
 
 interface SessionErrorFallbackProps {
   readonly error: Error;

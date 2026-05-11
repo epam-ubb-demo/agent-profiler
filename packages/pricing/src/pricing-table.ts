@@ -9,6 +9,8 @@
  * whose schema matches `PricingTable`.
  */
 
+import type * as NodeFS from 'node:fs';
+
 import type { ModelRateCard, PricingTable } from './types';
 
 const ENV_OVERRIDE = 'AGENT_PROFILER_PRICING_PATH';
@@ -92,7 +94,7 @@ function validatePricingTable(data: unknown): PricingTable | null {
 function loadFromFile(filePath: string): PricingTable | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { readFileSync } = require('node:fs') as typeof import('node:fs');
+    const { readFileSync } = require('node:fs') as typeof NodeFS;
     const raw = readFileSync(filePath, 'utf-8');
     const parsed: unknown = JSON.parse(raw);
     return validatePricingTable(parsed);

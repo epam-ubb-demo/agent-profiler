@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { parseSpanRow, parseSpanRows, safeInt, parseKustoDuration } from '../src/schemas';
+
 import {
   rowMissingId,
   rowNonStringOperationId,

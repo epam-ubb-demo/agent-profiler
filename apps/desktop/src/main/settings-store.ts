@@ -8,9 +8,9 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
+import type { AppInsightsSettingsIpc } from '@agent-profiler/core';
 import Store from 'electron-store';
 
-import type { AppInsightsSettingsIpc } from '@agent-profiler/core';
 
 /** Default directory for Copilot CLI session state. */
 export const DEFAULT_ROOT_DIR = join(homedir(), '.copilot', 'session-state');

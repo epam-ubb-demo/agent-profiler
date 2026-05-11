@@ -1,6 +1,6 @@
+import type { SessionDataSource, SessionListItem } from '@agent-profiler/data-source';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { SessionDataSource, SessionListItem } from '@agent-profiler/data-source';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 

@@ -9,7 +9,6 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseCopilotCliSession } from '@agent-profiler/adapters-copilot-cli';
 import { parseCtbBenchRun } from '@agent-profiler/adapters-ctb';
@@ -37,6 +36,7 @@ import {
   PluginLoadError,
 } from '@agent-profiler/plugins';
 import { calculateCost, loadPricingTable } from '@agent-profiler/pricing';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // ─── Test fixtures ───────────────────────────────────────────────────────────
 

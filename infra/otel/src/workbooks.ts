@@ -2,8 +2,10 @@
 // Provides overview, Copilot usage, and health dashboards as Azure Workbooks
 
 import * as crypto from "node:crypto";
-import * as pulumi from "@pulumi/pulumi";
+
 import * as azure from "@pulumi/azure-native";
+import * as pulumi from "@pulumi/pulumi";
+
 import type { SharedArgs } from "./types.js";
 
 export interface WorkbookArgs extends SharedArgs {

@@ -3,9 +3,10 @@
  * correct domain object within the SessionBuilder.
  */
 
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
-import { join } from 'node:path';
 
 import {
   countPostShutdownEvents,

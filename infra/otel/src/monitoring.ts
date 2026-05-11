@@ -2,16 +2,17 @@
 // Creates Log Analytics, Application Insights, action groups, metric alerts,
 // diagnostic settings helper, and optional resource locks.
 
-import * as pulumi from "@pulumi/pulumi";
 import * as azure from "@pulumi/azure-native";
-import type { SharedArgs } from "./types.js";
+import * as pulumi from "@pulumi/pulumi";
+
 import {
   actionGroupName,
   appInsightsName,
   logAnalyticsName,
 } from "./naming.js";
+import type { SharedArgs } from "./types.js";
 
-export interface MonitoringArgs extends SharedArgs {}
+export type MonitoringArgs = SharedArgs;
 
 /**
  * Monitoring stack component resource.

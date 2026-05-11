@@ -3,11 +3,11 @@
  *
  * Registers channels for exporting the current view or a session to PDF.
  */
+import type { Session } from '@agent-profiler/core';
+import { PdfExporter } from '@agent-profiler/export-pdf';
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { z } from 'zod';
 
-import { PdfExporter } from '@agent-profiler/export-pdf';
-import type { Session } from '@agent-profiler/core';
 
 /* ---------- Zod schemas for IPC validation ---------- */
 

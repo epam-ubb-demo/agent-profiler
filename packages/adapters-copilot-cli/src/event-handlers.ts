@@ -16,8 +16,8 @@ import type {
   UserMessage,
 } from '@agent-profiler/core';
 
-import type { RawEvent, RawSessionContext } from './types';
 import { normaliseModelMetrics, safeInt } from './normalise-model-metrics.js';
+import type { RawEvent, RawSessionContext } from './types';
 
 // ---------------------------------------------------------------------------
 // Session builder — mutable accumulator used during event processing
