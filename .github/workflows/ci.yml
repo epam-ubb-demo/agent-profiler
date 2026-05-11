@@ -81,8 +81,6 @@ jobs:
     name: Build Desktop (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     needs: [lint-typecheck]
-    # Only run when the Electron app scaffold exists (F0.2 dependency)
-    if: hashFiles('apps/desktop/electron-vite.config.ts') != ''
     strategy:
       fail-fast: false
       matrix:
