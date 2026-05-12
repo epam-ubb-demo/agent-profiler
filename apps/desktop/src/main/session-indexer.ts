@@ -135,7 +135,7 @@ export class SessionIndexer extends EventEmitter {
    * Change the root directory: clears the in-memory index, tells the manager
    * to use the new directory, and restarts the background scan from scratch.
    */
-  async setRootDir(dir: string): Promise<void> {
+  async setRootDir(dir: string): Promise<boolean> {
     try {
       // Signal any in-flight scan to stop
       this.stopRequested = true;
@@ -148,15 +148,17 @@ export class SessionIndexer extends EventEmitter {
         // Directory is invalid — clear index but keep old rootDir
         this.index.clear();
         this.emitUpdated();
-        return;
+        return false;
       }
 
       this.index.clear();
       this.currentRootDir = dir;
       this.stopRequested = false;
       await this.start(dir);
+      return true;
     } catch (err) {
       console.error('[SessionIndexer] setRootDir() error:', err);
+      return false;
     }
   }
 
