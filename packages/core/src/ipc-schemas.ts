@@ -73,6 +73,7 @@ export type SessionListItemIpc = z.infer<typeof sessionListItemSchema>;
 export const ipcChannels = {
   APP_GET_VERSION: 'app:getVersion',
   SESSION_LIST: 'session:list',
+  SESSION_LIST_UPDATED: 'session:listUpdated',
   SESSION_OPEN: 'session:open',
   SESSION_SET_ROOT_DIR: 'session:setRootDir',
   DIALOG_OPEN_DIRECTORY: 'dialog:openDirectory',

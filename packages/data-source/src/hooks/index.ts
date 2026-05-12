@@ -7,6 +7,7 @@
 
 import type { Session } from '@agent-profiler/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 
 import type { SessionListItem } from '../types';
 
@@ -16,6 +17,7 @@ interface ElectronSessionApi {
     list: () => Promise<SessionListItem[]>;
     open: (sessionId: string) => Promise<Session | null>;
     setRootDir: (dir: string) => Promise<boolean>;
+    onListUpdated: (callback: (sessions: SessionListItem[]) => void) => () => void;
   };
 }
 
@@ -35,9 +37,20 @@ export const sessionKeys = {
 
 /**
  * Fetches the list of available sessions via IPC.
- * Automatically refetches when the query is invalidated (e.g., after root dir change).
+ * Subscribes to push updates from the main process so the list stays current
+ * without polling. The listener is cleaned up on unmount.
  */
 export function useSessionList() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const api = getApi();
+    const unsubscribe = api.session.onListUpdated((sessions) => {
+      queryClient.setQueryData(sessionKeys.list(), sessions);
+    });
+    return unsubscribe;
+  }, [queryClient]);
+
   return useQuery({
     queryKey: sessionKeys.list(),
     queryFn: async () => {
