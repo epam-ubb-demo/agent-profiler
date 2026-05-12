@@ -2,17 +2,16 @@ import { join } from 'node:path';
 
 import {
   ipcChannels,
-  sessionListItemSchema,
   appInsightsSettingsSchema,
   testConnectionResultSchema,
 } from '@agent-profiler/core';
-import type { AppInsightsSettingsIpc, Session } from '@agent-profiler/core';
+import type { AppInsightsSettingsIpc } from '@agent-profiler/core';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 
 import { AppUpdater } from './auto-updater';
 import { DataSourceManager } from './data-source-manager';
 import { registerPdfExportHandlers, registerPdfDialogHandler } from './pdf-export';
-import { extractSessionListMetrics } from './session-list-metrics';
+import { SessionIndexer } from './session-indexer';
 import {
   DEFAULT_ROOT_DIR,
   getAppInsightsSettings,
@@ -26,6 +25,8 @@ import {
 // ---------------------------------------------------------------------------
 
 const manager = new DataSourceManager(getSessionRootDir() || DEFAULT_ROOT_DIR);
+const indexer = new SessionIndexer(manager);
+let isQuitting = false;
 
 /** Resolve a time range from the persisted preset. */
 function resolveTimeRange(
@@ -98,30 +99,8 @@ ipcMain.handle(ipcChannels.APP_GET_VERSION, () => {
   return app.getVersion();
 });
 
-ipcMain.handle(ipcChannels.SESSION_LIST, async () => {
-  const items = await manager.listSessions();
-  // Serialise for IPC transport (Dates → ISO strings, validate with Zod, compute metrics)
-  return Promise.all(
-    items.map(async (item) => {
-      let metrics = null;
-      try {
-        const session = await manager.getSession(item.id);
-        if (session) {
-          metrics = extractSessionListMetrics(session as Session);
-        }
-      } catch {
-        // Failed to parse session — leave metrics null
-      }
-      return sessionListItemSchema.parse({
-        id: item.id,
-        name: item.name,
-        path: item.path,
-        createdAt: item.createdAt.toISOString(),
-        adapter: item.adapter,
-        metrics,
-      });
-    }),
-  );
+ipcMain.handle(ipcChannels.SESSION_LIST, () => {
+  return indexer.getSessionList();
 });
 
 ipcMain.handle(ipcChannels.SESSION_OPEN, async (_event, sessionId: string) => {
@@ -129,7 +108,7 @@ ipcMain.handle(ipcChannels.SESSION_OPEN, async (_event, sessionId: string) => {
 });
 
 ipcMain.handle(ipcChannels.SESSION_SET_ROOT_DIR, async (_event, dir: string) => {
-  const ok = await manager.setLocalRootDir(dir);
+  const ok = await indexer.setRootDir(dir);
   if (ok) {
     setSessionRootDir(dir);
   }
@@ -190,18 +169,10 @@ app.whenReady().then(async () => {
     console.warn('[agent-profiler] Persisted settings are invalid, using defaults:', parsed.error.message);
   }
 
-  // Auto-discover sessions at configured location on startup
-  const available = await manager.isLocalAvailable();
-  if (available) {
-    const sessions = await manager.listSessions();
-    console.log(
-      `[agent-profiler] Auto-discovered ${sessions.length} session(s)`,
-    );
-  } else {
-    console.log(
-      `[agent-profiler] Default session directory not found: ${getSessionRootDir() || DEFAULT_ROOT_DIR}`,
-    );
-  }
+  // Start SessionIndexer — loads disk cache for instant startup, then scans in background
+  const rootDir = getSessionRootDir() || DEFAULT_ROOT_DIR;
+  await indexer.start(rootDir);
+  console.log('[agent-profiler] SessionIndexer started');
 
   // ─── Auto-Updater ─────────────────────────────────────────
   const updater = new AppUpdater({
@@ -224,5 +195,13 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+app.on('before-quit', (event) => {
+  if (!isQuitting) {
+    isQuitting = true;
+    event.preventDefault();
+    indexer.stop().finally(() => app.quit());
   }
 });

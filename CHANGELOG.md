@@ -19,6 +19,7 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 ### Added
 
+- **Session list performance refactor** — wired `SessionIndexer` into the Electron app lifecycle so `SESSION_LIST` now returns from the in-memory cache, `SESSION_SET_ROOT_DIR` delegates cache invalidation and rescanning, startup begins with a disk-backed indexer, and shutdown flushes cache while stopping the watcher (#317)
 - **Session Indexer** — new `SessionIndexer` class in the desktop app that provides dual-layer caching (memory + disk) and background batch scanning for the session list, laying the groundwork for eliminating blocking filesystem reads (#319)
 - **Filesystem Watching** — `SessionIndexer` now monitors the session root directory for changes using `fs.watch`. New, modified, and deleted sessions are detected automatically with 500ms debounce. Graceful degradation on Linux where recursive watching is unavailable. (#318)
 - Per-tab contextual KPI strips — Cost & Models, Tools, and Timeline tabs now show 3–5 at-a-glance summary metrics with severity colouring at the top of each tab
