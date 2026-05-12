@@ -45,6 +45,7 @@ export function useSessionList() {
 
   useEffect(() => {
     const api = getApi();
+    if (!api?.session?.onListUpdated) return;
     const unsubscribe = api.session.onListUpdated((sessions) => {
       queryClient.setQueryData(sessionKeys.list(), sessions);
     });

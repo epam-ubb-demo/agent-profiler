@@ -189,7 +189,9 @@ app.whenReady().then(async () => {
   indexer.on('updated', () => {
     const sessions = indexer.getSessionList();
     for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send(ipcChannels.SESSION_LIST_UPDATED, sessions);
+      if (!win.isDestroyed()) {
+        win.webContents.send(ipcChannels.SESSION_LIST_UPDATED, sessions);
+      }
     }
   });
 

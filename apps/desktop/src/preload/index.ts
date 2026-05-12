@@ -1,3 +1,4 @@
+import { ipcChannels } from '@agent-profiler/core';
 import { contextBridge, ipcRenderer } from 'electron';
 
 import type { ElectronApi } from './api';
@@ -13,9 +14,9 @@ const api: ElectronApi = {
       const handler = (_event: any, sessions: any) => {
         callback(sessions);
       };
-      ipcRenderer.on('session:listUpdated', handler);
+      ipcRenderer.on(ipcChannels.SESSION_LIST_UPDATED, handler);
       return () => {
-        ipcRenderer.removeListener('session:listUpdated', handler);
+        ipcRenderer.removeListener(ipcChannels.SESSION_LIST_UPDATED, handler);
       };
     },
   },
