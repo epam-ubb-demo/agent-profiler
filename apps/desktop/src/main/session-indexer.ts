@@ -137,27 +137,24 @@ export class SessionIndexer extends EventEmitter {
    */
   async setRootDir(dir: string): Promise<boolean> {
     try {
-      // Signal any in-flight scan to stop
-      this.stopRequested = true;
-
-      // Stop watching the old directory before starting the new one
-      this.stopWatching();
-
+      // Validate the new directory first — do not touch current state until confirmed valid
       const ok = await this.manager.setLocalRootDir(dir);
       if (!ok) {
-        // Directory is invalid — clear index but keep old rootDir
-        this.index.clear();
-        this.emitUpdated();
         return false;
       }
 
+      // New dir is valid — signal in-flight scan to stop, tear down old watcher
+      this.stopRequested = true;
+      this.stopWatching();
+
       this.index.clear();
-      this.currentRootDir = dir;
-      this.stopRequested = false;
+      // start() resets stopRequested, sets currentRootDir, and kicks off background scan
       await this.start(dir);
       return true;
     } catch (err) {
       console.error('[SessionIndexer] setRootDir() error:', err);
+      // Ensure stopRequested doesn't get stuck true on any error path
+      this.stopRequested = false;
       return false;
     }
   }

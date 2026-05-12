@@ -299,7 +299,7 @@ describe('SessionIndexer', () => {
       expect(mockManager.setLocalRootDir).toHaveBeenCalledWith('/new-root');
     });
 
-    it('clears index and emits empty list when setLocalRootDir returns false', async () => {
+    it('preserves index and does not emit when setLocalRootDir returns false', async () => {
       // Seed the indexer with a session
       const items = [makeSessionListItem({ id: 'old-session' })];
       mockReadFile.mockRejectedValue(new Error('no cache'));
@@ -319,14 +319,14 @@ describe('SessionIndexer', () => {
 
       await indexer.setRootDir('/invalid-root');
 
-      // Index should be cleared and an empty-list event emitted
-      expect(indexer.getSessionList()).toHaveLength(0);
-      expect(updatedLists.at(-1)).toHaveLength(0);
+      // Index must be preserved — no state change when dir is invalid
+      expect(indexer.getSessionList()).toHaveLength(1);
+      expect(updatedLists).toHaveLength(0);
       // currentRootDir must NOT have changed to the invalid dir
       // (verified indirectly: a subsequent start('/old-root') should work)
     });
 
-    it('returns true when setLocalRootDir succeeds', async () => {
+    it('returns true when the directory change succeeds', async () => {
       mockReadFile.mockRejectedValue(new Error('no cache'));
       vi.mocked(mockManager.setLocalRootDir).mockResolvedValueOnce(true);
       vi.mocked(mockManager.listSessions).mockResolvedValue([]);
@@ -336,7 +336,7 @@ describe('SessionIndexer', () => {
       expect(result).toBe(true);
     });
 
-    it('returns false when manager.setLocalRootDir returns false', async () => {
+    it('returns false when the target directory is invalid', async () => {
       // Seed the indexer with a session to test that we correctly handle rejection
       const items = [makeSessionListItem({ id: 'old-session' })];
       mockReadFile.mockRejectedValue(new Error('no cache'));
@@ -354,11 +354,12 @@ describe('SessionIndexer', () => {
       const result = await indexer.setRootDir('/invalid-root');
 
       expect(result).toBe(false);
-      // Verify the index was cleared on failure
-      expect(indexer.getSessionList()).toHaveLength(0);
+      // Verify the index is preserved — state must not change on failure
+      expect(indexer.getSessionList()).toHaveLength(1);
+      expect(indexer.getSessionList()[0]?.id).toBe('old-session');
     });
 
-    it('returns false when manager.setLocalRootDir throws an error', async () => {
+    it('returns false when an error occurs during directory change', async () => {
       mockReadFile.mockRejectedValue(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValue([]);
 

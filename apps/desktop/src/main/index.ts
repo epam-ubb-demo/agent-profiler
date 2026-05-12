@@ -26,6 +26,7 @@ import {
 
 const manager = new DataSourceManager(getSessionRootDir() || DEFAULT_ROOT_DIR);
 const indexer = new SessionIndexer(manager);
+let isQuitting = false;
 
 /** Resolve a time range from the persisted preset. */
 function resolveTimeRange(
@@ -197,6 +198,10 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', async () => {
-  await indexer.stop();
+app.on('before-quit', (event) => {
+  if (!isQuitting) {
+    isQuitting = true;
+    event.preventDefault();
+    indexer.stop().finally(() => app.quit());
+  }
 });
