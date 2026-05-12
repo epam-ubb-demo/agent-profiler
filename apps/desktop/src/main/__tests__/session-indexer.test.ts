@@ -1335,4 +1335,116 @@ describe('SessionIndexer', () => {
       expect(mockNodeFs.watch).toHaveBeenCalledTimes(2);
     });
   });
+
+  // ── Test: Scanning state getter and events ─────────────────────────────────
+
+  describe('scanning state', () => {
+    it('isScanning() returns false initially', () => {
+      expect(indexer.isScanning()).toBe(false);
+    });
+
+    it('isScanning() returns true during background scan', async () => {
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      // Delay the scan to allow us to check isScanning() while scanning
+      vi.mocked(mockManager.listSessions).mockImplementation(
+        () =>
+          new Promise<SessionListItem[]>((resolve) => {
+            setTimeout(() => {
+              resolve([makeSessionListItem({ id: 'session-1' })]);
+            }, 50);
+          }),
+      );
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      const startPromise = indexer.start('/root');
+
+      // Check within a short delay to catch the scan in progress
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          expect(indexer.isScanning()).toBe(true);
+          resolve();
+        }, 10);
+      });
+
+      await startPromise;
+    });
+
+    it('isScanning() returns false after scan completes', async () => {
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([
+        makeSessionListItem({ id: 'session-1' }),
+      ]);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      await indexer.start('/root');
+      await flushAllAsync();
+
+      expect(indexer.isScanning()).toBe(false);
+    });
+
+    it('emits scanningState event with true when scan starts', async () => {
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+      const emitSpy = vi.spyOn(indexer, 'emit');
+
+      await indexer.start('/root');
+      await flushAllAsync();
+
+      const scanningStateEvents = emitSpy.mock.calls.filter(
+        (call) => call[0] === 'scanningState',
+      );
+      expect(scanningStateEvents.length).toBeGreaterThan(0);
+      expect(scanningStateEvents[0]![1]).toBe(true);
+    });
+
+    it('emits scanningState event with false when scan completes', async () => {
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([
+        makeSessionListItem({ id: 'session-1' }),
+      ]);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+      const emitSpy = vi.spyOn(indexer, 'emit');
+
+      await indexer.start('/root');
+      await flushAllAsync();
+
+      const scanningStateEvents = emitSpy.mock.calls.filter(
+        (call) => call[0] === 'scanningState',
+      );
+      expect(scanningStateEvents.length).toBeGreaterThan(0);
+      // Last event should be false
+      expect(
+        scanningStateEvents[scanningStateEvents.length - 1]![1],
+      ).toBe(false);
+    });
+
+    it('emits scanningState events in correct order: true then false', async () => {
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([
+        makeSessionListItem({ id: 'session-1' }),
+      ]);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+      const emitSpy = vi.spyOn(indexer, 'emit');
+
+      await indexer.start('/root');
+      await flushAllAsync();
+
+      const scanningStateEvents = emitSpy.mock.calls.filter(
+        (call) => call[0] === 'scanningState',
+      );
+      expect(scanningStateEvents.length).toBeGreaterThanOrEqual(2);
+      expect(scanningStateEvents[0]![1]).toBe(true);
+      expect(
+        scanningStateEvents[scanningStateEvents.length - 1]![1],
+      ).toBe(false);
+    });
+  });
 });
