@@ -365,10 +365,8 @@ describe('SessionBrowser', () => {
       expect(screen.getByTestId('empty-state')).toBeDefined();
     });
 
-    // Simulate scanning state change
-    if (scanningCallback) {
-      scanningCallback(true);
-    }
+    // Simulate scanning state change – callback is captured by mockImplementation above
+    scanningCallback!(true);
 
     await waitFor(() => {
       expect(screen.getByTestId('session-browser-scanning')).toBeDefined();
@@ -395,12 +393,10 @@ describe('SessionBrowser', () => {
       expect(screen.getByTestId('session-browser-scanning')).toBeDefined();
     });
 
-    // Simulate sessions being added
-    if (listUpdateCallback) {
-      listUpdateCallback([
-        makeSession({ id: 'session-1', name: 'session-1' }),
-      ]);
-    }
+    // Simulate sessions being added – callback is captured by mockImplementation above
+    listUpdateCallback!([
+      makeSession({ id: 'session-1', name: 'session-1' }),
+    ]);
 
     await waitFor(() => {
       expect(screen.getByTestId('session-list')).toBeDefined();
