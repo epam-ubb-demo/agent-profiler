@@ -13,7 +13,7 @@ vi.mock('node:fs/promises', () => {
     writeFile: vi.fn(),
   };
   // Export mockModule so we can access it in tests
-  (global as unknown).__mockFsPromises = mockModule;
+  (global as Record<string, unknown>).__mockFsPromises = mockModule;
   return mockModule;
 });
 
@@ -98,7 +98,7 @@ describe('SessionIndexer', () => {
     vi.clearAllMocks();
     
     // Get the mocked fs/promises module
-    const mockFs = (global as unknown).__mockFsPromises;
+    const mockFs = (global as Record<string, unknown>).__mockFsPromises;
     mockReadFile = (mockFs as Record<string, unknown>).readFile as ReturnType<typeof vi.fn>;
     mockWriteFile = (mockFs as Record<string, unknown>).writeFile as ReturnType<typeof vi.fn>;
     
