@@ -61,10 +61,22 @@ export interface PdfExportResult {
   error?: string;
 }
 
+export interface SessionListMetricsIpc {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCacheReadTokens: number;
+  totalCacheWriteTokens: number;
+  totalCostUsd: number | null;
+  costConfidence: 'known' | 'estimated' | 'unknown';
+  wallTimeMs: number | null;
+  repository: string;
+}
+
 export interface SessionListItemIpc {
   id: string;
   name: string;
   path: string;
   createdAt: string;
   adapter: AdapterTypeIpc;
+  metrics: SessionListMetricsIpc | null;
 }

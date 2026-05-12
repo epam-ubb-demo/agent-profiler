@@ -64,6 +64,8 @@ export {
   sessionDataSchema,
   adapterTypeSchema,
   sessionListItemSchema,
+  sessionListMetricsSchema,
+  costConfidenceSchema,
   appInsightsSettingsSchema,
   testConnectionResultSchema,
   ipcChannels,
@@ -73,6 +75,8 @@ export type {
   SessionData,
   AdapterTypeIpc,
   SessionListItemIpc,
+  SessionListMetrics,
+  CostConfidence,
   AppInsightsSettingsIpc,
   TestConnectionResultIpc,
 } from './ipc-schemas';

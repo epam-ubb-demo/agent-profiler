@@ -1,11 +1,45 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ElectronApi } from '../src/preload/api';
+import type { ElectronApi, SessionListItemIpc, SessionListMetricsIpc } from '../src/preload/api';
 import { SessionBrowser } from '../src/renderer/pages/SessionBrowser';
 
-import { cleanup, render, screen, waitFor } from './test-utils';
+import { cleanup, fireEvent, render, screen, waitFor } from './test-utils';
 
-// Mock the electronApi on window
+// Mock the CSS module so that class name lookups return the key name (string)
+vi.mock('../src/renderer/pages/SessionBrowser.module.css', () => ({
+  default: new Proxy({}, { get: (_target, prop) => String(prop) }),
+}));
+
+// ── Fixture factories ─────────────────────────────────────────────────────────
+
+function makeMetrics(overrides: Partial<SessionListMetricsIpc> = {}): SessionListMetricsIpc {
+  return {
+    totalInputTokens: 5000,
+    totalOutputTokens: 3000,
+    totalCacheReadTokens: 1000,
+    totalCacheWriteTokens: 500,
+    totalCostUsd: 0.15,
+    costConfidence: 'known' as const,
+    wallTimeMs: 120_000,
+    repository: 'owner/repo',
+    ...overrides,
+  };
+}
+
+function makeSession(overrides: Partial<SessionListItemIpc> = {}): SessionListItemIpc {
+  return {
+    id: `session-${Math.random().toString(36).slice(2, 8)}`,
+    name: 'test-session',
+    path: '/home/user/.copilot/session-state/test-session',
+    createdAt: new Date().toISOString(),
+    adapter: 'copilot-cli' as const,
+    metrics: makeMetrics(),
+    ...overrides,
+  };
+}
+
+// ── Mock setup ────────────────────────────────────────────────────────────────
+
 const mockElectronApi: ElectronApi = {
   getVersion: vi.fn<() => Promise<string>>().mockResolvedValue('0.0.0'),
   session: {
@@ -37,23 +71,13 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
 describe('SessionBrowser', () => {
-  it('renders session list when sessions are available', async () => {
+  it('renders session grid when sessions are available', async () => {
     vi.mocked(mockElectronApi.session.list).mockResolvedValue([
-      {
-        id: 'session-1',
-        name: 'session-1',
-        path: '/home/user/.copilot/session-state/session-1',
-        createdAt: '2024-12-01T10:00:00.000Z',
-        adapter: 'copilot-cli',
-      },
-      {
-        id: 'session-2',
-        name: 'session-2',
-        path: '/home/user/.copilot/session-state/session-2',
-        createdAt: '2024-12-02T10:00:00.000Z',
-        adapter: 'copilot-cli',
-      },
+      makeSession({ id: 'session-1', name: 'session-1', createdAt: '2024-12-01T10:00:00.000Z' }),
+      makeSession({ id: 'session-2', name: 'session-2', createdAt: '2024-12-02T10:00:00.000Z' }),
     ]);
 
     const onSelect = vi.fn();
@@ -93,15 +117,9 @@ describe('SessionBrowser', () => {
 
     const openBtn = screen.getByRole('button', { name: /Open a folder/i });
 
-    // After clicking, mock returns a session now
+    // After clicking, mock returns a session
     vi.mocked(mockElectronApi.session.list).mockResolvedValue([
-      {
-        id: 'new-session',
-        name: 'new-session',
-        path: '/new/path/new-session',
-        createdAt: '2024-12-03T10:00:00.000Z',
-        adapter: 'copilot-cli',
-      },
+      makeSession({ id: 'new-session', name: 'new-session', path: '/new/path/new-session', createdAt: '2024-12-03T10:00:00.000Z' }),
     ]);
 
     openBtn.click();
@@ -113,5 +131,166 @@ describe('SessionBrowser', () => {
     await waitFor(() => {
       expect(mockElectronApi.session.setRootDir).toHaveBeenCalledWith('/new/path');
     });
+  });
+
+  it('search filter filters sessions by name', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ id: 'alpha', name: 'alpha-session' }),
+      makeSession({ id: 'beta', name: 'beta-session' }),
+    ]);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-browser')).toBeDefined();
+    });
+
+    // UUI TextInput renders the actual <input> with the placeholder
+    const input = screen.getByPlaceholderText('Search by name, ID, or path…');
+    fireEvent.change(input, { target: { value: 'alpha' } });
+
+    await waitFor(() => {
+      const cards = screen.getAllByTestId('session-card');
+      expect(cards).toHaveLength(1);
+    });
+  });
+
+  it('shows empty filter state when no sessions match search', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ name: 'real-session' }),
+    ]);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-browser')).toBeDefined();
+    });
+
+    const input = screen.getByPlaceholderText('Search by name, ID, or path…');
+    fireEvent.change(input, { target: { value: 'xyzzy-no-match' } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('empty-filter-state')).toBeDefined();
+    });
+  });
+
+  it('card click calls onSelectSession with the session id', async () => {
+    const session = makeSession({ id: 'clickable-session' });
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([session]);
+
+    const onSelect = vi.fn();
+    await render(<SessionBrowser onSelectSession={onSelect} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-card')).toBeDefined();
+    });
+
+    const card = screen.getByTestId('session-card');
+    card.click();
+
+    expect(onSelect).toHaveBeenCalledWith('clickable-session');
+  });
+
+  it('shows session count badge', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession(),
+      makeSession(),
+      makeSession(),
+    ]);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-count-badge')).toBeDefined();
+    });
+
+    const badge = screen.getByTestId('session-count-badge');
+    expect(badge.textContent).toContain('3');
+  });
+
+  it('groups sessions by day with day headings', async () => {
+    const today = new Date().toISOString();
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString();
+
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ id: 's1', createdAt: today }),
+      makeSession({ id: 's2', createdAt: yesterday }),
+    ]);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      const headings = screen.getAllByTestId('day-heading');
+      expect(headings.length).toBeGreaterThanOrEqual(2);
+    });
+
+    const headings = screen.getAllByTestId('day-heading');
+    const headingTexts = headings.map((h) => h.textContent ?? '');
+    expect(headingTexts).toContain('Today');
+    expect(headingTexts).toContain('Yesterday');
+  });
+
+  it('summary bar shows aggregate metrics for filtered sessions', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ metrics: makeMetrics({ totalCostUsd: 0.10, wallTimeMs: 60_000 }) }),
+      makeSession({ metrics: makeMetrics({ totalCostUsd: 0.20, wallTimeMs: 120_000 }) }),
+    ]);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('summary-bar')).toBeDefined();
+    });
+
+    const bar = screen.getByTestId('summary-bar');
+    // Total cost = $0.30
+    expect(bar.textContent).toContain('$0.30');
+    // 2 sessions
+    expect(bar.textContent).toContain('2 sessions');
+  });
+
+  it('displays token metrics on session cards', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ metrics: makeMetrics({ totalInputTokens: 5000, totalOutputTokens: 3000 }) }),
+    ]);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('token-input-badge')).toBeDefined();
+    });
+
+    expect(screen.getByTestId('token-input-badge').textContent).toContain('5.0K');
+    expect(screen.getByTestId('token-output-badge').textContent).toContain('3.0K');
+  });
+
+  it('handles null metrics gracefully without crashing', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ metrics: null }),
+    ]);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-card')).toBeDefined();
+    });
+
+    // No token badges rendered when metrics are null
+    expect(screen.queryByTestId('token-input-badge')).toBeNull();
+    expect(screen.queryByTestId('cost-pill')).toBeNull();
+  });
+
+  it('shows repository name on session cards', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ metrics: makeMetrics({ repository: 'acme/my-project' }) }),
+    ]);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-repository')).toBeDefined();
+    });
+
+    expect(screen.getByTestId('session-repository').textContent).toBe('acme/my-project');
   });
 });

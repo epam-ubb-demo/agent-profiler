@@ -6,12 +6,13 @@ import {
   appInsightsSettingsSchema,
   testConnectionResultSchema,
 } from '@agent-profiler/core';
-import type { AppInsightsSettingsIpc } from '@agent-profiler/core';
+import type { AppInsightsSettingsIpc, Session } from '@agent-profiler/core';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 
 import { AppUpdater } from './auto-updater';
 import { DataSourceManager } from './data-source-manager';
 import { registerPdfExportHandlers, registerPdfDialogHandler } from './pdf-export';
+import { extractSessionListMetrics } from './session-list-metrics';
 import {
   DEFAULT_ROOT_DIR,
   getAppInsightsSettings,
@@ -99,14 +100,26 @@ ipcMain.handle(ipcChannels.APP_GET_VERSION, () => {
 
 ipcMain.handle(ipcChannels.SESSION_LIST, async () => {
   const items = await manager.listSessions();
-  // Serialize for IPC transport (Dates → ISO strings, validate with Zod)
-  return items.map((item) =>
-    sessionListItemSchema.parse({
-      id: item.id,
-      name: item.name,
-      path: item.path,
-      createdAt: item.createdAt.toISOString(),
-      adapter: item.adapter,
+  // Serialise for IPC transport (Dates → ISO strings, validate with Zod, compute metrics)
+  return Promise.all(
+    items.map(async (item) => {
+      let metrics = null;
+      try {
+        const session = await manager.getSession(item.id);
+        if (session) {
+          metrics = extractSessionListMetrics(session as Session);
+        }
+      } catch {
+        // Failed to parse session — leave metrics null
+      }
+      return sessionListItemSchema.parse({
+        id: item.id,
+        name: item.name,
+        path: item.path,
+        createdAt: item.createdAt.toISOString(),
+        adapter: item.adapter,
+        metrics,
+      });
     }),
   );
 });

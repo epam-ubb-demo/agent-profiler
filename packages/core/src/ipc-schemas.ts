@@ -35,6 +35,23 @@ export const adapterTypeSchema = z.enum([
 
 export type AdapterTypeIpc = z.infer<typeof adapterTypeSchema>;
 
+/** Confidence level for a cost estimate. */
+export const costConfidenceSchema = z.enum(['known', 'estimated', 'unknown']);
+export type CostConfidence = z.infer<typeof costConfidenceSchema>;
+
+/** Lightweight metrics attached to each session list item for the browser cards. */
+export const sessionListMetricsSchema = z.object({
+  totalInputTokens: z.number(),
+  totalOutputTokens: z.number(),
+  totalCacheReadTokens: z.number(),
+  totalCacheWriteTokens: z.number(),
+  totalCostUsd: z.number().nullable(),
+  costConfidence: costConfidenceSchema,
+  wallTimeMs: z.number().nullable(),
+  repository: z.string(),
+});
+export type SessionListMetrics = z.infer<typeof sessionListMetricsSchema>;
+
 /**
  * Schema for session list items flowing across IPC.
  * Dates are serialized as ISO strings for IPC transport.
@@ -45,6 +62,7 @@ export const sessionListItemSchema = z.object({
   path: z.string(),
   createdAt: z.string().datetime(),
   adapter: adapterTypeSchema,
+  metrics: sessionListMetricsSchema.nullable(),
 });
 
 export type SessionListItemIpc = z.infer<typeof sessionListItemSchema>;

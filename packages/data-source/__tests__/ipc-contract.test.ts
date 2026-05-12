@@ -27,6 +27,7 @@ describe('IPC contract validation', () => {
         path: item.path,
         createdAt: item.createdAt.toISOString(),
         adapter: item.adapter,
+        metrics: null,
       };
 
       const result = sessionListItemSchema.safeParse(serialized);

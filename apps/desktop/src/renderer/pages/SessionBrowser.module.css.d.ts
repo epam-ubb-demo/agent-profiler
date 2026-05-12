@@ -1,0 +1,21 @@
+declare const styles: {
+  readonly pageContainer: string;
+  readonly filterBar: string;
+  readonly cardGrid: string;
+  readonly sessionCard: string;
+  readonly cardContent: string;
+  readonly cardHighlights: string;
+  readonly highlightPill: string;
+  readonly highlightIcon: string;
+  readonly cardTokens: string;
+  readonly cardMeta: string;
+  readonly repoText: string;
+  readonly pathText: string;
+  readonly summaryBar: string;
+  readonly summaryRow: string;
+  readonly summaryDivider: string;
+  readonly dayGroup: string;
+  readonly dayHeading: string;
+  readonly emptyFilterState: string;
+};
+export default styles;

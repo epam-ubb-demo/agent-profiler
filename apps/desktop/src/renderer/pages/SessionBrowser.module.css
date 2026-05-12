@@ -1,0 +1,148 @@
+/* ─── Page container ─── */
+.pageContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* ─── Filter bar ─── */
+.filterBar {
+  background: var(--uui-surface-higher);
+  border: 1px solid var(--uui-neutral-40);
+  border-radius: 6px;
+}
+
+/* ─── Card grid: responsive auto-fill ─── */
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+/* ─── Session card ─── */
+.sessionCard {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.sessionCard:hover {
+  border-color: var(--uui-primary-50);
+}
+
+.sessionCard:focus-visible {
+  outline: 2px solid var(--uui-primary-50);
+  outline-offset: 2px;
+}
+
+/* ─── Card internals ─── */
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+}
+
+/* ─── Card highlights: duration + cost row ─── */
+.cardHighlights {
+  padding-top: 4px;
+  padding-bottom: 2px;
+}
+
+/* ─── Highlight pill: subtle background chip for KPI values ─── */
+.highlightPill {
+  background: var(--uui-surface-section);
+  border-radius: 6px;
+  padding: 2px 10px;
+}
+
+/* ─── Icon prefix inside highlight pill ─── */
+.highlightIcon {
+  color: var(--uui-text-secondary);
+  flex-shrink: 0;
+}
+
+/* ─── Card token badges row ─── */
+.cardTokens {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+.cardMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.repoText {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.75rem;
+  color: var(--uui-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.pathText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  font-size: 0.75rem;
+  color: var(--uui-text-secondary);
+}
+
+/* ─── Summary bar ─── */
+.summaryBar {
+  background: var(--uui-surface-higher);
+  border: 1px solid var(--uui-neutral-40);
+  border-radius: 6px;
+}
+
+.summaryRow {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.summaryDivider {
+  width: 1px;
+  height: 18px;
+  background: var(--uui-neutral-40);
+  flex-shrink: 0;
+}
+
+/* ─── Day group ─── */
+.dayGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dayGroup + .dayGroup {
+  margin-top: 24px;
+}
+
+.dayHeading {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--uui-text-secondary);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--uui-neutral-40);
+}
+
+/* ─── Empty filter state ─── */
+.emptyFilterState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  padding: 48px 24px;
+}
