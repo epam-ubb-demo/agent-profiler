@@ -20,6 +20,7 @@ export class NetworkStack extends pulumi.ComponentResource {
   public readonly vnetId: pulumi.Output<string>;
   public readonly vnetName: pulumi.Output<string>;
   public readonly acaSubnetId: pulumi.Output<string>;
+  public readonly pepSubnetId: pulumi.Output<string>;
   public readonly agwSubnetId: pulumi.Output<string> | undefined;
   public readonly publicIpId: pulumi.Output<string> | undefined;
 
@@ -40,6 +41,7 @@ export class NetworkStack extends pulumi.ComponentResource {
     const vnetCidr = config.get("vnetCidr") ?? "10.0.0.0/16";
     const acaSubnetCidr = config.get("acaSubnetCidr") ?? "10.0.2.0/23";
     const agwSubnetCidr = config.get("agwSubnetCidr") ?? "10.0.1.0/24";
+    const pepSubnetCidr = config.get("pepSubnetCidr") ?? "10.0.4.0/24";
     const enableAppGateway = config.getBoolean("enableAppGateway") ?? false;
 
     // Narrow OTLP source: when AppGW is enabled, only accept from the AppGW subnet
@@ -94,7 +96,7 @@ export class NetworkStack extends pulumi.ComponentResource {
       { parent: this },
     );
 
-    // --- ACA Subnet (NO delegation for Consumption-only environment) ---
+    // --- ACA Subnet (delegated to Microsoft.App/environments for workload-profile CAE) ---
     const acaSubnet = new azure.network.Subnet(
       "snet-aca",
       {
@@ -103,13 +105,33 @@ export class NetworkStack extends pulumi.ComponentResource {
         virtualNetworkName: vnet.name,
         addressPrefix: acaSubnetCidr,
         networkSecurityGroup: { id: acaNsg.id },
+        delegations: [
+          {
+            name: "aca-delegation",
+            serviceName: "Microsoft.App/environments",
+          },
+        ],
       },
       { parent: this, dependsOn: [vnet, acaNsg] },
+    );
+
+    // --- Private Endpoint Subnet (dedicated, no delegation) ---
+    const pepSubnet = new azure.network.Subnet(
+      "snet-pep",
+      {
+        subnetName: subnetName("pep", namingArgs),
+        resourceGroupName: args.resourceGroupName,
+        virtualNetworkName: vnet.name,
+        addressPrefix: pepSubnetCidr,
+        privateEndpointNetworkPolicies: "Disabled",
+      },
+      { parent: this, dependsOn: [vnet] },
     );
 
     this.vnetId = vnet.id;
     this.vnetName = vnet.name;
     this.acaSubnetId = acaSubnet.id;
+    this.pepSubnetId = pepSubnet.id;
 
     // --- AppGW resources (prod only) ---
     if (enableAppGateway && args.environment === "prod") {
@@ -195,6 +217,7 @@ export class NetworkStack extends pulumi.ComponentResource {
       vnetId: this.vnetId,
       vnetName: this.vnetName,
       acaSubnetId: this.acaSubnetId,
+      pepSubnetId: this.pepSubnetId,
       agwSubnetId: this.agwSubnetId,
       publicIpId: this.publicIpId,
     });

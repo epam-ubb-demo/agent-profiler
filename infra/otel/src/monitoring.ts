@@ -23,9 +23,12 @@ export type MonitoringArgs = SharedArgs;
  */
 export class MonitoringStack extends pulumi.ComponentResource {
   public readonly logAnalyticsWorkspaceId: pulumi.Output<string>;
+  public readonly logAnalyticsCustomerId: pulumi.Output<string>;
+  public readonly logAnalyticsSharedKey: pulumi.Output<string>;
   public readonly appInsightsId: pulumi.Output<string>;
   public readonly appInsightsConnectionString: pulumi.Output<string>;
   public readonly appInsightsInstrumentationKey: pulumi.Output<string>;
+  public readonly actionGroupId: pulumi.Output<string>;
 
   constructor(
     name: string,
@@ -99,131 +102,6 @@ export class MonitoringStack extends pulumi.ComponentResource {
 
     const actionGroupId = actionGroup.id;
 
-    // --- Metric Alert Rules ---
-
-    // 1. Container restart count > 0
-    new azure.insights.MetricAlert(
-      "alert-container-restarts",
-      {
-        ruleName: `container-restarts-${args.environment}`,
-        resourceGroupName: args.resourceGroupName,
-        location: "Global",
-        description: "Alert when container restart count exceeds zero",
-        severity: 2,
-        enabled: true,
-        evaluationFrequency: "PT5M",
-        windowSize: "PT15M",
-        scopes: [pulumi.interpolate`/subscriptions/${clientConfig.subscriptionId}/resourceGroups/${args.resourceGroupName}`],
-        targetResourceType:
-          "Microsoft.App/containerApps",
-        targetResourceRegion: args.region,
-        criteria: {
-          odataType:
-            "Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria",
-          allOf: [
-            {
-              criterionType: "StaticThresholdCriterion",
-              name: "RestartCount",
-              metricName: "RestartCount",
-              metricNamespace: "Microsoft.App/containerApps",
-              operator: "GreaterThan",
-              threshold: 0,
-              timeAggregation: "Total",
-            },
-          ],
-        },
-        actions: [{ actionGroupId }],
-        tags: args.tags,
-      },
-      { parent: this },
-    );
-
-    // 2. Replica count = 0 (prod only)
-    if (args.environment === "prod") {
-      new azure.insights.MetricAlert(
-        "alert-replica-zero",
-        {
-          ruleName: `replica-zero-${args.environment}`,
-          resourceGroupName: args.resourceGroupName,
-          location: "Global",
-          description:
-            "Alert when running replica count drops to zero in production",
-          severity: 1,
-          enabled: true,
-          evaluationFrequency: "PT1M",
-          windowSize: "PT5M",
-          scopes: [pulumi.interpolate`/subscriptions/${clientConfig.subscriptionId}/resourceGroups/${args.resourceGroupName}`],
-          targetResourceType:
-            "Microsoft.App/containerApps",
-          targetResourceRegion: args.region,
-          criteria: {
-            odataType:
-              "Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria",
-            allOf: [
-              {
-                criterionType: "StaticThresholdCriterion",
-                name: "RunningReplicas",
-                metricName: "Replicas",
-                metricNamespace: "Microsoft.App/containerApps",
-                operator: "LessThanOrEqual",
-                threshold: 0,
-                timeAggregation: "Average",
-              },
-            ],
-          },
-          actions: [{ actionGroupId }],
-          tags: args.tags,
-        },
-        { parent: this },
-      );
-    }
-
-    // Health check alert deferred to F7.4 — requires WebTest or container app health probe metrics
-
-    // 3. Client errors (HTTP 4xx)
-    new azure.insights.MetricAlert(
-      "alert-client-errors",
-      {
-        ruleName: `client-errors-${args.environment}`,
-        resourceGroupName: args.resourceGroupName,
-        location: "Global",
-        description: "Alert when client error (4xx) responses are detected",
-        severity: 2,
-        enabled: true,
-        evaluationFrequency: "PT5M",
-        windowSize: "PT15M",
-        scopes: [pulumi.interpolate`/subscriptions/${clientConfig.subscriptionId}/resourceGroups/${args.resourceGroupName}`],
-        targetResourceType:
-          "Microsoft.App/containerApps",
-        targetResourceRegion: args.region,
-        criteria: {
-          odataType:
-            "Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria",
-          allOf: [
-            {
-              criterionType: "StaticThresholdCriterion",
-              name: "ClientErrors",
-              metricName: "Requests",
-              metricNamespace: "Microsoft.App/containerApps",
-              operator: "GreaterThan",
-              threshold: 0,
-              timeAggregation: "Total",
-              dimensions: [
-                {
-                  name: "statusCodeCategory",
-                  operator: "Include",
-                  values: ["4xx"],
-                },
-              ],
-            },
-          ],
-        },
-        actions: [{ actionGroupId }],
-        tags: args.tags,
-      },
-      { parent: this },
-    );
-
     // 4. Key Vault access denied
     new azure.insights.MetricAlert(
       "alert-kv-denied",
@@ -294,18 +172,32 @@ export class MonitoringStack extends pulumi.ComponentResource {
 
     // --- Outputs ---
     this.logAnalyticsWorkspaceId = logAnalytics.id;
+    this.logAnalyticsCustomerId = logAnalytics.customerId.apply((id) => id ?? "");
+    this.logAnalyticsSharedKey = azure.operationalinsights
+      .getSharedKeysOutput(
+        {
+          resourceGroupName: args.resourceGroupName,
+          workspaceName: logAnalytics.name,
+        },
+        { dependsOn: logAnalytics },
+      )
+      .apply((k) => k.primarySharedKey ?? "");
     this.appInsightsId = appInsights.id;
     this.appInsightsConnectionString = appInsights.connectionString.apply(
       (cs) => cs ?? "",
     );
     this.appInsightsInstrumentationKey =
       appInsights.instrumentationKey.apply((key) => key ?? "");
+    this.actionGroupId = actionGroup.id;
 
     this.registerOutputs({
       logAnalyticsWorkspaceId: this.logAnalyticsWorkspaceId,
+      logAnalyticsCustomerId: this.logAnalyticsCustomerId,
+      logAnalyticsSharedKey: this.logAnalyticsSharedKey,
       appInsightsId: this.appInsightsId,
       appInsightsConnectionString: this.appInsightsConnectionString,
       appInsightsInstrumentationKey: this.appInsightsInstrumentationKey,
+      actionGroupId: this.actionGroupId,
     });
   }
 }

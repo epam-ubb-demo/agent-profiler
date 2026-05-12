@@ -6,9 +6,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import * as azure from "@pulumi/azure-native";
+import * as azureApp from "@pulumi/azure-native/app/v20240301/index.js";
 import * as pulumi from "@pulumi/pulumi";
 
-import { caeName, containerAppName, logAnalyticsName } from "./naming.js";
+import { caeName, containerAppName } from "./naming.js";
 import type { SharedArgs } from "./types.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -17,6 +18,8 @@ const __dirname = dirname(__filename);
 export interface ContainerAppArgs extends SharedArgs {
   acaSubnetId: pulumi.Output<string>;
   logAnalyticsWorkspaceId: pulumi.Output<string>;
+  logAnalyticsCustomerId: pulumi.Output<string>;
+  logAnalyticsSharedKey: pulumi.Output<string>;
   appInsightsConnectionString: pulumi.Output<string>;
 }
 
@@ -82,31 +85,8 @@ export class ContainerAppStack extends pulumi.ComponentResource {
       "utf-8",
     );
 
-    // --- Get Log Analytics shared keys for CAE ---
-    const laWorkspaceName = logAnalyticsName(namingArgs);
-
-    const logAnalyticsPrimaryKey = args.resourceGroupName.apply(
-      (rgName) =>
-        azure.operationalinsights
-          .getSharedKeys({
-            resourceGroupName: rgName,
-            workspaceName: laWorkspaceName,
-          })
-          .then((result) => result.primarySharedKey ?? ""),
-    );
-
-    const logAnalyticsCustomerId = args.resourceGroupName.apply(
-      (rgName) =>
-        azure.operationalinsights
-          .getWorkspace({
-            resourceGroupName: rgName,
-            workspaceName: laWorkspaceName,
-          })
-          .then((result) => result.customerId ?? ""),
-    );
-
     // --- Container Apps Environment ---
-    const cae = new azure.app.ManagedEnvironment(
+    const cae = new azureApp.ManagedEnvironment(
       "cae",
       {
         environmentName: caeName(namingArgs),
@@ -119,8 +99,8 @@ export class ContainerAppStack extends pulumi.ComponentResource {
         appLogsConfiguration: {
           destination: "log-analytics",
           logAnalyticsConfiguration: {
-            customerId: logAnalyticsCustomerId,
-            sharedKey: logAnalyticsPrimaryKey,
+            customerId: args.logAnalyticsCustomerId,
+            sharedKey: args.logAnalyticsSharedKey,
           },
         },
         tags: args.tags,
@@ -135,24 +115,18 @@ export class ContainerAppStack extends pulumi.ComponentResource {
     // --- Ingress configuration ---
     // External ingress only for demo with public access enabled
     const ingressExternal = isDemo && publicAccess;
+    // ACA implicitly denies everything not in the allow list — no explicit deny-all rule needed
     const ipSecurityRestrictions =
       ingressExternal && allowedIpRanges
-        ? [
-            ...allowedIpRanges.split(",").map((cidr, index) => ({
-              name: `allow-range-${index}`,
-              ipAddressRange: cidr.trim(),
-              action: "Allow" as string,
-            })),
-            {
-              name: "deny-all",
-              ipAddressRange: "0.0.0.0/0",
-              action: "Deny" as string,
-            },
-          ]
+        ? allowedIpRanges.split(",").map((cidr, index) => ({
+            name: `allow-range-${index}`,
+            ipAddressRange: cidr.trim(),
+            action: "Allow" as string,
+          }))
         : undefined;
 
     // --- Container App ---
-    const containerApp = new azure.app.ContainerApp(
+    const containerApp = new azureApp.ContainerApp(
       "container-app",
       {
         containerAppName: containerAppName(namingArgs),

@@ -4,4 +4,4 @@ runtime:
   options:
     packagemanager: pnpm
 description: Centralized OpenTelemetry Gateway for GitHub Copilot Telemetry
-main: src/index.ts
+main: dist/index.js

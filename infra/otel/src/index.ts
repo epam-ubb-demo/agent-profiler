@@ -57,7 +57,7 @@ const keyVault = new KeyVaultStack("keyvault", {
   instance,
   resourceGroupName: resourceGroup.name,
   tags,
-  subnetId: network.acaSubnetId,
+  subnetId: network.pepSubnetId,
   vnetId: network.vnetId,
   logAnalyticsWorkspaceId: monitoring.logAnalyticsWorkspaceId,
   appInsightsConnectionString: monitoring.appInsightsConnectionString,
@@ -75,6 +75,7 @@ const identity = new IdentityStack("identity", {
 });
 
 // Container App stack (OTel Collector)
+// Must run after keyVault so the PE is moved off snet-aca before the CAE claims it
 const containerApp = new ContainerAppStack("container-app", {
   environment,
   region,
@@ -83,8 +84,104 @@ const containerApp = new ContainerAppStack("container-app", {
   tags,
   acaSubnetId: network.acaSubnetId,
   logAnalyticsWorkspaceId: monitoring.logAnalyticsWorkspaceId,
+  logAnalyticsCustomerId: monitoring.logAnalyticsCustomerId,
+  logAnalyticsSharedKey: monitoring.logAnalyticsSharedKey,
   appInsightsConnectionString: monitoring.appInsightsConnectionString,
+}, { dependsOn: [keyVault] });
+
+// Container app metric alerts — must scope to the individual resource, not the resource group
+new azure.insights.MetricAlert("alert-container-restarts", {
+  ruleName: `container-restarts-${environment}`,
+  resourceGroupName: resourceGroup.name,
+  location: "Global",
+  description: "Alert when container restart count exceeds zero",
+  severity: 2,
+  enabled: true,
+  evaluationFrequency: "PT5M",
+  windowSize: "PT15M",
+  scopes: [containerApp.containerAppId],
+  criteria: {
+    odataType: "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+    allOf: [
+      {
+        criterionType: "StaticThresholdCriterion",
+        name: "RestartCount",
+        metricName: "RestartCount",
+        metricNamespace: "Microsoft.App/containerApps",
+        operator: "GreaterThan",
+        threshold: 0,
+        timeAggregation: "Total",
+      },
+    ],
+  },
+  actions: [{ actionGroupId: monitoring.actionGroupId }],
+  tags,
 });
+
+new azure.insights.MetricAlert("alert-client-errors", {
+  ruleName: `client-errors-${environment}`,
+  resourceGroupName: resourceGroup.name,
+  location: "Global",
+  description: "Alert when client error (4xx) responses are detected",
+  severity: 2,
+  enabled: true,
+  evaluationFrequency: "PT5M",
+  windowSize: "PT15M",
+  scopes: [containerApp.containerAppId],
+  criteria: {
+    odataType: "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+    allOf: [
+      {
+        criterionType: "StaticThresholdCriterion",
+        name: "ClientErrors",
+        metricName: "Requests",
+        metricNamespace: "Microsoft.App/containerApps",
+        operator: "GreaterThan",
+        threshold: 0,
+        timeAggregation: "Total",
+        dimensions: [
+          {
+            name: "statusCodeCategory",
+            operator: "Include",
+            values: ["4xx"],
+          },
+        ],
+      },
+    ],
+  },
+  actions: [{ actionGroupId: monitoring.actionGroupId }],
+  tags,
+});
+
+if (environment === "prod") {
+  new azure.insights.MetricAlert("alert-replica-zero", {
+    ruleName: `replica-zero-${environment}`,
+    resourceGroupName: resourceGroup.name,
+    location: "Global",
+    description: "Alert when running replica count drops to zero in production",
+    severity: 1,
+    enabled: true,
+    evaluationFrequency: "PT1M",
+    windowSize: "PT5M",
+    scopes: [containerApp.containerAppId],
+    criteria: {
+      odataType: "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+      allOf: [
+        {
+          criterionType: "StaticThresholdCriterion",
+          name: "RunningReplicas",
+          metricName: "Replicas",
+          metricNamespace: "Microsoft.App/containerApps",
+          operator: "LessThanOrEqual",
+          threshold: 0,
+          timeAggregation: "Average",
+        },
+      ],
+    },
+    actions: [{ actionGroupId: monitoring.actionGroupId }],
+    tags,
+  });
+}
 
 // Workbook dashboards
 void new WorkbookStack("workbooks", {
