@@ -170,8 +170,7 @@ export class SessionIndexer extends EventEmitter {
     }
     try {
       this.watcher = watch(rootDir, { recursive: true }, (eventType, filename) => {
-        const name = filename instanceof Buffer ? filename.toString() : filename;
-        this.handleFsEvent(eventType, name);
+        this.handleFsEvent(eventType, filename);
       });
       this.watcher.on('error', (err: Error) => {
         console.error('[SessionIndexer] Watcher error:', err);
