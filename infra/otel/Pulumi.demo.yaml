@@ -1,7 +1,7 @@
 config:
-  azure-native:location: uksouth
+  azure-native:location: eastus
   agent-profiler-otel-gateway:environment: demo
-  agent-profiler-otel-gateway:region: uksouth
+  agent-profiler-otel-gateway:region: eastus
   agent-profiler-otel-gateway:instance: "001"
   agent-profiler-otel-gateway:vnetCidr: "10.0.0.0/16"
   agent-profiler-otel-gateway:acaSubnetCidr: "10.0.2.0/23"
