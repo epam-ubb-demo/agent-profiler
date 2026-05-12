@@ -1,6 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Session, SessionListItemIpc } from '@agent-profiler/core';
 import type { SessionListItem } from '@agent-profiler/data-source';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { DataSourceManager } from '../data-source-manager';
+import { SessionIndexer } from '../session-indexer';
 
 // ─── Mocks must be defined before imports ──────────────────────────────────
 
@@ -10,7 +13,7 @@ vi.mock('node:fs/promises', () => {
     writeFile: vi.fn(),
   };
   // Export mockModule so we can access it in tests
-  (global as any).__mockFsPromises = mockModule;
+  (global as unknown).__mockFsPromises = mockModule;
   return mockModule;
 });
 
@@ -23,7 +26,7 @@ vi.mock('electron', () => ({
 }));
 
 vi.mock('../session-list-metrics', () => ({
-  extractSessionListMetrics: vi.fn((session: Session) => ({
+  extractSessionListMetrics: vi.fn((_session: Session) => ({
     totalInputTokens: 100,
     totalOutputTokens: 50,
     totalCacheReadTokens: 0,
@@ -34,9 +37,6 @@ vi.mock('../session-list-metrics', () => ({
     repository: 'https://example.com/repo.git',
   })),
 }));
-
-import { SessionIndexer } from '../session-indexer';
-import type { DataSourceManager } from '../data-source-manager';
 
 // ─── Helper functions ──────────────────────────────────────────────────────
 
@@ -98,9 +98,9 @@ describe('SessionIndexer', () => {
     vi.clearAllMocks();
     
     // Get the mocked fs/promises module
-    const mockFs = (global as any).__mockFsPromises;
-    mockReadFile = mockFs.readFile;
-    mockWriteFile = mockFs.writeFile;
+    const mockFs = (global as unknown).__mockFsPromises;
+    mockReadFile = (mockFs as Record<string, unknown>).readFile as ReturnType<typeof vi.fn>;
+    mockWriteFile = (mockFs as Record<string, unknown>).writeFile as ReturnType<typeof vi.fn>;
     
     mockManager = makeMockDataSourceManager();
     indexer = new SessionIndexer(mockManager);
