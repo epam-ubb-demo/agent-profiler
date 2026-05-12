@@ -325,6 +325,87 @@ describe('SessionIndexer', () => {
       // currentRootDir must NOT have changed to the invalid dir
       // (verified indirectly: a subsequent start('/old-root') should work)
     });
+
+    it('returns true when setLocalRootDir succeeds', async () => {
+      mockReadFile.mockRejectedValue(new Error('no cache'));
+      vi.mocked(mockManager.setLocalRootDir).mockResolvedValueOnce(true);
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      const result = await indexer.setRootDir('/new-root');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when manager.setLocalRootDir returns false', async () => {
+      // Seed the indexer with a session to test that we correctly handle rejection
+      const items = [makeSessionListItem({ id: 'old-session' })];
+      mockReadFile.mockRejectedValue(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValueOnce(items);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      await indexer.start('/old-root');
+      await flushAllAsync();
+
+      // Now try to set an invalid directory
+      vi.mocked(mockManager.setLocalRootDir).mockResolvedValueOnce(false);
+
+      const result = await indexer.setRootDir('/invalid-root');
+
+      expect(result).toBe(false);
+      // Verify the index was cleared on failure
+      expect(indexer.getSessionList()).toHaveLength(0);
+    });
+
+    it('returns false when manager.setLocalRootDir throws an error', async () => {
+      mockReadFile.mockRejectedValue(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      // Mock setLocalRootDir to throw
+      vi.mocked(mockManager.setLocalRootDir).mockRejectedValueOnce(
+        new Error('Permission denied')
+      );
+
+      const result = await indexer.setRootDir('/invalid-root');
+
+      expect(result).toBe(false);
+    });
+
+    it('returns true and rescans when changing to a valid directory', async () => {
+      // Start with initial directory and sessions
+      const initialItems = [makeSessionListItem({ id: 'session-1' })];
+      mockReadFile.mockRejectedValue(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValueOnce(initialItems);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      await indexer.start('/initial-root');
+      await flushAllAsync();
+      expect(indexer.getSessionList()).toHaveLength(1);
+
+      // Switch to new directory with different sessions
+      const newItems = [
+        makeSessionListItem({ id: 'new-session-1' }),
+        makeSessionListItem({ id: 'new-session-2' }),
+      ];
+      vi.mocked(mockManager.setLocalRootDir).mockResolvedValueOnce(true);
+      vi.mocked(mockManager.listSessions).mockResolvedValueOnce(newItems);
+
+      const result = await indexer.setRootDir('/new-root');
+
+      expect(result).toBe(true);
+      await flushAllAsync();
+
+      // Verify new sessions are indexed
+      const list = indexer.getSessionList();
+      expect(list).toHaveLength(2);
+      expect(list.some((item) => item.id === 'new-session-1')).toBe(true);
+      expect(list.some((item) => item.id === 'new-session-2')).toBe(true);
+      // Verify old sessions are cleared
+      expect(list.some((item) => item.id === 'session-1')).toBe(false);
+    });
   });
 
   // ── Test 5: Disk cache flush ───────────────────────────────────────────────
