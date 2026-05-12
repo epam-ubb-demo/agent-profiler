@@ -200,7 +200,7 @@ describe('SessionIndexer', () => {
       mockReadFile.mockRejectedValueOnce(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValue(items);
       vi.mocked(mockManager.getSession).mockResolvedValue({
-        parseStatus: { status: 'success' },
+        parseStatus: { status: 'ok' },
       } as unknown as Session);
 
       await indexer.start('/root');
@@ -219,7 +219,7 @@ describe('SessionIndexer', () => {
       mockReadFile.mockRejectedValueOnce(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValue(items);
       vi.mocked(mockManager.getSession).mockResolvedValue({
-        parseStatus: { status: 'success' },
+        parseStatus: { status: 'ok' },
       } as unknown as Session);
 
       const emitSpy = vi.spyOn(indexer, 'emit');
@@ -240,7 +240,7 @@ describe('SessionIndexer', () => {
       mockReadFile.mockRejectedValueOnce(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValue(items);
       vi.mocked(mockManager.getSession).mockResolvedValue({
-        parseStatus: { status: 'success' },
+        parseStatus: { status: 'ok' },
       } as unknown as Session);
 
       await indexer.start('/root');
@@ -261,7 +261,7 @@ describe('SessionIndexer', () => {
       mockReadFile.mockRejectedValue(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValueOnce(oldItems);
       vi.mocked(mockManager.getSession).mockResolvedValue({
-        parseStatus: { status: 'success' },
+        parseStatus: { status: 'ok' },
       } as unknown as Session);
 
       await indexer.start('/old-root');
@@ -295,7 +295,7 @@ describe('SessionIndexer', () => {
       mockReadFile.mockRejectedValue(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValueOnce(items);
       vi.mocked(mockManager.getSession).mockResolvedValue({
-        parseStatus: { status: 'success' },
+        parseStatus: { status: 'ok' },
       } as unknown as Session);
 
       await indexer.start('/old-root');
@@ -325,7 +325,7 @@ describe('SessionIndexer', () => {
       mockReadFile.mockRejectedValueOnce(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValue(items);
       vi.mocked(mockManager.getSession).mockResolvedValue({
-        parseStatus: { status: 'success' },
+        parseStatus: { status: 'ok' },
       } as unknown as Session);
 
       await indexer.start('/root');
@@ -347,7 +347,7 @@ describe('SessionIndexer', () => {
       mockReadFile.mockRejectedValueOnce(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValue(items);
       vi.mocked(mockManager.getSession).mockResolvedValue({
-        parseStatus: { status: 'success' },
+        parseStatus: { status: 'ok' },
       } as unknown as Session);
 
       await indexer.start('/root');
@@ -445,7 +445,7 @@ describe('SessionIndexer', () => {
       mockReadFile.mockRejectedValueOnce(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValue(items);
       vi.mocked(mockManager.getSession).mockResolvedValue({
-        parseStatus: { status: 'success' },
+        parseStatus: { status: 'ok' },
       } as unknown as Session);
 
       const emitSpy = vi.spyOn(indexer, 'emit');
@@ -473,7 +473,7 @@ describe('SessionIndexer', () => {
       mockReadFile.mockRejectedValueOnce(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValue(items);
       vi.mocked(mockManager.getSession)
-        .mockResolvedValueOnce({ parseStatus: { status: 'success' } } as unknown as Session)
+        .mockResolvedValueOnce({ parseStatus: { status: 'ok' } } as unknown as Session)
         .mockRejectedValueOnce(new Error('Parse error'));
 
       await indexer.start('/root');
@@ -523,7 +523,7 @@ describe('SessionIndexer', () => {
       mockReadFile.mockRejectedValueOnce(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValue(items);
       vi.mocked(mockManager.getSession).mockResolvedValue({
-        parseStatus: { status: 'success' },
+        parseStatus: { status: 'ok' },
       } as unknown as Session);
 
       await indexer.start('/root');
@@ -555,7 +555,7 @@ describe('SessionIndexer', () => {
       mockReadFile.mockRejectedValueOnce(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValue(items);
       vi.mocked(mockManager.getSession).mockResolvedValue({
-        parseStatus: { status: 'success' },
+        parseStatus: { status: 'ok' },
       } as unknown as Session);
 
       await indexer.start('/root');
@@ -577,7 +577,7 @@ describe('SessionIndexer', () => {
       mockReadFile.mockRejectedValueOnce(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValue(items);
       vi.mocked(mockManager.getSession).mockResolvedValue({
-        parseStatus: { status: 'success' },
+        parseStatus: { status: 'ok' },
       } as unknown as Session);
 
       await indexer.start('/root');
@@ -609,7 +609,7 @@ describe('SessionIndexer', () => {
       mockReadFile.mockRejectedValueOnce(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValue(items);
       vi.mocked(mockManager.getSession).mockResolvedValue({
-        parseStatus: { status: 'success' },
+        parseStatus: { status: 'ok' },
       } as unknown as Session);
 
       const emitSpy = vi.spyOn(indexer, 'emit');
@@ -634,7 +634,7 @@ describe('SessionIndexer', () => {
       mockReadFile.mockRejectedValueOnce(new Error('no cache'));
       vi.mocked(mockManager.listSessions).mockResolvedValue(items);
       vi.mocked(mockManager.getSession).mockResolvedValue({
-        parseStatus: { status: 'success' },
+        parseStatus: { status: 'ok' },
       } as unknown as Session);
 
       const emitSpy = vi.spyOn(indexer, 'emit');
