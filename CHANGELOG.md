@@ -19,7 +19,7 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 ### Added
 
-- **Session Indexer** — new `SessionIndexer` class in the desktop app that provides dual-layer caching (memory + disk) and background batch scanning for the session list. Eliminates blocking filesystem reads on every session list request. (#319)
+- **Session Indexer** — new `SessionIndexer` class in the desktop app that provides dual-layer caching (memory + disk) and background batch scanning for the session list, laying the groundwork for eliminating blocking filesystem reads (#319)
 - Per-tab contextual KPI strips — Cost & Models, Tools, and Timeline tabs now show 3–5 at-a-glance summary metrics with severity colouring at the top of each tab
 - Interactive sorting and filtering for all data tables in session detail view — click column headers to sort (asc/desc/reset), use filter input to search rows by text
 - Two-layer `ErrorBoundary` — granular boundary on the session detail view recovers from render errors with a "Back to sessions" action; a catch-all boundary at the app level prevents full white-screen crashes. Both layers display errors via the UUI `Alert` component with an expandable stack trace.

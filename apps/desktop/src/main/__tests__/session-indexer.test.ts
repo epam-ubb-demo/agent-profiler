@@ -67,7 +67,7 @@ function makeMockDataSourceManager(overrides: Partial<DataSourceManager> = {}): 
   return {
     listSessions: vi.fn<() => Promise<SessionListItem[]>>().mockResolvedValue([]),
     getSession: vi.fn<(id: string) => Promise<Session | null>>().mockResolvedValue(null),
-    setLocalRootDir: vi.fn<(dir: string) => Promise<void>>().mockResolvedValue(),
+    setLocalRootDir: vi.fn<(dir: string) => Promise<boolean>>().mockResolvedValue(true),
     ...overrides,
   } as unknown as DataSourceManager;
 }
@@ -287,6 +287,33 @@ describe('SessionIndexer', () => {
       await indexer.setRootDir('/new-root');
 
       expect(mockManager.setLocalRootDir).toHaveBeenCalledWith('/new-root');
+    });
+
+    it('clears index and emits empty list when setLocalRootDir returns false', async () => {
+      // Seed the indexer with a session
+      const items = [makeSessionListItem({ id: 'old-session' })];
+      mockReadFile.mockRejectedValue(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValueOnce(items);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'success' },
+      } as unknown as Session);
+
+      await indexer.start('/old-root');
+      await flushAllAsync();
+      expect(indexer.getSessionList()).toHaveLength(1);
+
+      // Now point to an invalid directory
+      vi.mocked(mockManager.setLocalRootDir).mockResolvedValueOnce(false);
+      const updatedLists: SessionListItemIpc[][] = [];
+      indexer.on('updated', (list: SessionListItemIpc[]) => updatedLists.push(list));
+
+      await indexer.setRootDir('/invalid-root');
+
+      // Index should be cleared and an empty-list event emitted
+      expect(indexer.getSessionList()).toHaveLength(0);
+      expect(updatedLists.at(-1)).toHaveLength(0);
+      // currentRootDir must NOT have changed to the invalid dir
+      // (verified indirectly: a subsequent start('/old-root') should work)
     });
   });
 

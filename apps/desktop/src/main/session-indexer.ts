@@ -52,6 +52,8 @@ export class SessionIndexer extends EventEmitter {
   private currentRootDir = '';
   private scanning = false;
   private stopRequested = false;
+  private scanGeneration = 0;
+  private scanPromise: Promise<void> | null = null;
 
   constructor(manager: DataSourceManager) {
     super();
@@ -69,18 +71,28 @@ export class SessionIndexer extends EventEmitter {
       this.currentRootDir = rootDir;
       this.stopRequested = false;
 
+      // Always clear the in-memory index to prevent stale entries from a
+      // previous root dir or a failed/empty cache load.
+      this.index.clear();
+
       // 1. Load disk cache — populate memory and emit immediately for fast startup
       const cached = await this.loadDiskCache(rootDir);
       if (cached.length > 0) {
-        this.index.clear();
         for (const item of cached) {
           this.index.set(item.id, item);
         }
         this.emitUpdated();
       }
 
-      // 2. Kick off background scan (fire-and-forget, errors are caught inside)
-      void this.runBackgroundScan();
+      // 2. Kick off background scan — use a generation counter so a stale scan
+      //    from a previous root dir exits cleanly when it detects the mismatch.
+      this.scanGeneration++;
+      if (this.scanPromise) {
+        this.stopRequested = true;
+        await this.scanPromise;
+        this.stopRequested = false;
+      }
+      void (this.scanPromise = this.runBackgroundScan());
     } catch (err) {
       console.error('[SessionIndexer] start() error:', err);
     }
@@ -114,11 +126,17 @@ export class SessionIndexer extends EventEmitter {
     try {
       // Signal any in-flight scan to stop
       this.stopRequested = true;
+
+      const ok = await this.manager.setLocalRootDir(dir);
+      if (!ok) {
+        // Directory is invalid — clear index but keep old rootDir
+        this.index.clear();
+        this.emitUpdated();
+        return;
+      }
+
       this.index.clear();
       this.currentRootDir = dir;
-
-      await this.manager.setLocalRootDir(dir);
-
       this.stopRequested = false;
       await this.start(dir);
     } catch (err) {
@@ -133,13 +151,16 @@ export class SessionIndexer extends EventEmitter {
     if (this.scanning) return;
     this.scanning = true;
 
+    // Capture the generation at scan start; exit early if a newer scan begins.
+    const myGeneration = this.scanGeneration;
+
     try {
       const items = await this.manager.listSessions();
-      if (this.stopRequested) return;
+      if (this.stopRequested || this.scanGeneration !== myGeneration) return;
 
       // Process in batches, yielding to the event loop between each batch
       for (let i = 0; i < items.length; i += BATCH_SIZE) {
-        if (this.stopRequested) break;
+        if (this.stopRequested || this.scanGeneration !== myGeneration) break;
 
         const batch = items.slice(i, i + BATCH_SIZE);
 
@@ -149,7 +170,7 @@ export class SessionIndexer extends EventEmitter {
             void (async () => {
               try {
                 for (const item of batch) {
-                  if (this.stopRequested) break;
+                  if (this.stopRequested || this.scanGeneration !== myGeneration) break;
                   try {
                     let metrics: SessionListItemIpc['metrics'] = null;
                     const session = await this.manager.getSession(item.id);
@@ -185,14 +206,17 @@ export class SessionIndexer extends EventEmitter {
       }
 
       // Final emit + cache flush after the full scan completes
-      if (!this.stopRequested) {
+      if (!this.stopRequested && this.scanGeneration === myGeneration) {
         this.emitUpdated();
         await this.flushDiskCache();
       }
     } catch (err) {
       console.error('[SessionIndexer] runBackgroundScan() error:', err);
     } finally {
-      this.scanning = false;
+      if (this.scanGeneration === myGeneration) {
+        this.scanning = false;
+        this.scanPromise = null;
+      }
     }
   }
 
