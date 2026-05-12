@@ -17,6 +17,16 @@ vi.mock('node:fs/promises', () => {
   return mockModule;
 });
 
+vi.mock('node:fs', () => {
+  const mockWatcher = {
+    close: vi.fn(),
+    on: vi.fn<(event: string, handler: (...args: unknown[]) => void) => void>(),
+  };
+  const mockWatch = vi.fn().mockReturnValue(mockWatcher);
+  (global as Record<string, unknown>).__mockNodeFs = { watch: mockWatch, watcher: mockWatcher };
+  return { watch: mockWatch };
+});
+
 vi.mock('electron', () => ({
   app: {
     getPath: vi.fn((key: string) => {
@@ -650,6 +660,597 @@ describe('SessionIndexer', () => {
         expect(event).toBe('updated');
         expect(Array.isArray(list)).toBe(true);
       }
+    });
+  });
+
+  // ── Test 11: Filesystem watching ──────────────────────────────────────────
+
+  describe('filesystem watching', () => {
+    type MockNodeFs = {
+      watch: ReturnType<typeof vi.fn>;
+      watcher: {
+        close: ReturnType<typeof vi.fn>;
+        on: ReturnType<typeof vi.fn>;
+      };
+    };
+
+    let mockNodeFs: MockNodeFs;
+    let originalPlatform: NodeJS.Platform;
+
+    beforeEach(() => {
+      mockNodeFs = (global as Record<string, unknown>).__mockNodeFs as MockNodeFs;
+      // Reset watch mock to return a fresh watcher object each time
+      mockNodeFs.watcher.close.mockReset();
+      mockNodeFs.watcher.on.mockReset();
+      mockNodeFs.watch.mockReset();
+      mockNodeFs.watch.mockReturnValue(mockNodeFs.watcher);
+      originalPlatform = process.platform;
+    });
+
+    afterEach(() => {
+      Object.defineProperty(process, 'platform', {
+        value: originalPlatform,
+        configurable: true,
+      });
+      vi.useRealTimers();
+    });
+
+    function setPlatform(platform: string): void {
+      Object.defineProperty(process, 'platform', { value: platform, configurable: true });
+    }
+
+    // ── startWatching / platform guard ───────────────────────────────────────
+
+    it('does not call fs.watch on Linux', async () => {
+      setPlatform('linux');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      await indexer.start('/root');
+
+      expect(mockNodeFs.watch).not.toHaveBeenCalled();
+    });
+
+    it('calls fs.watch with recursive:true on non-Linux platforms', async () => {
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      await indexer.start('/root');
+
+      expect(mockNodeFs.watch).toHaveBeenCalledWith(
+        '/root',
+        { recursive: true },
+        expect.any(Function),
+      );
+    });
+
+    it('attaches an error handler to the watcher', async () => {
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      await indexer.start('/root');
+
+      expect(mockNodeFs.watcher.on).toHaveBeenCalledWith('error', expect.any(Function));
+    });
+
+    // ── stopWatching ─────────────────────────────────────────────────────────
+
+    it('closes the watcher when stop() is called', async () => {
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      await indexer.start('/root');
+      mockNodeFs.watcher.close.mockClear();
+
+      await indexer.stop();
+
+      expect(mockNodeFs.watcher.close).toHaveBeenCalledTimes(1);
+    });
+
+    it('closes old watcher and starts new one on setRootDir()', async () => {
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValue(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      await indexer.start('/old-root');
+      mockNodeFs.watcher.close.mockClear();
+      mockNodeFs.watch.mockClear();
+
+      await indexer.setRootDir('/new-root');
+
+      // Old watcher must be closed before new one is started
+      expect(mockNodeFs.watcher.close).toHaveBeenCalledTimes(1);
+      expect(mockNodeFs.watch).toHaveBeenCalledWith(
+        '/new-root',
+        { recursive: true },
+        expect.any(Function),
+      );
+    });
+
+    // ── handleFsEvent / change ────────────────────────────────────────────────
+
+    it('change event triggers debounced handleChangeEvent and updates the index', async () => {
+      vi.useFakeTimers();
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+
+      const existingItem = makeSessionListItemIpc({
+        id: 'session-abc',
+        name: 'Session ABC',
+        path: '/root/session-abc',
+        createdAt: '2024-12-01T10:00:00.000Z',
+        adapter: 'copilot-cli',
+        metrics: null,
+      });
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      await indexer.start('/root');
+
+      // Manually seed the index with an existing item
+      // (simulate it was already indexed by the background scan)
+      indexer['index'].set('session-abc', existingItem);
+
+      // Capture the watch callback
+      const watchCallback = mockNodeFs.watch.mock.calls[0]?.[2] as (
+        eventType: string,
+        filename: string,
+      ) => void;
+      expect(watchCallback).toBeDefined();
+
+      const emitSpy = vi.spyOn(indexer, 'emit');
+
+      // Simulate a change event
+      watchCallback('change', 'session-abc/events.jsonl');
+
+      // Before debounce fires, no handler should have run
+      expect(vi.mocked(mockManager.getSession).mock.calls.length).toBe(0);
+
+      // Advance past debounce
+      await vi.advanceTimersByTimeAsync(600);
+
+      expect(vi.mocked(mockManager.getSession)).toHaveBeenCalledWith('session-abc');
+      const updatedCalls = emitSpy.mock.calls.filter((c) => c[0] === 'updated');
+      expect(updatedCalls.length).toBeGreaterThan(0);
+    });
+
+    it('rapid change events for same session are debounced to one call', async () => {
+      vi.useFakeTimers();
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      await indexer.start('/root');
+
+      // Seed the index
+      indexer['index'].set(
+        'session-abc',
+        makeSessionListItemIpc({ id: 'session-abc', metrics: null }),
+      );
+
+      const watchCallback = mockNodeFs.watch.mock.calls[0]?.[2] as (
+        eventType: string,
+        filename: string,
+      ) => void;
+
+      // Fire 5 rapid change events
+      watchCallback('change', 'session-abc/events.jsonl');
+      watchCallback('change', 'session-abc/events.jsonl');
+      watchCallback('change', 'session-abc/events.jsonl');
+      watchCallback('change', 'session-abc/events.jsonl');
+      watchCallback('change', 'session-abc/events.jsonl');
+
+      // Advance past debounce
+      await vi.advanceTimersByTimeAsync(600);
+
+      // getSession should only be called once (debounced)
+      const getSessionCalls = vi.mocked(mockManager.getSession).mock.calls.filter(
+        ([id]) => id === 'session-abc',
+      );
+      expect(getSessionCalls.length).toBe(1);
+    });
+
+    it('change event with null session removes it from the index', async () => {
+      vi.useFakeTimers();
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+      vi.mocked(mockManager.getSession).mockResolvedValue(null);
+
+      await indexer.start('/root');
+
+      // Seed the index
+      indexer['index'].set(
+        'session-gone',
+        makeSessionListItemIpc({ id: 'session-gone', metrics: null }),
+      );
+      expect(indexer.getSessionList()).toHaveLength(1);
+
+      const watchCallback = mockNodeFs.watch.mock.calls[0]?.[2] as (
+        eventType: string,
+        filename: string,
+      ) => void;
+
+      watchCallback('change', 'session-gone/events.jsonl');
+      await vi.advanceTimersByTimeAsync(600);
+
+      expect(indexer.getSessionList()).toHaveLength(0);
+    });
+
+    // ── handleFsEvent / rename ────────────────────────────────────────────────
+
+    it('rename event for deleted session removes it from index', async () => {
+      vi.useFakeTimers();
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+
+      // listSessions returns empty (session no longer exists)
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      await indexer.start('/root');
+
+      // Seed the index with the session that will be "deleted"
+      indexer['index'].set(
+        'session-deleted',
+        makeSessionListItemIpc({ id: 'session-deleted', metrics: null }),
+      );
+      expect(indexer.getSessionList()).toHaveLength(1);
+
+      const watchCallback = mockNodeFs.watch.mock.calls[0]?.[2] as (
+        eventType: string,
+        filename: string,
+      ) => void;
+
+      watchCallback('rename', 'session-deleted');
+      await vi.advanceTimersByTimeAsync(600);
+
+      expect(indexer.getSessionList()).toHaveLength(0);
+    });
+
+    it('rename event for new session adds it to index', async () => {
+      vi.useFakeTimers();
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+
+      const newItem = makeSessionListItem({
+        id: 'session-new',
+        name: 'New Session',
+        path: '/root/session-new',
+        createdAt: new Date('2024-12-15T10:00:00Z'),
+        adapter: 'copilot-cli',
+      });
+
+      // Always return the new session (used by both background scan and rename handler)
+      vi.mocked(mockManager.listSessions).mockResolvedValue([newItem]);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      await indexer.start('/root');
+
+      // Capture watcher callback before triggering fake timer advances
+      const watchCallback = mockNodeFs.watch.mock.calls[0]?.[2] as (
+        eventType: string,
+        filename: string,
+      ) => void;
+      expect(watchCallback).toBeDefined();
+
+      // Remove the session from index to simulate a fresh state for the rename test
+      indexer['index'].clear();
+      expect(indexer.getSessionList()).toHaveLength(0);
+
+      watchCallback('rename', 'session-new');
+      // Advance past debounce (500ms) + let all async handlers resolve
+      await vi.advanceTimersByTimeAsync(600);
+
+      expect(indexer.getSessionList()).toHaveLength(1);
+      expect(indexer.getSessionList()[0]?.id).toBe('session-new');
+    });
+
+    it('rename event for existing session (not new, not deleted) is a no-op on the index', async () => {
+      vi.useFakeTimers();
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+
+      const existingListItem = makeSessionListItem({ id: 'session-existing' });
+      vi.mocked(mockManager.listSessions).mockResolvedValue([existingListItem]);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      await indexer.start('/root');
+
+      // Seed the index directly (skip background scan)
+      indexer['index'].set(
+        'session-existing',
+        makeSessionListItemIpc({ id: 'session-existing', metrics: null }),
+      );
+
+      const watchCallback = mockNodeFs.watch.mock.calls[0]?.[2] as (
+        eventType: string,
+        filename: string,
+      ) => void;
+
+      watchCallback('rename', 'session-existing/subfile');
+      await vi.advanceTimersByTimeAsync(600);
+
+      // Still present (not deleted, not duplicated)
+      expect(indexer.getSessionList()).toHaveLength(1);
+    });
+
+    // ── Null filename guard ───────────────────────────────────────────────────
+
+    it('ignores fs events with null filename', async () => {
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      await indexer.start('/root');
+
+      const emitSpy = vi.spyOn(indexer, 'emit');
+
+      const watchCallback = mockNodeFs.watch.mock.calls[0]?.[2] as (
+        eventType: string,
+        filename: string | null,
+      ) => void;
+
+      // Should not throw or call any handlers
+      watchCallback('change', null);
+
+      expect(vi.mocked(mockManager.getSession)).not.toHaveBeenCalled();
+      const updatedCalls = emitSpy.mock.calls.filter((c) => c[0] === 'updated');
+      expect(updatedCalls.length).toBe(0);
+    });
+
+    // ── Watcher error / restart ───────────────────────────────────────────────
+
+    it('restarts watcher after WATCHER_RESTART_MS on error', async () => {
+      vi.useFakeTimers();
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      await indexer.start('/root');
+
+      // Capture the error handler registered on the watcher
+      const errorHandlerCall = mockNodeFs.watcher.on.mock.calls.find(
+        ([event]) => event === 'error',
+      );
+      expect(errorHandlerCall).toBeDefined();
+      const errorHandler = errorHandlerCall![1] as (err: Error) => void;
+
+      mockNodeFs.watcher.close.mockClear();
+      mockNodeFs.watch.mockClear();
+
+      // Simulate a watcher error
+      errorHandler(new Error('ENOSPC'));
+
+      // Watcher should be closed immediately
+      expect(mockNodeFs.watcher.close).toHaveBeenCalledTimes(1);
+
+      // Before WATCHER_RESTART_MS, watch is not called again
+      await vi.advanceTimersByTimeAsync(500);
+      expect(mockNodeFs.watch).not.toHaveBeenCalled();
+
+      // After WATCHER_RESTART_MS, watcher is restarted
+      await vi.advanceTimersByTimeAsync(600);
+      expect(mockNodeFs.watch).toHaveBeenCalledWith(
+        '/root',
+        { recursive: true },
+        expect.any(Function),
+      );
+    });
+
+    // ── Windows path separator ────────────────────────────────────────────────
+
+    it('extracts session ID correctly from Windows-style paths', async () => {
+      vi.useFakeTimers();
+      setPlatform('win32');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+      vi.mocked(mockManager.getSession).mockResolvedValue(null);
+
+      await indexer.start('/root');
+
+      indexer['index'].set(
+        'session-win',
+        makeSessionListItemIpc({ id: 'session-win', metrics: null }),
+      );
+
+      const watchCallback = mockNodeFs.watch.mock.calls[0]?.[2] as (
+        eventType: string,
+        filename: string,
+      ) => void;
+
+      // Simulate Windows backslash path
+      watchCallback('change', 'session-win\\events.jsonl');
+      await vi.advanceTimersByTimeAsync(600);
+
+      expect(vi.mocked(mockManager.getSession)).toHaveBeenCalledWith('session-win');
+    });
+
+    // ── restartTimer is cleared by stopWatching ───────────────────────────────
+
+    it('clears the restart timer when stop() is called before it fires', async () => {
+      vi.useFakeTimers();
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      await indexer.start('/root');
+
+      // Trigger a watcher error to schedule restartWatcher
+      const errorHandlerCall = mockNodeFs.watcher.on.mock.calls.find(
+        ([event]) => event === 'error',
+      );
+      const errorHandler = errorHandlerCall![1] as (err: Error) => void;
+      errorHandler(new Error('ENOSPC'));
+
+      mockNodeFs.watch.mockClear();
+
+      // Stop before the restart timer fires
+      await indexer.stop();
+
+      // Advance past WATCHER_RESTART_MS — restart must NOT happen
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(mockNodeFs.watch).not.toHaveBeenCalled();
+    });
+
+    it('does not restart watcher when rootDir changed before timer fires', async () => {
+      vi.useFakeTimers();
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValue(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      await indexer.start('/root');
+
+      // Simulate watcher error — captures rootDir = '/root'
+      const errorHandlerCall = mockNodeFs.watcher.on.mock.calls.find(
+        ([event]) => event === 'error',
+      );
+      const errorHandler = errorHandlerCall![1] as (err: Error) => void;
+      errorHandler(new Error('ENOSPC'));
+
+      // Change rootDir before timer fires
+      await indexer.setRootDir('/new-root');
+      mockNodeFs.watch.mockClear();
+
+      // Advance past WATCHER_RESTART_MS — old restart must NOT fire for /root
+      await vi.advanceTimersByTimeAsync(1500);
+      // Only the new watcher (for /new-root started via setRootDir→start) matters;
+      // the stale restart for /root must have been suppressed by the guard.
+      const watchCalls = mockNodeFs.watch.mock.calls.filter(
+        ([dir]) => dir === '/root',
+      );
+      expect(watchCalls).toHaveLength(0);
+    });
+
+    // ── Generation guard ──────────────────────────────────────────────────────
+
+    it('generation guard: rename handler aborts when generation advances mid-flight', async () => {
+      vi.useFakeTimers();
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValue(new Error('no cache'));
+
+      // listSessions resolves slowly — simulate mid-flight setRootDir
+      let resolveListSessions!: (val: never[]) => void;
+      const listSessionsPromise = new Promise<never[]>((res) => {
+        resolveListSessions = res;
+      });
+      vi.mocked(mockManager.listSessions).mockReturnValueOnce(listSessionsPromise);
+
+      await indexer.start('/root');
+
+      const watchCallback = mockNodeFs.watch.mock.calls[0]?.[2] as (
+        eventType: string,
+        filename: string,
+      ) => void;
+
+      // Fire rename event — debounce fires immediately via advanceTimersByTimeAsync
+      watchCallback('rename', 'session-abc');
+      await vi.advanceTimersByTimeAsync(600);
+
+      // Advance generation (e.g., setRootDir was called)
+      indexer['scanGeneration']++;
+
+      // Now resolve listSessions — handler should abort due to generation mismatch
+      resolveListSessions([]);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Index should not have been updated (no emitUpdated from rename handler)
+      const emitSpy = vi.spyOn(indexer, 'emit');
+      expect(emitSpy).not.toHaveBeenCalledWith('updated', expect.anything());
+    });
+
+    // ── handleChangeEvent indexes unindexed session ───────────────────────────
+
+    it('change event indexes a session not yet in the index', async () => {
+      vi.useFakeTimers();
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+
+      const listItem = makeSessionListItem({
+        id: 'session-early',
+        name: 'Early Session',
+        path: '/root/session-early',
+        createdAt: new Date('2024-12-10T10:00:00Z'),
+        adapter: 'copilot-cli',
+      });
+
+      vi.mocked(mockManager.listSessions).mockResolvedValue([listItem]);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      await indexer.start('/root');
+
+      // Index is empty — session not yet processed by background scan
+      expect(indexer.getSessionList()).toHaveLength(0);
+
+      const watchCallback = mockNodeFs.watch.mock.calls[0]?.[2] as (
+        eventType: string,
+        filename: string,
+      ) => void;
+
+      watchCallback('change', 'session-early/events.jsonl');
+      await vi.advanceTimersByTimeAsync(600);
+
+      // Session should now be in the index (indexed via listSessions fallback)
+      expect(indexer.getSessionList()).toHaveLength(1);
+      expect(indexer.getSessionList()[0]?.id).toBe('session-early');
+    });
+
+    it('change event skips unindexed session absent from listSessions()', async () => {
+      vi.useFakeTimers();
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+
+      // listSessions returns empty — session truly does not exist
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      await indexer.start('/root');
+
+      const watchCallback = mockNodeFs.watch.mock.calls[0]?.[2] as (
+        eventType: string,
+        filename: string,
+      ) => void;
+
+      watchCallback('change', 'session-phantom/events.jsonl');
+      await vi.advanceTimersByTimeAsync(600);
+
+      // Should not be indexed
+      expect(indexer.getSessionList()).toHaveLength(0);
+    });
+
+    // ── startWatching closes existing watcher ────────────────────────────────
+
+    it('startWatching closes existing watcher before creating a new one', async () => {
+      setPlatform('darwin');
+      mockReadFile.mockRejectedValue(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      // First start — creates watcher #1
+      await indexer.start('/root');
+      expect(mockNodeFs.watch).toHaveBeenCalledTimes(1);
+      mockNodeFs.watcher.close.mockClear();
+
+      // Call start() again directly (without setRootDir) — should close watcher #1
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      await indexer.start('/root');
+
+      expect(mockNodeFs.watcher.close).toHaveBeenCalledTimes(1);
+      expect(mockNodeFs.watch).toHaveBeenCalledTimes(2);
     });
   });
 });
