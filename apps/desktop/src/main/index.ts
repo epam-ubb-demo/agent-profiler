@@ -103,6 +103,10 @@ ipcMain.handle(ipcChannels.SESSION_LIST, () => {
   return indexer.getSessionList();
 });
 
+ipcMain.handle(ipcChannels.SESSION_SCANNING_STATE, () => {
+  return indexer.isScanning();
+});
+
 ipcMain.handle(ipcChannels.SESSION_OPEN, async (_event, sessionId: string) => {
   return manager.getSession(sessionId);
 });
@@ -191,6 +195,15 @@ app.whenReady().then(async () => {
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) {
         win.webContents.send(ipcChannels.SESSION_LIST_UPDATED, sessions);
+      }
+    }
+  });
+
+  // Push scanning state changes to all renderer windows
+  indexer.on('scanningState', (isScanning: boolean) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send(ipcChannels.SESSION_SCANNING_STATE, isScanning);
       }
     }
   });

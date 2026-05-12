@@ -221,6 +221,7 @@ export interface SessionBrowserProps {
 export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
   const [sessions, setSessions] = useState<SessionListItemIpc[]>([]);
   const [loading, setLoading] = useState(true);
+  const [scanning, setScanning] = useState(false);
 
   // Filter state
   const [searchText, setSearchText] = useState('');
@@ -244,6 +245,21 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
   useEffect(() => {
     void loadSessions();
   }, [loadSessions]);
+
+  // Subscribe to push-based session list updates
+  useEffect(() => {
+    const unsub = window.electronApi.session.onListUpdated((list) => {
+      setSessions(list);
+    });
+    return unsub;
+  }, []);
+
+  // Subscribe to scanning state changes and query the initial state on mount
+  useEffect(() => {
+    void window.electronApi.session.getScanningState().then(setScanning);
+    const unsub = window.electronApi.session.onScanningStateChanged(setScanning);
+    return unsub;
+  }, []);
 
   const handleOpenFolder = useCallback(async () => {
     const path = await window.electronApi.dialog.openDirectory();
@@ -343,6 +359,15 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
     return (
       <FlexRow justifyContent="center" padding="24" rawProps={{ 'data-testid': 'session-browser-loading' }}>
         <Spinner />
+      </FlexRow>
+    );
+  }
+
+  if (scanning && sessions.length === 0) {
+    return (
+      <FlexRow justifyContent="center" alignItems="center" spacing="12" padding="24" rawProps={{ 'data-testid': 'session-browser-scanning' }}>
+        <Spinner />
+        <Text size="18">Scanning sessions…</Text>
       </FlexRow>
     );
   }

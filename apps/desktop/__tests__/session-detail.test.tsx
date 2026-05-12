@@ -57,6 +57,8 @@ const mockElectronApi = {
     open: vi.fn(),
     setRootDir: vi.fn(),
     onListUpdated: vi.fn<ElectronApi['session']['onListUpdated']>().mockReturnValue(() => {}),
+    getScanningState: vi.fn<ElectronApi['session']['getScanningState']>().mockResolvedValue(false),
+    onScanningStateChanged: vi.fn<ElectronApi['session']['onScanningStateChanged']>().mockReturnValue(() => {}),
   },
   dialog: {
     openDirectory: vi.fn(),

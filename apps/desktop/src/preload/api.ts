@@ -20,6 +20,10 @@ export interface ElectronApi {
     setRootDir: (dir: string) => Promise<boolean>;
     /** Register a callback for push-based session list updates from main process */
     onListUpdated: (callback: (sessions: SessionListItemIpc[]) => void) => () => void;
+    /** Query the current scanning state of the session indexer */
+    getScanningState: () => Promise<boolean>;
+    /** Register a callback for push-based scanning state changes from main process */
+    onScanningStateChanged: (callback: (scanning: boolean) => void) => () => void;
   };
 
   dialog: {
