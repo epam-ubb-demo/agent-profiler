@@ -14,6 +14,5 @@ config:
   agent-profiler-otel-gateway:minReplicas: "0"
   agent-profiler-otel-gateway:maxReplicas: "2"
   agent-profiler-otel-gateway:publicAccess: "true"
-  # Replace with actual demo client IP ranges before deployment
-  agent-profiler-otel-gateway:allowedIpRanges: "203.0.113.0/24"
+  agent-profiler-otel-gateway:allowedIpRanges: "31.121.15.162/32"
 encryptionsalt: v1:aJ7bW+LuL3s=:v1:b/QOOI3jFsYI+9aF:Ny3spQ7mKYss4fKXR11Mcu2nP+nnjA==
