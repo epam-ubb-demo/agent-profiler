@@ -185,6 +185,16 @@ app.whenReady().then(async () => {
 
   createWindow();
 
+  // Push session list updates to all renderer windows
+  indexer.on('updated', () => {
+    const sessions = indexer.getSessionList();
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send(ipcChannels.SESSION_LIST_UPDATED, sessions);
+      }
+    }
+  });
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();

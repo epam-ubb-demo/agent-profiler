@@ -18,6 +18,8 @@ export interface ElectronApi {
     open: (sessionId: string) => Promise<unknown | null>;
     /** Sets the root directory for session scanning */
     setRootDir: (dir: string) => Promise<boolean>;
+    /** Register a callback for push-based session list updates from main process */
+    onListUpdated: (callback: (sessions: SessionListItemIpc[]) => void) => () => void;
   };
 
   dialog: {
