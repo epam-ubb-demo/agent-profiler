@@ -59,6 +59,7 @@ export class SessionIndexer extends EventEmitter {
 
   // Filesystem watching
   private watcher: FSWatcher | null = null;
+  private restartTimer: ReturnType<typeof setTimeout> | null = null;
   private debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private static readonly DEBOUNCE_MS = 500;
   private static readonly WATCHER_RESTART_MS = 1000;
@@ -168,6 +169,8 @@ export class SessionIndexer extends EventEmitter {
       );
       return;
     }
+    // Close any existing watcher before creating a new one
+    this.stopWatching();
     try {
       this.watcher = watch(rootDir, { recursive: true }, (eventType, filename) => {
         this.handleFsEvent(eventType, filename);
@@ -182,6 +185,10 @@ export class SessionIndexer extends EventEmitter {
   }
 
   private stopWatching(): void {
+    if (this.restartTimer !== null) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = null;
+    }
     if (this.watcher) {
       try {
         this.watcher.close();
@@ -227,7 +234,11 @@ export class SessionIndexer extends EventEmitter {
 
   private async handleRenameEvent(sessionId: string): Promise<void> {
     try {
+      const myGeneration = this.scanGeneration;
+
       const items = await this.manager.listSessions();
+      if (this.scanGeneration !== myGeneration || this.stopRequested) return;
+
       const sessionItem = items.find((item) => item.id === sessionId);
 
       if (!sessionItem) {
@@ -238,6 +249,7 @@ export class SessionIndexer extends EventEmitter {
         try {
           let metrics: SessionListItemIpc['metrics'] = null;
           const session = await this.manager.getSession(sessionId);
+          if (this.scanGeneration !== myGeneration || this.stopRequested) return;
           if (session) {
             metrics = extractSessionListMetrics(session as Session);
           }
@@ -267,14 +279,17 @@ export class SessionIndexer extends EventEmitter {
 
   private async handleChangeEvent(sessionId: string): Promise<void> {
     try {
+      const myGeneration = this.scanGeneration;
+
       const session = await this.manager.getSession(sessionId);
+      if (this.scanGeneration !== myGeneration || this.stopRequested) return;
 
       if (!session) {
         this.index.delete(sessionId);
       } else {
-        // Update metrics for the session using existing metadata from the index
         const existing = this.index.get(sessionId);
         if (existing) {
+          // Session is already indexed — update its metrics in place
           try {
             const metrics = extractSessionListMetrics(session as Session);
             const ipcItem = sessionListItemSchema.parse({
@@ -292,6 +307,32 @@ export class SessionIndexer extends EventEmitter {
               itemErr,
             );
           }
+        } else {
+          // Session not yet in the index (change arrived before background scan) —
+          // fetch its metadata from listSessions() and create a full entry.
+          try {
+            const items = await this.manager.listSessions();
+            if (this.scanGeneration !== myGeneration || this.stopRequested) return;
+            const sessionItem = items.find((item) => item.id === sessionId);
+            if (sessionItem) {
+              const metrics = extractSessionListMetrics(session as Session);
+              const ipcItem = sessionListItemSchema.parse({
+                id: sessionItem.id,
+                name: sessionItem.name,
+                path: sessionItem.path,
+                createdAt: sessionItem.createdAt.toISOString(),
+                adapter: sessionItem.adapter,
+                metrics,
+              });
+              this.index.set(ipcItem.id, ipcItem);
+            }
+            // If not found in listSessions(), skip — background scan will catch it
+          } catch (itemErr) {
+            console.warn(
+              `[SessionIndexer] handleChangeEvent: failed to index new session "${sessionId}":`,
+              itemErr,
+            );
+          }
         }
       }
 
@@ -304,8 +345,11 @@ export class SessionIndexer extends EventEmitter {
 
   private restartWatcher(): void {
     this.stopWatching();
-    setTimeout(() => {
-      this.startWatching(this.currentRootDir);
+    const rootDir = this.currentRootDir;
+    this.restartTimer = setTimeout(() => {
+      this.restartTimer = null;
+      if (this.stopRequested || this.currentRootDir !== rootDir) return;
+      this.startWatching(rootDir);
     }, SessionIndexer.WATCHER_RESTART_MS);
   }
 
