@@ -6,12 +6,14 @@
  * - Disk cache in app userData for instant startup
  * - Background batch scanning (50/batch with setImmediate yields)
  * - EventEmitter interface for push updates
+ * - Filesystem watching for real-time updates (macOS/Windows only)
  *
  * All public methods follow the "never throw" contract —
  * errors are caught and safe defaults are returned.
  */
 
 import { EventEmitter } from 'node:events';
+import { watch, type FSWatcher } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -55,6 +57,12 @@ export class SessionIndexer extends EventEmitter {
   private scanGeneration = 0;
   private scanPromise: Promise<void> | null = null;
 
+  // Filesystem watching
+  private watcher: FSWatcher | null = null;
+  private debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private static readonly DEBOUNCE_MS = 500;
+  private static readonly WATCHER_RESTART_MS = 1000;
+
   constructor(manager: DataSourceManager) {
     super();
     this.manager = manager;
@@ -93,6 +101,9 @@ export class SessionIndexer extends EventEmitter {
         this.stopRequested = false;
       }
       void (this.scanPromise = this.runBackgroundScan());
+
+      // 3. Start filesystem watching for real-time updates
+      this.startWatching(rootDir);
     } catch (err) {
       console.error('[SessionIndexer] start() error:', err);
     }
@@ -104,6 +115,7 @@ export class SessionIndexer extends EventEmitter {
   async stop(): Promise<void> {
     try {
       this.stopRequested = true;
+      this.stopWatching();
       await this.flushDiskCache();
     } catch (err) {
       console.error('[SessionIndexer] stop() error:', err);
@@ -127,6 +139,9 @@ export class SessionIndexer extends EventEmitter {
       // Signal any in-flight scan to stop
       this.stopRequested = true;
 
+      // Stop watching the old directory before starting the new one
+      this.stopWatching();
+
       const ok = await this.manager.setLocalRootDir(dir);
       if (!ok) {
         // Directory is invalid — clear index but keep old rootDir
@@ -142,6 +157,157 @@ export class SessionIndexer extends EventEmitter {
     } catch (err) {
       console.error('[SessionIndexer] setRootDir() error:', err);
     }
+  }
+
+  // ── Filesystem watching ────────────────────────────────────────────────────
+
+  private startWatching(rootDir: string): void {
+    if (process.platform === 'linux') {
+      console.log(
+        '[SessionIndexer] Filesystem watching not supported on Linux — using manual refresh only',
+      );
+      return;
+    }
+    try {
+      this.watcher = watch(rootDir, { recursive: true }, (eventType, filename) => {
+        const name = filename instanceof Buffer ? filename.toString() : filename;
+        this.handleFsEvent(eventType, name);
+      });
+      this.watcher.on('error', (err: Error) => {
+        console.error('[SessionIndexer] Watcher error:', err);
+        this.restartWatcher();
+      });
+    } catch (err) {
+      console.error('[SessionIndexer] startWatching() error:', err);
+    }
+  }
+
+  private stopWatching(): void {
+    if (this.watcher) {
+      try {
+        this.watcher.close();
+      } catch (err) {
+        console.error('[SessionIndexer] stopWatching() close error:', err);
+      }
+      this.watcher = null;
+    }
+    for (const timer of this.debounceTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.debounceTimers.clear();
+  }
+
+  private handleFsEvent(eventType: string, filename: string | null): void {
+    if (!filename) return;
+    const parts = filename.split(/[\\/]/);
+    const sessionId = parts[0];
+    if (!sessionId) return;
+
+    if (eventType === 'rename') {
+      this.debounce(`rename:${sessionId}`, () => {
+        void this.handleRenameEvent(sessionId);
+      });
+    } else if (eventType === 'change') {
+      this.debounce(`change:${sessionId}`, () => {
+        void this.handleChangeEvent(sessionId);
+      });
+    }
+  }
+
+  private debounce(key: string, fn: () => void): void {
+    const existing = this.debounceTimers.get(key);
+    if (existing !== undefined) {
+      clearTimeout(existing);
+    }
+    const timer = setTimeout(() => {
+      this.debounceTimers.delete(key);
+      fn();
+    }, SessionIndexer.DEBOUNCE_MS);
+    this.debounceTimers.set(key, timer);
+  }
+
+  private async handleRenameEvent(sessionId: string): Promise<void> {
+    try {
+      const items = await this.manager.listSessions();
+      const sessionItem = items.find((item) => item.id === sessionId);
+
+      if (!sessionItem) {
+        // Session folder was removed
+        this.index.delete(sessionId);
+      } else if (!this.index.has(sessionId)) {
+        // New session folder appeared — index it
+        try {
+          let metrics: SessionListItemIpc['metrics'] = null;
+          const session = await this.manager.getSession(sessionId);
+          if (session) {
+            metrics = extractSessionListMetrics(session as Session);
+          }
+          const ipcItem = sessionListItemSchema.parse({
+            id: sessionItem.id,
+            name: sessionItem.name,
+            path: sessionItem.path,
+            createdAt: sessionItem.createdAt.toISOString(),
+            adapter: sessionItem.adapter,
+            metrics,
+          });
+          this.index.set(ipcItem.id, ipcItem);
+        } catch (itemErr) {
+          console.warn(
+            `[SessionIndexer] handleRenameEvent: failed to index session "${sessionId}":`,
+            itemErr,
+          );
+        }
+      }
+
+      this.emitUpdated();
+      await this.flushDiskCache();
+    } catch (err) {
+      console.error('[SessionIndexer] handleRenameEvent() error:', err);
+    }
+  }
+
+  private async handleChangeEvent(sessionId: string): Promise<void> {
+    try {
+      const session = await this.manager.getSession(sessionId);
+
+      if (!session) {
+        this.index.delete(sessionId);
+      } else {
+        // Update metrics for the session using existing metadata from the index
+        const existing = this.index.get(sessionId);
+        if (existing) {
+          try {
+            const metrics = extractSessionListMetrics(session as Session);
+            const ipcItem = sessionListItemSchema.parse({
+              id: existing.id,
+              name: existing.name,
+              path: existing.path,
+              createdAt: existing.createdAt,
+              adapter: existing.adapter,
+              metrics,
+            });
+            this.index.set(ipcItem.id, ipcItem);
+          } catch (itemErr) {
+            console.warn(
+              `[SessionIndexer] handleChangeEvent: failed to re-index session "${sessionId}":`,
+              itemErr,
+            );
+          }
+        }
+      }
+
+      this.emitUpdated();
+      await this.flushDiskCache();
+    } catch (err) {
+      console.error('[SessionIndexer] handleChangeEvent() error:', err);
+    }
+  }
+
+  private restartWatcher(): void {
+    this.stopWatching();
+    setTimeout(() => {
+      this.startWatching(this.currentRootDir);
+    }, SessionIndexer.WATCHER_RESTART_MS);
   }
 
   // ── Background scan ────────────────────────────────────────────────────────
