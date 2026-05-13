@@ -202,6 +202,8 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
             utilisationSamples={session.utilisation}
             compactions={session.compactions}
             eventTypes={eventTypes}
+            modelColours={modelColours}
+            modelMetrics={session.shutdown?.modelMetrics ?? []}
           />
         )}
 
@@ -209,7 +211,6 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
           <TabCostModels
             modelSpend={modelSpend}
             modelColours={modelColours}
-            modelMetrics={session.shutdown?.modelMetrics ?? []}
             isLive={isLive}
             subagents={session.subagents}
             hotConsumption={hotConsumption}

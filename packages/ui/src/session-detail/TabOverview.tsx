@@ -6,7 +6,7 @@
  * two-column layout.
  */
 
-import type { Compaction, UtilisationSample } from '@agent-profiler/core';
+import type { Compaction, ModelMetrics, UtilisationSample } from '@agent-profiler/core';
 import { memo } from 'react';
 
 import { CompactionsTable } from './CompactionsTable';
@@ -16,6 +16,7 @@ import { ContextUtilisationChart } from './ContextUtilisationChart';
 import { ContextWindowBar } from './ContextWindowBar';
 import type { EventTypeRow } from './event-type-stats';
 import { EventTypesTable } from './EventTypesTable';
+import { ModelTokenDistribution } from './ModelTokenDistribution';
 import { Section } from './Section';
 import styles from './session-detail.module.css';
 import type { SessionStats } from './session-stats';
@@ -32,6 +33,8 @@ export interface TabOverviewProps {
   readonly utilisationSamples: readonly UtilisationSample[];
   readonly compactions: readonly Compaction[];
   readonly eventTypes: readonly EventTypeRow[];
+  readonly modelColours: Record<string, string>;
+  readonly modelMetrics: readonly ModelMetrics[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -44,6 +47,8 @@ function TabOverviewInner({
   utilisationSamples,
   compactions,
   eventTypes,
+  modelColours,
+  modelMetrics,
 }: TabOverviewProps) {
   return (
     <div data-testid="tab-overview">
@@ -67,8 +72,12 @@ function TabOverviewInner({
           </Section>
         </div>
 
-        {/* Right column: compactions + events */}
+        {/* Right column: token distribution + compactions + events */}
         <div>
+          <Section title="Token distribution by model">
+            <ModelTokenDistribution modelColours={modelColours} modelMetrics={modelMetrics} />
+          </Section>
+
           {compactions.length > 0 && (
             <Section title="Compactions">
               <CompactionsTable compactions={compactions} />
