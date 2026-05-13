@@ -392,6 +392,11 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
           size="24"
           rawProps={{ 'data-testid': 'session-count-badge' }}
         />
+        {/* Non-blocking background refresh indicator — only shown when sessions are
+            already displayed so it doesn't replace the full-page scanning spinner. */}
+        {scanning && sessions.length > 0 && (
+          <Spinner rawProps={{ 'data-testid': 'session-browser-refreshing' }} />
+        )}
         <FlexSpacer />
         <Button
           fill="outline"
