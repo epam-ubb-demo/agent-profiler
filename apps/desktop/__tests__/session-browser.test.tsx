@@ -429,6 +429,41 @@ describe('SessionBrowser', () => {
     expect(unsubscribe).toHaveBeenCalled();
   });
 
+  // ── Background refresh spinner tests ───────────────────────────────────────
+
+  it('shows background refresh spinner when scanning=true and sessions are loaded', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ id: 'session-1', name: 'session-1' }),
+    ]);
+    vi.mocked(mockElectronApi.session.getScanningState).mockResolvedValue(true);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-browser')).toBeDefined();
+    });
+
+    // The header-level background refresh spinner should be visible
+    expect(screen.getByTestId('session-browser-refreshing')).toBeDefined();
+    // The full-page scanning indicator must NOT appear alongside the session list
+    expect(screen.queryByTestId('session-browser-scanning')).toBeNull();
+  });
+
+  it('does not show background refresh spinner when scanning=false', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ id: 'session-1', name: 'session-1' }),
+    ]);
+    vi.mocked(mockElectronApi.session.getScanningState).mockResolvedValue(false);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-browser')).toBeDefined();
+    });
+
+    expect(screen.queryByTestId('session-browser-refreshing')).toBeNull();
+  });
+
   it('calls onListUpdated unsubscribe on unmount', async () => {
     vi.mocked(mockElectronApi.session.list).mockResolvedValue([]);
     vi.mocked(mockElectronApi.session.getScanningState).mockResolvedValue(false);
