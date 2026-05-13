@@ -74,6 +74,8 @@ export const ipcChannels = {
   APP_GET_VERSION: 'app:getVersion',
   SESSION_LIST: 'session:list',
   SESSION_LIST_UPDATED: 'session:listUpdated',
+  SESSION_SCANNING_STATE: 'session:scanningState',
+  SESSION_SCANNING_STATE_UPDATED: 'session:scanningStateUpdated',
   SESSION_OPEN: 'session:open',
   SESSION_SET_ROOT_DIR: 'session:setRootDir',
   DIALOG_OPEN_DIRECTORY: 'dialog:openDirectory',

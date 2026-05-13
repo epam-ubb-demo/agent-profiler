@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ElectronApi, SessionListItemIpc, SessionListMetricsIpc } from '../src/preload/api';
 import { SessionBrowser } from '../src/renderer/pages/SessionBrowser';
 
-import { cleanup, fireEvent, render, screen, waitFor } from './test-utils';
+import { act, cleanup, fireEvent, render, screen, waitFor } from './test-utils';
 
 // Mock the CSS module so that class name lookups return the key name (string)
 vi.mock('../src/renderer/pages/SessionBrowser.module.css', () => ({
@@ -47,6 +47,8 @@ const mockElectronApi: ElectronApi = {
     open: vi.fn(),
     setRootDir: vi.fn(),
     onListUpdated: vi.fn<ElectronApi['session']['onListUpdated']>().mockReturnValue(() => {}),
+    getScanningState: vi.fn<ElectronApi['session']['getScanningState']>().mockResolvedValue(false),
+    onScanningStateChanged: vi.fn<ElectronApi['session']['onScanningStateChanged']>().mockReturnValue(() => {}),
   },
   dialog: {
     openDirectory: vi.fn(),
@@ -293,5 +295,155 @@ describe('SessionBrowser', () => {
     });
 
     expect(screen.getByTestId('session-repository').textContent).toBe('acme/my-project');
+  });
+
+  // ── Scanning state indicator tests ─────────────────────────────────────────
+
+  it('shows scanning spinner when scanning=true and sessions=[]', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([]);
+    vi.mocked(mockElectronApi.session.getScanningState).mockResolvedValue(true);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-browser-scanning')).toBeDefined();
+    });
+
+    expect(screen.getByText('Scanning sessions…')).toBeDefined();
+  });
+
+  it('shows empty state when scanning=false and sessions=[]', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([]);
+    vi.mocked(mockElectronApi.session.getScanningState).mockResolvedValue(false);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('empty-state')).toBeDefined();
+    });
+
+    expect(screen.getByText('No sessions found')).toBeDefined();
+  });
+
+  it('calls getScanningState on mount', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([]);
+    vi.mocked(mockElectronApi.session.getScanningState).mockResolvedValue(false);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(mockElectronApi.session.getScanningState).toHaveBeenCalled();
+    });
+  });
+
+  it('subscribes to scanning state changes on mount', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([]);
+    vi.mocked(mockElectronApi.session.getScanningState).mockResolvedValue(false);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(mockElectronApi.session.onScanningStateChanged).toHaveBeenCalled();
+    });
+  });
+
+  it('updates scanning state when onScanningStateChanged fires', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([]);
+    vi.mocked(mockElectronApi.session.getScanningState).mockResolvedValue(false);
+
+    let scanningCallback: ((scanning: boolean) => void) | null = null;
+    vi.mocked(mockElectronApi.session.onScanningStateChanged).mockImplementation(
+      (callback) => {
+        scanningCallback = callback;
+        return () => {};
+      },
+    );
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('empty-state')).toBeDefined();
+    });
+
+    // Simulate scanning state change – callback is captured by mockImplementation above
+    act(() => {
+      scanningCallback!(true);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-browser-scanning')).toBeDefined();
+    });
+
+    expect(screen.getByText('Scanning sessions…')).toBeDefined();
+  });
+
+  it('shows sessions when sessions become available during scan', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([]);
+    vi.mocked(mockElectronApi.session.getScanningState).mockResolvedValue(true);
+
+    let listUpdateCallback: ((sessions: SessionListItemIpc[]) => void) | null = null;
+    vi.mocked(mockElectronApi.session.onListUpdated).mockImplementation(
+      (callback) => {
+        listUpdateCallback = callback;
+        return () => {};
+      },
+    );
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-browser-scanning')).toBeDefined();
+    });
+
+    // Simulate sessions being added – callback is captured by mockImplementation above
+    act(() => {
+      listUpdateCallback!([
+        makeSession({ id: 'session-1', name: 'session-1' }),
+      ]);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-list')).toBeDefined();
+    });
+
+    expect(screen.queryByTestId('session-browser-scanning')).toBeNull();
+  });
+
+  it('returns unsubscribe function from scanning state effect', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([]);
+    vi.mocked(mockElectronApi.session.getScanningState).mockResolvedValue(false);
+
+    const unsubscribe = vi.fn();
+    vi.mocked(mockElectronApi.session.onScanningStateChanged).mockReturnValue(
+      unsubscribe,
+    );
+
+    const { unmount } = await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(mockElectronApi.session.onScanningStateChanged).toHaveBeenCalled();
+    });
+
+    unmount();
+
+    expect(unsubscribe).toHaveBeenCalled();
+  });
+
+  it('calls onListUpdated unsubscribe on unmount', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([]);
+    vi.mocked(mockElectronApi.session.getScanningState).mockResolvedValue(false);
+
+    const unsubscribe = vi.fn();
+    vi.mocked(mockElectronApi.session.onListUpdated).mockReturnValue(unsubscribe);
+
+    const { unmount } = await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(mockElectronApi.session.onListUpdated).toHaveBeenCalled();
+    });
+
+    unmount();
+
+    expect(unsubscribe).toHaveBeenCalled();
   });
 });

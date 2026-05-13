@@ -132,6 +132,14 @@ export class SessionIndexer extends EventEmitter {
   }
 
   /**
+   * Returns true while a background scan is in progress.
+   * Synchronous — no I/O.
+   */
+  isScanning(): boolean {
+    return this.scanning;
+  }
+
+  /**
    * Change the root directory: clears the in-memory index, tells the manager
    * to use the new directory, and restarts the background scan from scratch.
    */
@@ -358,6 +366,7 @@ export class SessionIndexer extends EventEmitter {
     // Guard against concurrent scans
     if (this.scanning) return;
     this.scanning = true;
+    this.emit('scanningState', true);
 
     // Capture the generation at scan start; exit early if a newer scan begins.
     const myGeneration = this.scanGeneration;
@@ -424,6 +433,7 @@ export class SessionIndexer extends EventEmitter {
       if (this.scanGeneration === myGeneration) {
         this.scanning = false;
         this.scanPromise = null;
+        this.emit('scanningState', false);
       }
     }
   }
