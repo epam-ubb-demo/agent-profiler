@@ -137,22 +137,22 @@ function SessionCard({ session, onClick }: SessionCardProps) {
           />
         </FlexRow>
 
-        {/* Row 2: duration pill + cost pill */}
+        {/* Row 2: hero KPIs — duration + cost */}
         {m && (
-          <FlexRow spacing="6" cx={styles.cardHighlights}>
+          <div className={styles.kpiBar}>
             <Tooltip content={`Wall-clock time: ${formatDuration(m.wallTimeMs)}`}>
-              <FlexRow spacing="6" cx={styles.highlightPill} rawProps={{ 'data-testid': 'duration-pill' }}>
-                <Text size="18" color="secondary">⏱</Text>
-                <Text size="18">{formatDuration(m.wallTimeMs)}</Text>
-              </FlexRow>
+              <div className={styles.kpiItem} data-testid="duration-pill">
+                <Text size="18" color="secondary">Duration</Text>
+                <Text size="24" fontWeight="600">{formatDuration(m.wallTimeMs)}</Text>
+              </div>
             </Tooltip>
             <Tooltip content={`Cost confidence: ${m.costConfidence}`}>
-              <FlexRow spacing="6" cx={styles.highlightPill} rawProps={{ 'data-testid': 'cost-pill' }}>
-                <Text size="18" color="secondary">$</Text>
-                <Text size="18">{formatCost(m.totalCostUsd, m.costConfidence)}</Text>
-              </FlexRow>
+              <div className={styles.kpiItem} data-testid="cost-pill">
+                <Text size="18" color="secondary">Cost</Text>
+                <Text size="24" fontWeight="600">{formatCost(m.totalCostUsd, m.costConfidence)}</Text>
+              </div>
             </Tooltip>
-          </FlexRow>
+          </div>
         )}
 
         {/* Row 3: token counts */}
@@ -227,8 +227,23 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
   const [searchText, setSearchText] = useState('');
   const [dateRange, setDateRange] = useState<{ from: string | null; to: string | null }>({ from: null, to: null });
   const [adapterFilter, setAdapterFilter] = useState<string[]>([]);
+  const [repoFilter, setRepoFilter] = useState<string[]>([]);
 
   const adapterDataSource = useArrayDataSource({ items: ADAPTER_OPTIONS }, []);
+
+  const repoOptions = useMemo(() => {
+    const repos = new Set<string>();
+    for (const s of sessions) {
+      if (s.metrics?.repository) {
+        repos.add(s.metrics.repository);
+      }
+    }
+    return Array.from(repos)
+      .sort()
+      .map((r) => ({ id: r, name: r }));
+  }, [sessions]);
+
+  const repoDataSource = useArrayDataSource({ items: repoOptions }, [repoOptions]);
 
   const loadSessions = useCallback(async () => {
     setLoading(true);
@@ -283,12 +298,14 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
     searchText.trim() !== '' ||
     dateRange.from !== null ||
     dateRange.to !== null ||
-    adapterFilter.length > 0;
+    adapterFilter.length > 0 ||
+    repoFilter.length > 0;
 
   const handleClearFilters = useCallback(() => {
     setSearchText('');
     setDateRange({ from: null, to: null });
     setAdapterFilter([]);
+    setRepoFilter([]);
   }, []);
 
   // Filtered sessions
@@ -301,7 +318,8 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
         (s) =>
           s.name.toLowerCase().includes(q) ||
           s.id.toLowerCase().includes(q) ||
-          s.path.toLowerCase().includes(q),
+          s.path.toLowerCase().includes(q) ||
+          (s.metrics?.repository ?? '').toLowerCase().includes(q),
       );
     }
 
@@ -321,8 +339,12 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
       result = result.filter((s) => adapterFilter.includes(s.adapter));
     }
 
+    if (repoFilter.length > 0) {
+      result = result.filter((s) => s.metrics?.repository && repoFilter.includes(s.metrics.repository));
+    }
+
     return result;
-  }, [sessions, searchText, dateRange, adapterFilter]);
+  }, [sessions, searchText, dateRange, adapterFilter, repoFilter]);
 
   // Sessions grouped by day
   const groupedSessions = useMemo(() => groupByDay(filteredSessions), [filteredSessions]);
@@ -411,11 +433,11 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
         {/* Filter bar */}
         <Panel cx={styles.filterBar} rawProps={{ 'data-testid': 'filter-bar' }}>
-          <FlexRow padding="12" spacing="12" alignItems="center">
+          <FlexRow padding="12" spacing="12" alignItems="center" cx={styles.filterBarInner}>
             <TextInput
               value={searchText}
               onValueChange={(v) => setSearchText(v ?? '')}
-              placeholder="Search by name, ID, or path…"
+              placeholder="Search by name, ID, path, or repo…"
               icon={SearchIcon}
               size="30"
               rawProps={{ 'data-testid': 'search-input' }}
@@ -436,6 +458,17 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
               placeholder="All adapters"
               size="30"
               rawProps={{ 'data-testid': 'adapter-filter' } as Record<string, unknown>}
+            />
+            <PickerInput
+              dataSource={repoDataSource}
+              value={repoFilter}
+              onValueChange={(v) => setRepoFilter((v ?? []) as string[])}
+              selectionMode="multi"
+              valueType="id"
+              getName={(item) => item?.name ?? ''}
+              placeholder="All repositories"
+              size="30"
+              rawProps={{ 'data-testid': 'repo-filter' } as Record<string, unknown>}
             />
             {hasActiveFilters && (
               <Button

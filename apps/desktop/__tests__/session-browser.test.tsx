@@ -149,7 +149,7 @@ describe('SessionBrowser', () => {
     });
 
     // UUI TextInput renders the actual <input> with the placeholder
-    const input = screen.getByPlaceholderText('Search by name, ID, or path…');
+    const input = screen.getByPlaceholderText('Search by name, ID, path, or repo…');
     fireEvent.change(input, { target: { value: 'alpha' } });
 
     await waitFor(() => {
@@ -169,7 +169,7 @@ describe('SessionBrowser', () => {
       expect(screen.getByTestId('session-browser')).toBeDefined();
     });
 
-    const input = screen.getByPlaceholderText('Search by name, ID, or path…');
+    const input = screen.getByPlaceholderText('Search by name, ID, path, or repo…');
     fireEvent.change(input, { target: { value: 'xyzzy-no-match' } });
 
     await waitFor(() => {

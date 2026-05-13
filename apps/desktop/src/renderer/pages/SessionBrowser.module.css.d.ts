@@ -2,12 +2,12 @@ declare const styles: {
   readonly pageContainer: string;
   readonly headerSection: string;
   readonly filterBar: string;
+  readonly filterBarInner: string;
   readonly cardGrid: string;
   readonly sessionCard: string;
   readonly cardContent: string;
-  readonly cardHighlights: string;
-  readonly highlightPill: string;
-  readonly highlightIcon: string;
+  readonly kpiBar: string;
+  readonly kpiItem: string;
   readonly cardTokens: string;
   readonly cardMeta: string;
   readonly repoText: string;
