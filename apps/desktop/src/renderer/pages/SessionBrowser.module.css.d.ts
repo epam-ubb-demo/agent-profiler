@@ -3,6 +3,8 @@ declare const styles: {
   readonly headerSection: string;
   readonly filterBar: string;
   readonly filterBarInner: string;
+  readonly filterInput: string;
+  readonly filterPicker: string;
   readonly cardGrid: string;
   readonly sessionCard: string;
   readonly cardContent: string;

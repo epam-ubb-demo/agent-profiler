@@ -24,8 +24,17 @@
 }
 
 .filterBarInner {
-  flex-wrap: wrap;
-  row-gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.filterInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.filterPicker {
+  width: 180px;
+  flex-shrink: 0;
 }
 
 /* ─── Card grid: responsive auto-fill ─── */

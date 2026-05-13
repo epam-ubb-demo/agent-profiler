@@ -440,36 +440,43 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
               placeholder="Search by name, ID, path, or repo…"
               icon={SearchIcon}
               size="30"
+              cx={styles.filterInput}
               rawProps={{ 'data-testid': 'search-input' }}
             />
-            <RangeDatePicker
-              value={dateRange}
-              onValueChange={(v) => setDateRange(v ?? { from: null, to: null })}
-              size="30"
-              rawProps={{ 'data-testid': 'date-range-picker' } as Record<string, unknown>}
-            />
-            <PickerInput
-              dataSource={adapterDataSource}
-              value={adapterFilter}
-              onValueChange={(v) => setAdapterFilter((v ?? []) as string[])}
-              selectionMode="multi"
-              valueType="id"
-              getName={(item) => item?.name ?? ''}
-              placeholder="All adapters"
-              size="30"
-              rawProps={{ 'data-testid': 'adapter-filter' } as Record<string, unknown>}
-            />
-            <PickerInput
-              dataSource={repoDataSource}
-              value={repoFilter}
-              onValueChange={(v) => setRepoFilter((v ?? []) as string[])}
-              selectionMode="multi"
-              valueType="id"
-              getName={(item) => item?.name ?? ''}
-              placeholder="All repositories"
-              size="30"
-              rawProps={{ 'data-testid': 'repo-filter' } as Record<string, unknown>}
-            />
+            <div className={styles.filterPicker}>
+              <RangeDatePicker
+                value={dateRange}
+                onValueChange={(v) => setDateRange(v ?? { from: null, to: null })}
+                size="30"
+                rawProps={{ 'data-testid': 'date-range-picker' } as Record<string, unknown>}
+              />
+            </div>
+            <div className={styles.filterPicker}>
+              <PickerInput
+                dataSource={adapterDataSource}
+                value={adapterFilter}
+                onValueChange={(v) => setAdapterFilter((v ?? []) as string[])}
+                selectionMode="multi"
+                valueType="id"
+                getName={(item) => item?.name ?? ''}
+                placeholder="All adapters"
+                size="30"
+                rawProps={{ 'data-testid': 'adapter-filter' } as Record<string, unknown>}
+              />
+            </div>
+            <div className={styles.filterPicker}>
+              <PickerInput
+                dataSource={repoDataSource}
+                value={repoFilter}
+                onValueChange={(v) => setRepoFilter((v ?? []) as string[])}
+                selectionMode="multi"
+                valueType="id"
+                getName={(item) => item?.name ?? ''}
+                placeholder="All repositories"
+                size="30"
+                rawProps={{ 'data-testid': 'repo-filter' } as Record<string, unknown>}
+              />
+            </div>
             {hasActiveFilters && (
               <Button
                 fill="none"
