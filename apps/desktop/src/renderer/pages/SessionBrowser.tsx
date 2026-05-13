@@ -382,7 +382,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
   return (
     <div className={styles.pageContainer} data-testid="session-browser">
-      <div className={styles.stickyHeader}>
+      <div className={styles.headerSection}>
         {/* Header */}
         <FlexRow alignItems="center" spacing="12">
           <Text size="42" fontWeight="600">Sessions</Text>
