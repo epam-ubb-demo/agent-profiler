@@ -8,6 +8,8 @@
 .pageContainer {
   padding: 24px 32px;
   background: var(--uui-surface-main);
+  height: 100%;
+  overflow-y: auto;
 }
 
 .sectionHeading {
