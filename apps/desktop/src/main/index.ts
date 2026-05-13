@@ -20,6 +20,44 @@ import {
   setSessionRootDir,
 } from './settings-store';
 
+// ─── Single-instance guard ────────────────────────────────────────────────
+// Must be the very first Electron API call.  If another instance is already
+// running, quit immediately — app.whenReady() will not resolve after
+// app.quit(), so the window below will never be created and the IPC handlers
+// registered here are harmless (no renderer will connect).
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+}
+
+// ─── Uncaught-exception guard ─────────────────────────────────────────────
+// When the electron-vite dev server is killed and restarted, the old Electron
+// child process can survive as an orphan with a broken stdout/stderr pipe.
+// Any IPC error that triggers console.warn / console.error then throws
+// EIO / EPIPE — catch and discard those silently so they don't produce a
+// crash dialog.
+process.on('uncaughtException', (error: Error) => {
+  const code = (error as NodeJS.ErrnoException).code;
+  if (code === 'EIO' || code === 'EPIPE') {
+    // Pipe error from severed stdout/stderr — ignore silently.
+    return;
+  }
+  // All other uncaught exceptions keep the default crash behavior.
+  console.error('Uncaught exception:', error);
+  process.exit(1);
+});
+
+// ─── Second-instance handler ──────────────────────────────────────────────
+// When a second instance tries to launch (blocked by the lock above), bring
+// the existing window to the foreground instead.
+app.on('second-instance', () => {
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win) {
+    if (win.isMinimized()) win.restore();
+    win.focus();
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Data-source manager
 // ---------------------------------------------------------------------------

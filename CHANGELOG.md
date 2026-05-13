@@ -39,5 +39,6 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 - During initial session indexing, the app now shows a "Scanning sessions…" indicator instead of incorrectly displaying "No sessions found".
 - Event parser now handles the current Copilot CLI shutdown format where `modelMetrics` uses nested `usage` and `requests` sub-objects. Both the legacy flat format and the current nested format are supported transparently. Premium request cost units are now extracted from `requests.cost`.
+- **Desktop**: Prevented duplicate Electron instances via single-instance lock and added EIO/EPIPE pipe error guard to avoid crash dialogs from orphaned processes.
 
 See individual package changelogs for details.
