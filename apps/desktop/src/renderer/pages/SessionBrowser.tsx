@@ -382,94 +382,96 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
   return (
     <div className={styles.pageContainer} data-testid="session-browser">
-      {/* Header */}
-      <FlexRow alignItems="center" spacing="12">
-        <Text size="42" fontWeight="600">Sessions</Text>
-        <Badge
-          color="neutral"
-          fill="outline"
-          caption={String(filteredSessions.length)}
-          size="24"
-          rawProps={{ 'data-testid': 'session-count-badge' }}
-        />
-        {/* Non-blocking background refresh indicator — only shown when sessions are
-            already displayed so it doesn't replace the full-page scanning spinner. */}
-        {scanning && sessions.length > 0 && (
-          <Spinner rawProps={{ 'data-testid': 'session-browser-refreshing' }} />
-        )}
-        <FlexSpacer />
-        <Button
-          fill="outline"
-          size="30"
-          icon={FolderOpenIcon}
-          caption="Open Folder…"
-          onClick={handleOpenFolder}
-        />
-        <SettingsPanel onSettingsSaved={handleSettingsSaved} />
-      </FlexRow>
-
-      {/* Filter bar */}
-      <Panel cx={styles.filterBar} rawProps={{ 'data-testid': 'filter-bar' }}>
-        <FlexRow padding="12" spacing="12" alignItems="center">
-          <TextInput
-            value={searchText}
-            onValueChange={(v) => setSearchText(v ?? '')}
-            placeholder="Search by name, ID, or path…"
-            icon={SearchIcon}
-            size="30"
-            rawProps={{ 'data-testid': 'search-input' }}
+      <div className={styles.stickyHeader}>
+        {/* Header */}
+        <FlexRow alignItems="center" spacing="12">
+          <Text size="42" fontWeight="600">Sessions</Text>
+          <Badge
+            color="neutral"
+            fill="outline"
+            caption={String(filteredSessions.length)}
+            size="24"
+            rawProps={{ 'data-testid': 'session-count-badge' }}
           />
-          <RangeDatePicker
-            value={dateRange}
-            onValueChange={(v) => setDateRange(v ?? { from: null, to: null })}
-            size="30"
-            rawProps={{ 'data-testid': 'date-range-picker' } as Record<string, unknown>}
-          />
-          <PickerInput
-            dataSource={adapterDataSource}
-            value={adapterFilter}
-            onValueChange={(v) => setAdapterFilter((v ?? []) as string[])}
-            selectionMode="multi"
-            valueType="id"
-            getName={(item) => item?.name ?? ''}
-            placeholder="All adapters"
-            size="30"
-            rawProps={{ 'data-testid': 'adapter-filter' } as Record<string, unknown>}
-          />
-          {hasActiveFilters && (
-            <Button
-              fill="none"
-              size="30"
-              caption="Clear"
-              onClick={handleClearFilters}
-              rawProps={{ 'data-testid': 'clear-filters-button' }}
-            />
+          {/* Non-blocking background refresh indicator — only shown when sessions are
+              already displayed so it doesn't replace the full-page scanning spinner. */}
+          {scanning && sessions.length > 0 && (
+            <Spinner rawProps={{ 'data-testid': 'session-browser-refreshing' }} />
           )}
+          <FlexSpacer />
+          <Button
+            fill="outline"
+            size="30"
+            icon={FolderOpenIcon}
+            caption="Open Folder…"
+            onClick={handleOpenFolder}
+          />
+          <SettingsPanel onSettingsSaved={handleSettingsSaved} />
         </FlexRow>
-      </Panel>
 
-      {/* Summary bar */}
-      <Panel cx={styles.summaryBar} rawProps={{ 'data-testid': 'summary-bar' }}>
-        <FlexRow padding="12" spacing="12" cx={styles.summaryRow} alignItems="center">
-          <Text size="18" fontWeight="600">{summary.count} session{summary.count !== 1 ? 's' : ''}</Text>
-          <div className={styles.summaryDivider} />
-          <Text size="18" color="secondary">
-            Tokens: {formatTokenCount(summary.totalTokens)}
-          </Text>
-          <div className={styles.summaryDivider} />
-          <Text size="18" color="secondary">
-            Cost: {summary.totalCostUsd !== null ? `$${summary.totalCostUsd.toFixed(2)}` : '—'}
-          </Text>
-          <div className={styles.summaryDivider} />
-          <Text size="18" color="secondary">
-            Total time: {formatDuration(summary.totalWallMs)}
-          </Text>
-          <div className={styles.summaryDivider} />
-          <Text size="18" color="secondary">
-            Avg time: {formatDuration(summary.avgWallMs)}
-          </Text>
-        </FlexRow>
-      </Panel>
+        {/* Filter bar */}
+        <Panel cx={styles.filterBar} rawProps={{ 'data-testid': 'filter-bar' }}>
+          <FlexRow padding="12" spacing="12" alignItems="center">
+            <TextInput
+              value={searchText}
+              onValueChange={(v) => setSearchText(v ?? '')}
+              placeholder="Search by name, ID, or path…"
+              icon={SearchIcon}
+              size="30"
+              rawProps={{ 'data-testid': 'search-input' }}
+            />
+            <RangeDatePicker
+              value={dateRange}
+              onValueChange={(v) => setDateRange(v ?? { from: null, to: null })}
+              size="30"
+              rawProps={{ 'data-testid': 'date-range-picker' } as Record<string, unknown>}
+            />
+            <PickerInput
+              dataSource={adapterDataSource}
+              value={adapterFilter}
+              onValueChange={(v) => setAdapterFilter((v ?? []) as string[])}
+              selectionMode="multi"
+              valueType="id"
+              getName={(item) => item?.name ?? ''}
+              placeholder="All adapters"
+              size="30"
+              rawProps={{ 'data-testid': 'adapter-filter' } as Record<string, unknown>}
+            />
+            {hasActiveFilters && (
+              <Button
+                fill="none"
+                size="30"
+                caption="Clear"
+                onClick={handleClearFilters}
+                rawProps={{ 'data-testid': 'clear-filters-button' }}
+              />
+            )}
+          </FlexRow>
+        </Panel>
+
+        {/* Summary bar */}
+        <Panel cx={styles.summaryBar} rawProps={{ 'data-testid': 'summary-bar' }}>
+          <FlexRow padding="12" spacing="12" cx={styles.summaryRow} alignItems="center">
+            <Text size="18" fontWeight="600">{summary.count} session{summary.count !== 1 ? 's' : ''}</Text>
+            <div className={styles.summaryDivider} />
+            <Text size="18" color="secondary">
+              Tokens: {formatTokenCount(summary.totalTokens)}
+            </Text>
+            <div className={styles.summaryDivider} />
+            <Text size="18" color="secondary">
+              Cost: {summary.totalCostUsd !== null ? `$${summary.totalCostUsd.toFixed(2)}` : '—'}
+            </Text>
+            <div className={styles.summaryDivider} />
+            <Text size="18" color="secondary">
+              Total time: {formatDuration(summary.totalWallMs)}
+            </Text>
+            <div className={styles.summaryDivider} />
+            <Text size="18" color="secondary">
+              Avg time: {formatDuration(summary.avgWallMs)}
+            </Text>
+          </FlexRow>
+        </Panel>
+      </div>
 
       {/* Session list or empty filter state */}
       {filteredSessions.length === 0 ? (

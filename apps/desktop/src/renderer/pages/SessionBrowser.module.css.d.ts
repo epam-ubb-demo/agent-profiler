@@ -1,5 +1,6 @@
 declare const styles: {
   readonly pageContainer: string;
+  readonly stickyHeader: string;
   readonly filterBar: string;
   readonly cardGrid: string;
   readonly sessionCard: string;

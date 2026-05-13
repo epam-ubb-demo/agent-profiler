@@ -8,6 +8,18 @@
   overflow-y: auto;
 }
 
+/* ─── Sticky header section ─── */
+.stickyHeader {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--uui-surface-main);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-bottom: 6px;
+}
+
 /* ─── Filter bar ─── */
 .filterBar {
   background: var(--uui-surface-higher);
