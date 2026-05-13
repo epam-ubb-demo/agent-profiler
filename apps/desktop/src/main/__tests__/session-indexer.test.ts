@@ -1344,31 +1344,34 @@ describe('SessionIndexer', () => {
     });
 
     it('isScanning() returns true during background scan', async () => {
-      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
-      // Delay the scan to allow us to check isScanning() while scanning
-      vi.mocked(mockManager.listSessions).mockImplementation(
-        () =>
-          new Promise<SessionListItem[]>((resolve) => {
-            setTimeout(() => {
-              resolve([makeSessionListItem({ id: 'session-1' })]);
-            }, 50);
-          }),
-      );
-      vi.mocked(mockManager.getSession).mockResolvedValue({
-        parseStatus: { status: 'ok' },
-      } as unknown as Session);
+      vi.useFakeTimers();
+      try {
+        mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+        let resolveSessions!: (value: SessionListItem[]) => void;
+        vi.mocked(mockManager.listSessions).mockImplementation(
+          () =>
+            new Promise<SessionListItem[]>((resolve) => {
+              resolveSessions = resolve;
+            }),
+        );
+        vi.mocked(mockManager.getSession).mockResolvedValue({
+          parseStatus: { status: 'ok' },
+        } as unknown as Session);
 
-      const startPromise = indexer.start('/root');
+        const startPromise = indexer.start('/root');
 
-      // Check within a short delay to catch the scan in progress
-      await new Promise<void>((resolve) => {
-        setTimeout(() => {
-          expect(indexer.isScanning()).toBe(true);
-          resolve();
-        }, 10);
-      });
+        // Flush microtasks so the scan begins
+        await vi.advanceTimersByTimeAsync(0);
 
-      await startPromise;
+        expect(indexer.isScanning()).toBe(true);
+
+        // Let the scan complete
+        resolveSessions([makeSessionListItem({ id: 'session-1' })]);
+        await vi.advanceTimersByTimeAsync(0);
+        await startPromise;
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('isScanning() returns false after scan completes', async () => {
