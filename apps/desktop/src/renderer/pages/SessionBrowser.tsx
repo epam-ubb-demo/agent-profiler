@@ -233,9 +233,14 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
   const loadSessions = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await window.electronApi.session.list();
+      const [list, scanningState] = await Promise.all([
+        window.electronApi.session.list(),
+        window.electronApi.session.getScanningState(),
+      ]);
       setSessions(list);
-    } catch {
+      setScanning(scanningState);
+    } catch (err) {
+      console.error('Failed to load sessions:', err);
       setSessions([]);
     } finally {
       setLoading(false);
@@ -254,9 +259,8 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
     return unsub;
   }, []);
 
-  // Subscribe to scanning state changes and query the initial state on mount
+  // Subscribe to scanning state changes
   useEffect(() => {
-    void window.electronApi.session.getScanningState().then(setScanning);
     const unsub = window.electronApi.session.onScanningStateChanged(setScanning);
     return unsub;
   }, []);

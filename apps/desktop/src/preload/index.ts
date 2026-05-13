@@ -22,12 +22,12 @@ const api: ElectronApi = {
     getScanningState: () => ipcRenderer.invoke(ipcChannels.SESSION_SCANNING_STATE),
     onScanningStateChanged: (callback) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const handler = (_event: any, scanning: any) => {
+      const handler = (_event: any, scanning: boolean) => {
         callback(scanning);
       };
-      ipcRenderer.on(ipcChannels.SESSION_SCANNING_STATE, handler);
+      ipcRenderer.on(ipcChannels.SESSION_SCANNING_STATE_UPDATED, handler);
       return () => {
-        ipcRenderer.removeListener(ipcChannels.SESSION_SCANNING_STATE, handler);
+        ipcRenderer.removeListener(ipcChannels.SESSION_SCANNING_STATE_UPDATED, handler);
       };
     },
   },

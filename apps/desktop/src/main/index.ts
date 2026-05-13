@@ -203,7 +203,7 @@ app.whenReady().then(async () => {
   indexer.on('scanningState', (isScanning: boolean) => {
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) {
-        win.webContents.send(ipcChannels.SESSION_SCANNING_STATE, isScanning);
+        win.webContents.send(ipcChannels.SESSION_SCANNING_STATE_UPDATED, isScanning);
       }
     }
   });
