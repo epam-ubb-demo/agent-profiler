@@ -5,6 +5,7 @@ import type { AdaptiveItemProps } from '@epam/uui-components';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 
+import epamLogo from '@/assets/epam-white.png';
 import { MoonIcon, SunIcon } from '@/components/icons';
 import { useTheme } from '@/components/useTheme';
 
@@ -41,16 +42,7 @@ export function AppShell({ children }: AppShellProps) {
                 paddingRight: 12,
               }}
             >
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: 16,
-                  letterSpacing: 2,
-                  color: '#fff',
-                }}
-              >
-                EPAM
-              </span>
+              <img src={epamLogo} alt="EPAM" style={{ height: 20 }} />
               <span
                 style={{
                   width: 1,

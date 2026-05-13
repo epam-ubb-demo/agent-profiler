@@ -27,14 +27,14 @@ describe('AppShell', () => {
     expect(screen.getByText('Hello')).toBeDefined();
   });
 
-  it('renders EPAM logo text and app title', async () => {
+  it('renders EPAM logo image and app title', async () => {
     await render(
       <AppShell>
         <p>content</p>
       </AppShell>,
     );
 
-    expect(screen.getByText('EPAM')).toBeDefined();
+    expect(screen.getByAltText('EPAM')).toBeDefined();
     expect(screen.getByText('Agent Profiler')).toBeDefined();
   });
 
