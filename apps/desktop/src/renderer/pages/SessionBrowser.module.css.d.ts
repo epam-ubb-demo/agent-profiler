@@ -18,5 +18,6 @@ declare const styles: {
   readonly dayGroup: string;
   readonly dayHeading: string;
   readonly emptyFilterState: string;
+  readonly scrollableContent: string;
 };
 export default styles;

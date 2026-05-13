@@ -474,32 +474,34 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
       </div>
 
       {/* Session list or empty filter state */}
-      {filteredSessions.length === 0 ? (
-        <div className={styles.emptyFilterState} data-testid="empty-filter-state">
-          <Text size="30" fontWeight="600">No sessions match your filters</Text>
-          <Text size="18" color="secondary">Try adjusting or clearing the filters above.</Text>
-          <Button fill="outline" size="30" caption="Clear filters" onClick={handleClearFilters} />
-        </div>
-      ) : (
-        <div data-testid="session-list">
-          {groupedSessions.map(({ dateKey, items }) => (
-            <div key={dateKey} className={styles.dayGroup}>
-              <div className={styles.dayHeading} data-testid="day-heading">
-                {formatDayLabel(dateKey)}
+      <div className={styles.scrollableContent}>
+        {filteredSessions.length === 0 ? (
+          <div className={styles.emptyFilterState} data-testid="empty-filter-state">
+            <Text size="30" fontWeight="600">No sessions match your filters</Text>
+            <Text size="18" color="secondary">Try adjusting or clearing the filters above.</Text>
+            <Button fill="outline" size="30" caption="Clear filters" onClick={handleClearFilters} />
+          </div>
+        ) : (
+          <div data-testid="session-list">
+            {groupedSessions.map(({ dateKey, items }) => (
+              <div key={dateKey} className={styles.dayGroup}>
+                <div className={styles.dayHeading} data-testid="day-heading">
+                  {formatDayLabel(dateKey)}
+                </div>
+                <div className={styles.cardGrid}>
+                  {items.map((session) => (
+                    <SessionCard
+                      key={session.id}
+                      session={session}
+                      onClick={() => onSelectSession(session.id)}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className={styles.cardGrid}>
-                {items.map((session) => (
-                  <SessionCard
-                    key={session.id}
-                    session={session}
-                    onClick={() => onSelectSession(session.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

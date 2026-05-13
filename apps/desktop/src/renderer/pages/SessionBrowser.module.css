@@ -1,8 +1,5 @@
 /* ─── Page container ─── */
 .pageContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
   padding: 24px;
   height: 100%;
   overflow-y: auto;
@@ -11,13 +8,15 @@
 /* ─── Sticky header section ─── */
 .stickyHeader {
   position: sticky;
-  top: 0;
+  top: -24px;
   z-index: 10;
   background: var(--uui-surface-main);
+  margin: -24px -24px 0 -24px;
+  padding: 24px 24px 12px 24px;
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding-bottom: 6px;
+  border-bottom: 1px solid var(--uui-divider);
 }
 
 /* ─── Filter bar ─── */
@@ -147,6 +146,14 @@
   color: var(--uui-text-secondary);
   padding-bottom: 4px;
   border-bottom: 1px solid var(--uui-neutral-40);
+}
+
+/* ─── Scrollable content below sticky header ─── */
+.scrollableContent {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-top: 18px;
 }
 
 /* ─── Empty filter state ─── */
