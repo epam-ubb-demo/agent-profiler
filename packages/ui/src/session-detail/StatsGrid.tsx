@@ -1,5 +1,6 @@
 /**
- * Stats grid — renders a CSS Grid of 11 KPI stat cards for a session.
+ * Stats grid — renders a CSS Grid of 5 supplementary KPI stat cards for a
+ * session (the 6 primary stats already appear in the compact header strip).
  */
 
 import { memo } from 'react';
@@ -13,23 +14,16 @@ export interface StatsGridProps {
 }
 
 /**
- * Ordered keys matching the mock-up layout:
- *
- * Row 1: Duration | Tool calls | Assistant msgs | Turns | Compactions | Sub-agent fan-outs
- * Row 2: Estimated cost | Avg tokens/tool call | Premium requests | API time | Task success
+ * Ordered keys for the supplementary stats not shown in the compact
+ * header strip: Assistant msgs | Compactions | Avg tokens/tool call |
+ * Premium requests | API time
  */
 const STAT_ORDER: readonly (keyof SessionStats)[] = [
-  'duration',
-  'toolCallCount',
   'assistantMessageCount',
-  'turnCount',
   'compactionCount',
-  'subagentCount',
-  'estimatedCost',
   'avgTokensPerToolCall',
   'premiumRequests',
   'apiTime',
-  'taskSuccess',
 ] as const;
 
 function StatsGridInner({ stats }: StatsGridProps) {
