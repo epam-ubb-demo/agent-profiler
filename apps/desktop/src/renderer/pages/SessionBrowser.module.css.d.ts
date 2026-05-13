@@ -17,6 +17,7 @@ declare const styles: {
   readonly summaryBar: string;
   readonly summaryRow: string;
   readonly summaryDivider: string;
+  readonly analyticsPanel: string;
   readonly dayGroup: string;
   readonly dayHeading: string;
   readonly emptyFilterState: string;

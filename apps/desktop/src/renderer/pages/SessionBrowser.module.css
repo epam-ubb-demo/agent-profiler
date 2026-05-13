@@ -169,6 +169,13 @@
   gap: 18px;
 }
 
+/* ─── Analytics panel ─── */
+.analyticsPanel {
+  background: var(--uui-surface-higher);
+  border: 1px solid var(--uui-neutral-40);
+  border-radius: 6px;
+}
+
 /* ─── Empty filter state ─── */
 .emptyFilterState {
   display: flex;

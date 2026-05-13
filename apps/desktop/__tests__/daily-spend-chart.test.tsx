@@ -1,0 +1,143 @@
+/**
+ * Tests for DailySpendChart – hand-crafted SVG bar chart showing cost per day.
+ */
+
+import { screen, cleanup } from '@testing-library/react';
+import { describe, expect, it, afterEach } from 'vitest';
+
+import { DailySpendChart } from '../src/renderer/components/DailySpendChart';
+
+import { render } from './test-utils';
+
+afterEach(() => {
+  cleanup();
+});
+
+describe('DailySpendChart', () => {
+  it('renders "No cost data" when data is empty', async () => {
+    await render(<DailySpendChart data={[]} />);
+
+    expect(screen.getByText('No cost data')).toBeDefined();
+  });
+
+  it('renders "No cost data" when all costs are zero', async () => {
+    await render(
+      <DailySpendChart
+        data={[
+          { date: '2024-05-01', cost: 0 },
+          { date: '2024-05-02', cost: 0 },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('No cost data')).toBeDefined();
+  });
+
+  it('renders SVG with data-testid when data is provided', async () => {
+    const { container } = await render(
+      <DailySpendChart
+        data={[
+          { date: '2024-05-10', cost: 0.15 },
+          { date: '2024-05-11', cost: 0.32 },
+        ]}
+      />,
+    );
+
+    const svg = container.querySelector('[data-testid="daily-spend-chart"]');
+    expect(svg).not.toBeNull();
+  });
+
+  it('renders one bar rect per data point', async () => {
+    const { container } = await render(
+      <DailySpendChart
+        data={[
+          { date: '2024-05-10', cost: 0.10 },
+          { date: '2024-05-11', cost: 0.20 },
+          { date: '2024-05-12', cost: 0.30 },
+        ]}
+      />,
+    );
+
+    const bars = container.querySelectorAll('[data-testid="spend-bar"]');
+    expect(bars.length).toBe(3);
+  });
+
+  it('bar height is proportional to cost (taller bar for higher cost)', async () => {
+    const { container } = await render(
+      <DailySpendChart
+        data={[
+          { date: '2024-05-10', cost: 0.10 },
+          { date: '2024-05-11', cost: 0.50 },
+        ]}
+      />,
+    );
+
+    const bars = container.querySelectorAll('[data-testid="spend-bar"]');
+    expect(bars.length).toBe(2);
+
+    const h0 = parseFloat((bars[0] as SVGRectElement).getAttribute('height') ?? '0');
+    const h1 = parseFloat((bars[1] as SVGRectElement).getAttribute('height') ?? '0');
+    expect(h1).toBeGreaterThan(h0);
+  });
+
+  it('renders SVG with viewBox and responsive width', async () => {
+    const { container } = await render(
+      <DailySpendChart
+        data={[{ date: '2024-05-10', cost: 0.15 }]}
+      />,
+    );
+
+    const svg = container.querySelector('svg');
+    expect(svg).not.toBeNull();
+    expect(svg!.getAttribute('viewBox')).toBe('0 0 800 200');
+    expect(svg!.getAttribute('width')).toBe('100%');
+  });
+
+  it('bar titles include formatted cost and date', async () => {
+    const { container } = await render(
+      <DailySpendChart
+        data={[{ date: '2024-05-10', cost: 0.15 }]}
+      />,
+    );
+
+    const title = container.querySelector('[data-testid="spend-bar"] title');
+    expect(title).not.toBeNull();
+    // Title should contain the dollar cost
+    expect(title!.textContent).toContain('$0.15');
+  });
+
+  it('renders with a single data point without errors', async () => {
+    const { container } = await render(
+      <DailySpendChart
+        data={[{ date: '2024-05-10', cost: 1.23 }]}
+      />,
+    );
+
+    const svg = container.querySelector('[data-testid="daily-spend-chart"]');
+    expect(svg).not.toBeNull();
+    const bars = container.querySelectorAll('[data-testid="spend-bar"]');
+    expect(bars.length).toBe(1);
+  });
+
+  it('renders with a large number of data points without errors', async () => {
+    const data = Array.from({ length: 30 }, (_, i) => ({
+      date: `2024-05-${String(i + 1).padStart(2, '0')}`,
+      cost: 0.05 * (i + 1),
+    }));
+
+    const { container } = await render(<DailySpendChart data={data} />);
+
+    const bars = container.querySelectorAll('[data-testid="spend-bar"]');
+    expect(bars.length).toBe(30);
+  });
+
+  it('has role="img" and aria-label on the SVG', async () => {
+    const { container } = await render(
+      <DailySpendChart data={[{ date: '2024-05-10', cost: 0.25 }]} />,
+    );
+
+    const svg = container.querySelector('svg');
+    expect(svg!.getAttribute('role')).toBe('img');
+    expect(svg!.getAttribute('aria-label')).toBeTruthy();
+  });
+});

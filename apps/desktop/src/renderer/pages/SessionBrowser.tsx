@@ -6,6 +6,7 @@ import type { SessionListItemIpc, SessionListMetricsIpc } from '../../preload/ap
 
 import styles from './SessionBrowser.module.css';
 
+import { DailySpendChart } from '@/components/DailySpendChart';
 import { EmptyState } from '@/components/EmptyState';
 import { FolderOpenIcon, SearchIcon } from '@/components/icons';
 import { SettingsPanel } from '@/components/SettingsPanel';
@@ -228,6 +229,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
   const [dateRange, setDateRange] = useState<{ from: string | null; to: string | null }>({ from: null, to: null });
   const [adapterFilter, setAdapterFilter] = useState<string[]>([]);
   const [repoFilter, setRepoFilter] = useState<string[]>([]);
+  const [analyticsExpanded, setAnalyticsExpanded] = useState(false);
 
   const adapterDataSource = useArrayDataSource({ items: ADAPTER_OPTIONS }, []);
 
@@ -348,6 +350,20 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
   // Sessions grouped by day
   const groupedSessions = useMemo(() => groupByDay(filteredSessions), [filteredSessions]);
+
+  // Daily spend for analytics panel
+  const dailySpend = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of filteredSessions) {
+      if (s.metrics?.totalCostUsd != null) {
+        const key = toLocalDateKey(s.createdAt);
+        map.set(key, (map.get(key) ?? 0) + s.metrics.totalCostUsd);
+      }
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, cost]) => ({ date, cost }));
+  }, [filteredSessions]);
 
   // Aggregated summary for filtered sessions
   const summary = useMemo(() => {
@@ -523,6 +539,35 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
           </div>
         ) : (
           <div data-testid="session-list">
+            {/* Analytics panel */}
+            <Panel cx={styles.analyticsPanel} rawProps={{ 'data-testid': 'analytics-panel' }}>
+              <FlexRow
+                alignItems="center"
+                padding="12"
+                spacing="6"
+                onClick={() => setAnalyticsExpanded((v) => !v)}
+                rawProps={{
+                  style: { cursor: 'pointer' },
+                  'data-testid': 'analytics-toggle',
+                  role: 'button',
+                  'aria-expanded': analyticsExpanded,
+                }}
+              >
+                <Text size="18" fontWeight="600">
+                  {analyticsExpanded ? '▾' : '▸'} Daily Spend
+                </Text>
+                <FlexSpacer />
+                <Text size="14" color="secondary">
+                  {dailySpend.length} day{dailySpend.length !== 1 ? 's' : ''}
+                </Text>
+              </FlexRow>
+              {analyticsExpanded && (
+                <div style={{ padding: '0 12px 12px' }}>
+                  <DailySpendChart data={dailySpend} />
+                </div>
+              )}
+            </Panel>
+
             {groupedSessions.map(({ dateKey, items }) => (
               <div key={dateKey} className={styles.dayGroup}>
                 <div className={styles.dayHeading} data-testid="day-heading">

@@ -10,6 +10,11 @@ vi.mock('../src/renderer/pages/SessionBrowser.module.css', () => ({
   default: new Proxy({}, { get: (_target, prop) => String(prop) }),
 }));
 
+// Stub DailySpendChart to avoid SVG rendering complexity in SessionBrowser tests
+vi.mock('../src/renderer/components/DailySpendChart', () => ({
+  DailySpendChart: () => <div data-testid="daily-spend-chart-stub" />,
+}));
+
 // ── Fixture factories ─────────────────────────────────────────────────────────
 
 function makeMetrics(overrides: Partial<SessionListMetricsIpc> = {}): SessionListMetricsIpc {
@@ -480,5 +485,103 @@ describe('SessionBrowser', () => {
     unmount();
 
     expect(unsubscribe).toHaveBeenCalled();
+  });
+
+  // ── Analytics panel tests ──────────────────────────────────────────────────
+
+  it('renders analytics panel when sessions are loaded', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ id: 'session-1', createdAt: '2024-12-01T10:00:00.000Z' }),
+    ]);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('analytics-panel')).toBeDefined();
+    });
+  });
+
+  it('analytics panel is collapsed by default and shows toggle', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ id: 'session-1', createdAt: '2024-12-01T10:00:00.000Z' }),
+    ]);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('analytics-toggle')).toBeDefined();
+    });
+
+    const toggle = screen.getByTestId('analytics-toggle');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    // Chart should not be visible when collapsed
+    expect(screen.queryByTestId('daily-spend-chart-stub')).toBeNull();
+  });
+
+  it('analytics panel expands when toggle is clicked', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ id: 'session-1', createdAt: '2024-12-01T10:00:00.000Z', metrics: makeMetrics({ totalCostUsd: 0.25 }) }),
+    ]);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('analytics-toggle')).toBeDefined();
+    });
+
+    const toggle = screen.getByTestId('analytics-toggle');
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    expect(screen.getByTestId('daily-spend-chart-stub')).toBeDefined();
+  });
+
+  it('analytics panel shows correct day count', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ id: 's1', createdAt: '2024-12-01T10:00:00.000Z' }),
+      makeSession({ id: 's2', createdAt: '2024-12-01T12:00:00.000Z' }),
+      makeSession({ id: 's3', createdAt: '2024-12-02T10:00:00.000Z' }),
+    ]);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('analytics-panel')).toBeDefined();
+    });
+
+    // Should show "2 days" since we have sessions on 2 distinct days with cost data
+    const panel = screen.getByTestId('analytics-panel');
+    expect(panel.textContent).toContain('day');
+  });
+
+  it('collapses analytics panel when toggle is clicked again', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ id: 'session-1', createdAt: '2024-12-01T10:00:00.000Z', metrics: makeMetrics({ totalCostUsd: 0.10 }) }),
+    ]);
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('analytics-toggle')).toBeDefined();
+    });
+
+    const toggle = screen.getByTestId('analytics-toggle');
+
+    // Expand
+    fireEvent.click(toggle);
+    await waitFor(() => {
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    // Collapse
+    fireEvent.click(toggle);
+    await waitFor(() => {
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    expect(screen.queryByTestId('daily-spend-chart-stub')).toBeNull();
   });
 });
