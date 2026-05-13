@@ -1,7 +1,7 @@
 /**
  * Unit tests for the main-process startup guards in index.ts:
- *   1. Single-instance lock   — app.quit() when lock not acquired
- *   2. Uncaught-exception handler — EIO/EPIPE silenced, others → process.exit(1)
+ *   1. Single-instance lock   — app.quit() + zero init on the losing instance
+ *   2. Uncaught-exception handler — narrowed pipe-error suppression
  *   3. Second-instance handler   — focus / restore existing window
  *
  * Strategy: mock Electron and all heavy deps, then dynamically `import()`
@@ -105,8 +105,8 @@ vi.mock('@agent-profiler/core', () => ({
 describe('main process guards (index.ts)', () => {
   // Listeners present before each test — used to identify module-added ones.
   let preTestUncaughtListeners: ((...args: unknown[]) => void)[];
-  // MockInstance<never, …> — Electron augments NodeJS.Process and removes 'exit'
-  // from the constraint vi.spyOn<T, K> checks, so we type the spy broadly here.
+  // MockInstance typed broadly — Electron's process augmentation removes 'exit'
+  // from vi.spyOn's keyof constraint, so we avoid the explicit generic here.
   let processExitSpy: MockInstance;
 
   beforeEach(() => {
@@ -145,17 +145,41 @@ describe('main process guards (index.ts)', () => {
       expect(mockApp.quit).toHaveBeenCalledOnce();
     });
 
+    it('registers no IPC handlers when the lock is not acquired', async () => {
+      mockApp.requestSingleInstanceLock.mockReturnValue(false);
+      await import('./index');
+      expect(mockIpcMain.handle).not.toHaveBeenCalled();
+    });
+
     it('does not call app.quit() when the lock is acquired', async () => {
       mockApp.requestSingleInstanceLock.mockReturnValue(true);
       await import('./index');
       expect(mockApp.quit).not.toHaveBeenCalled();
     });
+
+    it('registers IPC handlers when the lock is acquired', async () => {
+      mockApp.requestSingleInstanceLock.mockReturnValue(true);
+      await import('./index');
+      expect(mockIpcMain.handle).toHaveBeenCalled();
+    });
   });
 
   // ── 2. Uncaught-exception handler ────────────────────────────────────────
+  // Suppression requires ALL three conditions simultaneously:
+  //   • NODE_ENV === 'development'
+  //   • error.syscall === 'write'
+  //   • error.code === 'EIO' or 'EPIPE'
 
   describe('uncaughtException handler', () => {
     let handler: (error: Error) => void;
+
+    // Helper to build an ErrnoException with arbitrary fields.
+    function makeError(
+      message: string,
+      fields: { code?: string; syscall?: string },
+    ): Error {
+      return Object.assign(new Error(message), fields);
+    }
 
     beforeEach(async () => {
       mockApp.requestSingleInstanceLock.mockReturnValue(true);
@@ -171,25 +195,55 @@ describe('main process guards (index.ts)', () => {
       handler = last;
     });
 
-    it('silently ignores EIO errors', () => {
-      const error = Object.assign(new Error('read EIO'), { code: 'EIO' });
-      expect(() => handler(error)).not.toThrow();
-      expect(processExitSpy).not.toHaveBeenCalled();
+    describe('in development mode', () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      beforeEach(() => { process.env.NODE_ENV = 'development'; });
+      afterEach(() => { process.env.NODE_ENV = originalNodeEnv; });
+
+      it('silently ignores a write EIO error', () => {
+        const error = makeError('read EIO', { code: 'EIO', syscall: 'write' });
+        expect(() => handler(error)).not.toThrow();
+        expect(processExitSpy).not.toHaveBeenCalled();
+      });
+
+      it('silently ignores a write EPIPE error', () => {
+        const error = makeError('write EPIPE broken pipe', { code: 'EPIPE', syscall: 'write' });
+        expect(() => handler(error)).not.toThrow();
+        expect(processExitSpy).not.toHaveBeenCalled();
+      });
+
+      it('crashes for EIO on a non-write syscall (e.g. read)', () => {
+        const error = makeError('read EIO', { code: 'EIO', syscall: 'read' });
+        expect(() => handler(error)).toThrow('process.exit called');
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+      });
+
+      it('crashes for ENOENT regardless of syscall', () => {
+        const error = makeError('file not found', { code: 'ENOENT', syscall: 'write' });
+        expect(() => handler(error)).toThrow('process.exit called');
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+      });
     });
 
-    it('silently ignores EPIPE errors', () => {
-      const error = Object.assign(new Error('write EPIPE broken pipe'), { code: 'EPIPE' });
-      expect(() => handler(error)).not.toThrow();
-      expect(processExitSpy).not.toHaveBeenCalled();
+    describe('in production mode', () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      beforeEach(() => { process.env.NODE_ENV = 'production'; });
+      afterEach(() => { process.env.NODE_ENV = originalNodeEnv; });
+
+      it('crashes for a write EIO error (pipe suppression is dev-only)', () => {
+        const error = makeError('write EIO', { code: 'EIO', syscall: 'write' });
+        expect(() => handler(error)).toThrow('process.exit called');
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+      });
+
+      it('crashes for a write EPIPE error (pipe suppression is dev-only)', () => {
+        const error = makeError('write EPIPE', { code: 'EPIPE', syscall: 'write' });
+        expect(() => handler(error)).toThrow('process.exit called');
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+      });
     });
 
-    it('calls process.exit(1) for non-pipe errors', () => {
-      const error = Object.assign(new Error('file not found'), { code: 'ENOENT' });
-      expect(() => handler(error)).toThrow('process.exit called');
-      expect(processExitSpy).toHaveBeenCalledWith(1);
-    });
-
-    it('calls process.exit(1) for errors with no code', () => {
+    it('crashes for errors with no code', () => {
       const error = new Error('unexpected failure');
       expect(() => handler(error)).toThrow('process.exit called');
       expect(processExitSpy).toHaveBeenCalledWith(1);
