@@ -82,6 +82,7 @@ export const ipcChannels = {
   SETTINGS_GET: 'settings:get',
   SETTINGS_SET: 'settings:set',
   SETTINGS_TEST_CONNECTION: 'settings:testConnection',
+  SETTINGS_LIST_WORKSPACES: 'settings:listWorkspaces',
 } as const;
 
 /**
@@ -106,3 +107,32 @@ export const testConnectionResultSchema = z.object({
 });
 
 export type TestConnectionResultIpc = z.infer<typeof testConnectionResultSchema>;
+
+/**
+ * Schema for a discovered Azure Log Analytics workspace.
+ */
+export const logAnalyticsWorkspaceSchema = z.object({
+  customerId: z.string(),
+  name: z.string(),
+  resourceGroup: z.string(),
+  location: z.string(),
+  subscriptionName: z.string(),
+});
+
+export type LogAnalyticsWorkspaceIpc = z.infer<typeof logAnalyticsWorkspaceSchema>;
+
+/**
+ * Discriminated result schema for listing Log Analytics workspaces.
+ */
+export const listWorkspacesResultSchema = z.discriminatedUnion('success', [
+  z.object({
+    success: z.literal(true),
+    workspaces: z.array(logAnalyticsWorkspaceSchema),
+  }),
+  z.object({
+    success: z.literal(false),
+    error: z.string(),
+  }),
+]);
+
+export type ListWorkspacesResultIpc = z.infer<typeof listWorkspacesResultSchema>;

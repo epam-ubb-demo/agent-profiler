@@ -1,4 +1,4 @@
-import type { AdapterTypeIpc, AppInsightsSettingsIpc, TestConnectionResultIpc } from '@agent-profiler/core';
+import type { AdapterTypeIpc, AppInsightsSettingsIpc, ListWorkspacesResultIpc, TestConnectionResultIpc } from '@agent-profiler/core';
 
 /**
  * Typed API exposed to the renderer process via contextBridge.
@@ -46,6 +46,8 @@ export interface ElectronApi {
     /** Save Application Insights settings and reconfigure the data source. */
     set: (settings: AppInsightsSettingsIpc) => Promise<void>;
     testConnection: () => Promise<TestConnectionResultIpc>;
+    /** Discover available Log Analytics workspaces via Azure CLI. */
+    listWorkspaces: () => Promise<ListWorkspacesResultIpc>;
   };
 }
 

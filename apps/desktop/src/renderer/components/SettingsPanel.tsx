@@ -1,7 +1,8 @@
-import type { AppInsightsSettingsIpc, TestConnectionResultIpc } from '@agent-profiler/core';
-import { Button, FlexRow, ModalFooter, ModalHeader, Panel, Text, TextInput } from '@epam/uui';
-import { CheckCircle, Loader2, Settings, XCircle } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import type { AppInsightsSettingsIpc, LogAnalyticsWorkspaceIpc, TestConnectionResultIpc } from '@agent-profiler/core';
+import { Button, FlexRow, ModalFooter, ModalHeader, Panel, PickerInput, Text, TextInput } from '@epam/uui';
+import { useArrayDataSource } from '@epam/uui-core';
+import { CheckCircle, Loader2, Search, Settings, XCircle } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { TimeRangePicker } from '@/components/TimeRangePicker';
 import type { TimeRangeValue } from '@/components/TimeRangePicker';
@@ -26,6 +27,9 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [workspaces, setWorkspaces] = useState<LogAnalyticsWorkspaceIpc[]>([]);
+  const [discovering, setDiscovering] = useState(false);
+  const [discoverError, setDiscoverError] = useState<string | null>(null);
 
   // Load settings when the dialog opens
   useEffect(() => {
@@ -101,6 +105,36 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
 
   const handleClose = useCallback(() => setOpen(false), []);
 
+  const handleDiscoverWorkspaces = useCallback(async () => {
+    setDiscovering(true);
+    setDiscoverError(null);
+    try {
+      const result = await window.electronApi.settings.listWorkspaces();
+      if (result.success) {
+        setWorkspaces(result.workspaces);
+      } else {
+        setDiscoverError(result.error);
+        setWorkspaces([]);
+      }
+    } catch (err) {
+      setDiscoverError(err instanceof Error ? err.message : 'Failed to discover workspaces.');
+      setWorkspaces([]);
+    } finally {
+      setDiscovering(false);
+    }
+  }, []);
+
+  const workspaceItems = useMemo(
+    () =>
+      workspaces.map((w) => ({
+        id: w.customerId,
+        name: `${w.name} (${w.resourceGroup})`,
+      })),
+    [workspaces],
+  );
+
+  const workspaceDataSource = useArrayDataSource({ items: workspaceItems }, [workspaceItems]);
+
   return (
     <>
       <Button
@@ -155,9 +189,37 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
 
               {/* Workspace ID */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <Text fontSize="14" fontWeight="600">
-                  <label htmlFor="workspace-id">Workspace ID</label>
-                </Text>
+                <FlexRow spacing="6" alignItems="center">
+                  <Text fontSize="14" fontWeight="600">
+                    <label htmlFor="workspace-id">Workspace ID</label>
+                  </Text>
+                  <Button
+                    caption={discovering ? 'Discovering…' : 'Discover'}
+                    icon={discovering ? Loader2 : Search}
+                    fill="outline"
+                    color="secondary"
+                    size="24"
+                    isDisabled={discovering}
+                    onClick={() => void handleDiscoverWorkspaces()}
+                  />
+                </FlexRow>
+
+                {workspaceItems.length > 0 && (
+                  <PickerInput
+                    dataSource={workspaceDataSource}
+                    value={workspaceId || null}
+                    onValueChange={(v) => {
+                      setWorkspaceId(v ?? '');
+                      setTestResult(null);
+                      setSaveError(null);
+                    }}
+                    selectionMode="single"
+                    valueType="id"
+                    placeholder="Select a workspace…"
+                    size="36"
+                  />
+                )}
+
                 <TextInput
                   id="workspace-id"
                   value={workspaceId}
@@ -169,6 +231,13 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
                   placeholder="Enter your Log Analytics Workspace ID"
                   size="36"
                 />
+
+                {discoverError && (
+                  <FlexRow spacing="6" alignItems="center">
+                    <XCircle size={16} style={{ color: 'var(--uui-critical-50)', flexShrink: 0 }} />
+                    <Text fontSize="13" color="critical">{discoverError}</Text>
+                  </FlexRow>
+                )}
               </div>
 
               {/* Time Range Picker */}

@@ -68,6 +68,8 @@ export {
   costConfidenceSchema,
   appInsightsSettingsSchema,
   testConnectionResultSchema,
+  logAnalyticsWorkspaceSchema,
+  listWorkspacesResultSchema,
   ipcChannels,
 } from './ipc-schemas';
 export type {
@@ -79,4 +81,6 @@ export type {
   CostConfidence,
   AppInsightsSettingsIpc,
   TestConnectionResultIpc,
+  LogAnalyticsWorkspaceIpc,
+  ListWorkspacesResultIpc,
 } from './ipc-schemas';

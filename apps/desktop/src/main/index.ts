@@ -4,11 +4,13 @@ import {
   ipcChannels,
   appInsightsSettingsSchema,
   testConnectionResultSchema,
+  listWorkspacesResultSchema,
 } from '@agent-profiler/core';
 import type { AppInsightsSettingsIpc } from '@agent-profiler/core';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 
 import { AppUpdater } from './auto-updater';
+import { listLogAnalyticsWorkspaces } from './azure-workspaces';
 import { DataSourceManager } from './data-source-manager';
 import { registerPdfExportHandlers, registerPdfDialogHandler } from './pdf-export';
 import { SessionIndexer } from './session-indexer';
@@ -198,6 +200,11 @@ if (gotLock) {
   ipcMain.handle(ipcChannels.SETTINGS_TEST_CONNECTION, async () => {
     const result = await manager.testConnection();
     return testConnectionResultSchema.parse(result);
+  });
+
+  ipcMain.handle(ipcChannels.SETTINGS_LIST_WORKSPACES, async () => {
+    const result = await listLogAnalyticsWorkspaces();
+    return listWorkspacesResultSchema.parse(result);
   });
 
   app.whenReady().then(async () => {
