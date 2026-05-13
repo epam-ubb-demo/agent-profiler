@@ -139,6 +139,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
               zIndex: 1001,
               borderRadius: 6,
               overflow: 'hidden',
+              background: 'var(--uui-surface-main)',
             }}
             rawProps={{ role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'settings-dialog-title' }}
           >
