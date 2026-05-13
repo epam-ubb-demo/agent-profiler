@@ -25,7 +25,7 @@ export default defineConfig({
     },
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
+    plugins: [externalizeDepsPlugin({ exclude: ['@agent-profiler/core'] })],
     build: {
       rollupOptions: {
         input: {
