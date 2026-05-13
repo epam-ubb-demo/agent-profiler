@@ -11,6 +11,7 @@ import { memo } from 'react';
 
 import { CompactionsTable } from './CompactionsTable';
 import type { ContextWindowData } from './context-window';
+import { ContextTokenTimeline } from './ContextTokenTimeline';
 import { ContextUtilisationChart } from './ContextUtilisationChart';
 import { ContextWindowBar } from './ContextWindowBar';
 import type { EventTypeRow } from './event-type-stats';
@@ -59,6 +60,10 @@ function TabOverviewInner({
 
           <Section title="Context utilisation over time">
             <ContextUtilisationChart samples={utilisationSamples} />
+          </Section>
+
+          <Section title="Token usage over time">
+            <ContextTokenTimeline samples={utilisationSamples} compactions={compactions} />
           </Section>
         </div>
 

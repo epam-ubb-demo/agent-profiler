@@ -21,6 +21,9 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 ### Added
 
+- **Context token timeline chart** — new SVG area chart in the Overview tab showing absolute token usage over time. Compaction events are marked with vertical dashed lines and downward triangles; a horizontal dashed line indicates the context-window limit. Y-axis uses a "nice ceiling" algorithm for clean tick marks.
+- **Model token distribution donut** — new SVG donut chart in the Cost & Models tab showing per-model token distribution as proportional arcs. Models representing less than 3 % of total are collapsed into an "Other" segment when more than 5 models are present. Centre displays the grand total token count.
+- **Session list filters, day grouping, metrics cards & summary bar** — the session browser now features filter dropdowns (status, outcome, model), day-grouped collapsible sections, metric cards (avg duration, avg cost, avg tokens), and a reactive summary bar showing filtered totals.
 - Non-blocking background refresh spinner in the Session Browser header — a small spinner appears next to the session count badge while a background rescan is in progress, without replacing the session list.
 - Push-based IPC for real-time session list updates — renderer auto-refreshes when sessions change on disk via `SESSION_LIST_UPDATED` (#320).
 - **Session list performance refactor** — wired `SessionIndexer` into the Electron app lifecycle so `SESSION_LIST` now returns from the in-memory cache, `SESSION_SET_ROOT_DIR` delegates cache invalidation and rescanning, startup begins with a disk-backed indexer, and shutdown flushes cache while stopping the watcher (#317)

@@ -5,7 +5,7 @@
  * hottest token consumption table.
  */
 
-import type { SubagentInvocation } from '@agent-profiler/core';
+import type { ModelMetrics, SubagentInvocation } from '@agent-profiler/core';
 import { memo } from 'react';
 
 import { costKpiSeverity } from './cost-kpis';
@@ -13,6 +13,7 @@ import type { HotConsumptionResult } from './hot-consumption';
 import { HotConsumptionTable } from './HotConsumptionTable';
 import type { ModelSpendResult } from './model-spend';
 import { ModelSpendTable } from './ModelSpendTable';
+import { ModelTokenDistribution } from './ModelTokenDistribution';
 import { Section } from './Section';
 import type { StatEntry } from './session-stats';
 import { SubagentTable } from './SubagentTable';
@@ -26,6 +27,7 @@ import { TabKpiStrip } from './TabKpiStrip';
 export interface TabCostModelsProps {
   readonly modelSpend: ModelSpendResult | null;
   readonly modelColours: Record<string, string>;
+  readonly modelMetrics: readonly ModelMetrics[];
   readonly isLive: boolean;
   readonly subagents: readonly SubagentInvocation[];
   readonly hotConsumption: HotConsumptionResult;
@@ -44,6 +46,7 @@ export interface TabCostModelsProps {
 function TabCostModelsInner({
   modelSpend,
   modelColours,
+  modelMetrics,
   isLive,
   subagents,
   hotConsumption,
@@ -56,6 +59,11 @@ function TabCostModelsInner({
     <div data-testid="tab-cost-models">
       {/* KPI strip */}
       <TabKpiStrip stats={costKpis} severityFn={costKpiSeverity} testIdPrefix="cost-kpi" />
+
+      {/* Token distribution by model */}
+      <Section title="Token distribution by model">
+        <ModelTokenDistribution modelColours={modelColours} modelMetrics={modelMetrics} />
+      </Section>
 
       {/* Per-model spend */}
       {modelSpend && (

@@ -50,6 +50,12 @@ export type { ContextWindowBarProps } from './ContextWindowBar';
 export { ContextUtilisationChart } from './ContextUtilisationChart';
 export type { ContextUtilisationChartProps } from './ContextUtilisationChart';
 
+export { ContextTokenTimeline } from './ContextTokenTimeline';
+export type { ContextTokenTimelineProps } from './ContextTokenTimeline';
+
+export { ModelTokenDistribution } from './ModelTokenDistribution';
+export type { ModelTokenDistributionProps } from './ModelTokenDistribution';
+
 export { ToolTokenTable } from './ToolTokenTable';
 export type { ToolTokenTableProps } from './ToolTokenTable';
 

@@ -645,3 +645,14 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Token Timeline Chart (SVG) ----------------------------------------- */
+
+.tokenTimelineContainer {
+  padding: 8px 0;
+}
+
+.tokenTimelineSvg {
+  width: 100%;
+  height: auto;
+}

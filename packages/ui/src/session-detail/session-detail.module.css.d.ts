@@ -59,6 +59,8 @@ declare const styles: {
   readonly tabBar: string;
   readonly tabContent: string;
   readonly tableFilter: string;
+  readonly tokenTimelineContainer: string;
+  readonly tokenTimelineSvg: string;
   readonly toolNode: string;
   readonly totalsRow: string;
   readonly turnPanel: string;
