@@ -120,6 +120,11 @@ export class LocalFsDataSource implements SessionDataSource {
     this.cache.clear();
   }
 
+  /** Remove a single session from the in-memory cache so the next read re-parses from disk. */
+  invalidateSession(sessionId: string): void {
+    this.cache.delete(sessionId);
+  }
+
   private async detectAdapter(dirPath: string): Promise<AdapterType | null> {
     for (const sig of ADAPTER_SIGNATURES) {
       try {

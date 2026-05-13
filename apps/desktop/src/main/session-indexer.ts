@@ -243,6 +243,9 @@ export class SessionIndexer extends EventEmitter {
     try {
       const myGeneration = this.scanGeneration;
 
+      // Invalidate cached parse so any subsequent getSession() re-reads from disk
+      this.manager.invalidateSession(sessionId);
+
       const items = await this.manager.listSessions();
       if (this.scanGeneration !== myGeneration || this.stopRequested) return;
 
@@ -287,6 +290,9 @@ export class SessionIndexer extends EventEmitter {
   private async handleChangeEvent(sessionId: string): Promise<void> {
     try {
       const myGeneration = this.scanGeneration;
+
+      // Invalidate cached parse so we re-read the updated files from disk
+      this.manager.invalidateSession(sessionId);
 
       const session = await this.manager.getSession(sessionId);
       if (this.scanGeneration !== myGeneration || this.stopRequested) return;

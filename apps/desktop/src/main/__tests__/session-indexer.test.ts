@@ -78,6 +78,7 @@ function makeMockDataSourceManager(overrides: Partial<DataSourceManager> = {}): 
     listSessions: vi.fn<() => Promise<SessionListItem[]>>().mockResolvedValue([]),
     getSession: vi.fn<(id: string) => Promise<Session | null>>().mockResolvedValue(null),
     setLocalRootDir: vi.fn<(dir: string) => Promise<boolean>>().mockResolvedValue(true),
+    invalidateSession: vi.fn<(id: string) => void>(),
     ...overrides,
   } as unknown as DataSourceManager;
 }

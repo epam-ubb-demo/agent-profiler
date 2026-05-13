@@ -154,6 +154,8 @@ if (gotLock) {
   });
 
   ipcMain.handle(ipcChannels.SESSION_OPEN, async (_event, sessionId: string) => {
+    // Always invalidate the cache so the detail view shows the latest data
+    manager.invalidateSession(sessionId);
     return manager.getSession(sessionId);
   });
 
