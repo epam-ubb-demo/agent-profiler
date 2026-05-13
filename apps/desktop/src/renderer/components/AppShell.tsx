@@ -92,7 +92,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <MainMenu items={menuItems} />
-      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>{children}</div>
+      <div style={{ flex: 1, position: 'relative' }}>{children}</div>
     </div>
   );
 }

@@ -42,14 +42,14 @@ describe('ContextTokenTimeline', () => {
         percentage: 50,
         used: 5000,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
       {
         timestamp: '2024-01-01T10:00:10Z',
         percentage: 60,
         used: 6000,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
     ];
 
@@ -76,14 +76,14 @@ describe('ContextTokenTimeline', () => {
         percentage: 50,
         used: 5000,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
       {
         timestamp: '2024-01-01T10:00:10Z',
         percentage: 60,
         used: 6000,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
     ];
 
@@ -128,7 +128,7 @@ describe('ContextTokenTimeline', () => {
         percentage: 50,
         used: 5000,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
     ];
 
@@ -154,14 +154,14 @@ describe('ContextTokenTimeline', () => {
         percentage: 50,
         used: 1200,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
       {
         timestamp: '2024-01-01T10:00:10Z',
         percentage: 60,
         used: 6000,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
     ];
 
@@ -186,14 +186,14 @@ describe('ContextTokenTimeline', () => {
         percentage: 50,
         used: 5000,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
       {
         timestamp: '2024-01-01T10:00:10Z',
         percentage: 60,
         used: 6000,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
     ];
 
@@ -223,7 +223,7 @@ describe('ContextTokenTimeline', () => {
         percentage: 50,
         used: 5000,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
     ];
 
@@ -250,14 +250,14 @@ describe('ContextTokenTimeline', () => {
         percentage: 50,
         used: 5000,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
       {
         timestamp: '2024-01-01T10:00:10Z',
         percentage: 60,
         used: 6000,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
     ];
 
@@ -291,21 +291,21 @@ describe('ContextTokenTimeline', () => {
         percentage: 50,
         used: 5000,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
       {
         timestamp: '2024-01-01T10:00:10Z',
         percentage: 60,
         used: 6000,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
       {
         timestamp: '2024-01-01T10:00:20Z',
         percentage: 55,
         used: 5500,
         total: 10000,
-        buckets: {},
+        buckets: { system: 0, conversation: 0, toolDefinitions: 0 },
       },
     ];
 
@@ -344,6 +344,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
     ];
 
@@ -369,6 +372,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 100,
         cacheWriteTokens: 50,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
     ];
 
@@ -407,6 +413,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
       {
         model: 'claude-3-sonnet',
@@ -415,6 +424,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 500,
         cacheWriteTokens: 200,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
       {
         model: 'claude-3-opus',
@@ -423,6 +435,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
     ];
 
@@ -460,6 +475,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
       {
         model: 'gpt-4-turbo',
@@ -468,6 +486,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
       {
         model: 'claude-3-opus',
@@ -476,6 +497,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
       {
         model: 'gemini-pro',
@@ -484,6 +508,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
       {
         model: 'mistral-large',
@@ -492,6 +519,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
       {
         model: 'llama-2',
@@ -500,10 +530,13 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
     ];
 
-    const { container } = render(
+    render(
       <ModelTokenDistribution
         modelColours={{
           'claude-3-sonnet': '#ff0000',
@@ -533,6 +566,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 500,
         cacheWriteTokens: 200,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
     ];
 
@@ -564,6 +600,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
       {
         model: 'gpt-4-turbo',
@@ -572,6 +611,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
     ];
 
@@ -608,6 +650,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
     ];
 
@@ -645,6 +690,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
     ];
 
@@ -679,6 +727,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
       {
         model: 'model-b',
@@ -687,6 +738,9 @@ describe('ModelTokenDistribution', () => {
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
         reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
       },
     ];
 
