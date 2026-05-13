@@ -5,8 +5,8 @@ declare const styles: {
   readonly compactStatCard: string;
   readonly compactStatLabel: string;
   readonly compactStatValue: string;
-  readonly contextBarContainer: string;
-  readonly contextBarSvg: string;
+  readonly contextDonutContainer: string;
+  readonly contextDonutSvg: string;
   readonly dataTable: string;
   readonly drillDownArrow: string;
   readonly drillDownButton: string;

@@ -8,6 +8,8 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 ### Changed
 
+- Context window composition visualisation replaced from a stacked horizontal bar chart to an SVG donut chart. Each segment (System prompt, Conversation, Tool definitions) is shown as a proportional arc with the total token count centred in the ring and a colour-coded legend below. The same segment colours and the `ContextWindowBarProps` interface are preserved; the component name and export remain `ContextWindowBar`.
+
 - "Premium cost" column in Cost & Models table renamed to "Premium Request cost" and now shows `totalPremiumRequests × $0.04` instead of token-based pricing estimate. Token-based cost remains in the "Token USD" column.
 - Added "Premium Requests" count column to Cost & Models table. Columns reordered: Model, API Requests, Premium Requests, token columns, Premium Request cost, Token USD. "Est. USD" renamed to "Token USD". "Requests" renamed to "API Requests".
 - Cost calculation now uses overlapping-input model — `inputTokens` is understood to include `cacheReadTokens`, so non-cached input is computed as `max(0, inputTokens − cacheReadTokens)` before applying the input rate. Cache hit rate is now `cacheReadTokens / inputTokens`.

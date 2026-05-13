@@ -207,16 +207,19 @@
   border-top: 2px solid var(--uui-divider);
 }
 
-/* --- Context Window Bar (SVG) ------------------------------------------- */
+/* --- Context Window Donut (SVG) ----------------------------------------- */
 
-.contextBarContainer {
+.contextDonutContainer {
   margin-top: 12px;
 }
 
-.contextBarSvg {
-  width: 100%;
-  height: auto;
+.contextDonutSvg {
   display: block;
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  /* Centre within the column on wider screens. */
+  margin: 0 auto;
 }
 
 /* --- Fan-out Timeline Table --------------------------------------------- */
