@@ -44,6 +44,7 @@ const api: ElectronApi = {
     get: () => ipcRenderer.invoke('settings:get'),
     set: (settings) => ipcRenderer.invoke('settings:set', settings),
     testConnection: () => ipcRenderer.invoke('settings:testConnection'),
+    listWorkspaces: () => ipcRenderer.invoke('settings:listWorkspaces'),
   },
 };
 

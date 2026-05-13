@@ -103,6 +103,13 @@ export class DataSourceManager {
     return null;
   }
 
+  /**
+   * Invalidate cached session data so the next `getSession()` re-parses from disk.
+   */
+  invalidateSession(sessionId: string): void {
+    this.localSource.invalidateSession(sessionId);
+  }
+
   // ---------------------------------------------------------------------------
   // Local source management
   // ---------------------------------------------------------------------------
