@@ -10,6 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import { ZodError } from 'zod';
 
+import { syncSettingsSchema, syncStatusSchema } from '../ipc-schemas';
 import {
   sessionSchema,
   toolCallSchema,
@@ -31,8 +32,6 @@ import {
   syncMarkerSchema,
   enrichmentRowSchema,
 } from '../schemas/index';
-
-import { syncSettingsSchema, syncStatusSchema } from '../ipc-schemas';
 
 import { loadGoldenSession } from './fixtures/loader';
 
