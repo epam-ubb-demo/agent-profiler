@@ -1,5 +1,6 @@
 import { Badge, Button, FlexRow, FlexSpacer, Panel, PickerInput, RangeDatePicker, Spinner, Text, TextInput, Tooltip } from '@epam/uui';
 import { useArrayDataSource } from '@epam/uui-core';
+import { ArrowDownToLine, ArrowUpFromLine, Clock, DollarSign, Recycle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { SessionListItemIpc, SessionListMetricsIpc } from '../../preload/api';
@@ -138,51 +139,45 @@ function SessionCard({ session, onClick }: SessionCardProps) {
           />
         </FlexRow>
 
-        {/* Row 2: hero KPIs — duration + cost */}
+        {/* Row 2: unified metrics strip */}
         {m && (
-          <div className={styles.kpiBar}>
-            <Tooltip content={`Wall-clock time: ${formatDuration(m.wallTimeMs)}`}>
-              <div className={styles.kpiItem} data-testid="duration-pill">
-                <Text size="18" color="secondary">Duration</Text>
-                <Text size="24" fontWeight="600">{formatDuration(m.wallTimeMs)}</Text>
+          <div className={styles.metricsRow} data-testid="metrics-row">
+            <Tooltip content={`Cost confidence: ${m.costConfidence}`}>
+              <div className={styles.metricPill} data-testid="cost-pill">
+                <DollarSign size={14} />
+                <span className={styles.metricLabel}>Cost</span>
+                <span className={styles.metricValue}>{formatCost(m.totalCostUsd, m.costConfidence)}</span>
               </div>
             </Tooltip>
-            <Tooltip content={`Cost confidence: ${m.costConfidence}`}>
-              <div className={styles.kpiItem} data-testid="cost-pill">
-                <Text size="18" color="secondary">Cost</Text>
-                <Text size="24" fontWeight="600">{formatCost(m.totalCostUsd, m.costConfidence)}</Text>
+            <Tooltip content={`Input tokens: ${m.totalInputTokens.toLocaleString()}`}>
+              <div className={styles.metricPill} data-testid="token-input-pill">
+                <ArrowDownToLine size={14} />
+                <span className={styles.metricLabel}>In</span>
+                <span className={styles.metricValue}>{formatTokenCount(m.totalInputTokens)}</span>
+              </div>
+            </Tooltip>
+            <Tooltip content={`Output tokens: ${m.totalOutputTokens.toLocaleString()}`}>
+              <div className={styles.metricPill} data-testid="token-output-pill">
+                <ArrowUpFromLine size={14} />
+                <span className={styles.metricLabel}>Out</span>
+                <span className={styles.metricValue}>{formatTokenCount(m.totalOutputTokens)}</span>
+              </div>
+            </Tooltip>
+            <Tooltip content={`Cache-read tokens: ${m.totalCacheReadTokens.toLocaleString()}`}>
+              <div className={styles.metricPill} data-testid="token-cache-pill">
+                <Recycle size={14} />
+                <span className={styles.metricLabel}>Cached</span>
+                <span className={styles.metricValue}>{formatTokenCount(m.totalCacheReadTokens)}</span>
+              </div>
+            </Tooltip>
+            <Tooltip content={`Wall-clock time: ${formatDuration(m.wallTimeMs)}`}>
+              <div className={styles.metricPill} data-testid="duration-pill">
+                <Clock size={14} />
+                <span className={styles.metricLabel}>Time</span>
+                <span className={styles.metricValue}>{formatDuration(m.wallTimeMs)}</span>
               </div>
             </Tooltip>
           </div>
-        )}
-
-        {/* Row 3: token counts */}
-        {m && (
-          <FlexRow spacing="6" cx={styles.cardTokens}>
-            <Badge
-              color="info"
-              fill="outline"
-              caption={`↓ ${formatTokenCount(m.totalInputTokens)}`}
-              size="18"
-              rawProps={{ 'data-testid': 'token-input-badge' }}
-            />
-            <Badge
-              color="warning"
-              fill="outline"
-              caption={`↑ ${formatTokenCount(m.totalOutputTokens)}`}
-              size="18"
-              rawProps={{ 'data-testid': 'token-output-badge' }}
-            />
-            {m.totalCacheReadTokens > 0 && (
-              <Badge
-                color="success"
-                fill="outline"
-                caption={`♻ ${formatTokenCount(m.totalCacheReadTokens)}`}
-                size="18"
-                rawProps={{ 'data-testid': 'token-cache-badge' }}
-              />
-            )}
-          </FlexRow>
         )}
 
         {/* Row 4: repository + date + path */}

@@ -265,11 +265,11 @@ describe('SessionBrowser', () => {
     await render(<SessionBrowser onSelectSession={vi.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('token-input-badge')).toBeDefined();
+      expect(screen.getByTestId('token-input-pill')).toBeDefined();
     });
 
-    expect(screen.getByTestId('token-input-badge').textContent).toContain('5.0K');
-    expect(screen.getByTestId('token-output-badge').textContent).toContain('3.0K');
+    expect(screen.getByTestId('token-input-pill').textContent).toContain('5.0K');
+    expect(screen.getByTestId('token-output-pill').textContent).toContain('3.0K');
   });
 
   it('handles null metrics gracefully without crashing', async () => {
@@ -283,8 +283,8 @@ describe('SessionBrowser', () => {
       expect(screen.getByTestId('session-card')).toBeDefined();
     });
 
-    // No token badges rendered when metrics are null
-    expect(screen.queryByTestId('token-input-badge')).toBeNull();
+    // No metric pills rendered when metrics are null
+    expect(screen.queryByTestId('metrics-row')).toBeNull();
     expect(screen.queryByTestId('cost-pill')).toBeNull();
   });
 
