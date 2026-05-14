@@ -12,6 +12,7 @@
  */
 
 
+
 import { buildEnrichmentRows } from '@agent-profiler/adapters-application-insights';
 import type { LogsIngestionWriter } from '@agent-profiler/adapters-application-insights';
 import { ipcChannels } from '@agent-profiler/core';
