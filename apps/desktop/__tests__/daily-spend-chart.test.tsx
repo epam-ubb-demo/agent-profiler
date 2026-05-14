@@ -5,6 +5,7 @@
 import { screen, cleanup } from '@testing-library/react';
 import { describe, expect, it, afterEach } from 'vitest';
 
+import type { DailyMetrics } from '../src/renderer/components/DailySpendChart';
 import { DailySpendChart } from '../src/renderer/components/DailySpendChart';
 
 import { render } from './test-utils';
@@ -12,6 +13,17 @@ import { render } from './test-utils';
 afterEach(() => {
   cleanup();
 });
+
+function makeDay(overrides: Partial<DailyMetrics> & { date: string }): DailyMetrics {
+  return {
+    cost: 0,
+    wallTimeMs: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheReadTokens: 0,
+    ...overrides,
+  };
+}
 
 describe('DailySpendChart', () => {
   it('renders "No cost data" when data is empty', async () => {
@@ -24,8 +36,8 @@ describe('DailySpendChart', () => {
     await render(
       <DailySpendChart
         data={[
-          { date: '2024-05-01', cost: 0 },
-          { date: '2024-05-02', cost: 0 },
+          makeDay({ date: '2024-05-01' }),
+          makeDay({ date: '2024-05-02' }),
         ]}
       />,
     );
@@ -37,8 +49,8 @@ describe('DailySpendChart', () => {
     const { container } = await render(
       <DailySpendChart
         data={[
-          { date: '2024-05-10', cost: 0.15 },
-          { date: '2024-05-11', cost: 0.32 },
+          makeDay({ date: '2024-05-10', cost: 0.15 }),
+          makeDay({ date: '2024-05-11', cost: 0.32 }),
         ]}
       />,
     );
@@ -51,9 +63,9 @@ describe('DailySpendChart', () => {
     const { container } = await render(
       <DailySpendChart
         data={[
-          { date: '2024-05-10', cost: 0.10 },
-          { date: '2024-05-11', cost: 0.20 },
-          { date: '2024-05-12', cost: 0.30 },
+          makeDay({ date: '2024-05-10', cost: 0.10 }),
+          makeDay({ date: '2024-05-11', cost: 0.20 }),
+          makeDay({ date: '2024-05-12', cost: 0.30 }),
         ]}
       />,
     );
@@ -66,8 +78,8 @@ describe('DailySpendChart', () => {
     const { container } = await render(
       <DailySpendChart
         data={[
-          { date: '2024-05-10', cost: 0.10 },
-          { date: '2024-05-11', cost: 0.50 },
+          makeDay({ date: '2024-05-10', cost: 0.10 }),
+          makeDay({ date: '2024-05-11', cost: 0.50 }),
         ]}
       />,
     );
@@ -83,7 +95,7 @@ describe('DailySpendChart', () => {
   it('renders SVG with viewBox and responsive width', async () => {
     const { container } = await render(
       <DailySpendChart
-        data={[{ date: '2024-05-10', cost: 0.15 }]}
+        data={[makeDay({ date: '2024-05-10', cost: 0.15 })]}
       />,
     );
 
@@ -93,23 +105,27 @@ describe('DailySpendChart', () => {
     expect(svg!.getAttribute('width')).toBe('100%');
   });
 
-  it('bar titles include formatted cost and date', async () => {
+  it('bar titles include all metrics', async () => {
     const { container } = await render(
       <DailySpendChart
-        data={[{ date: '2024-05-10', cost: 0.15 }]}
+        data={[makeDay({ date: '2024-05-10', cost: 0.15, wallTimeMs: 120_000, inputTokens: 5000, outputTokens: 3000, cacheReadTokens: 1000 })]}
       />,
     );
 
     const title = container.querySelector('[data-testid="spend-bar"] title');
     expect(title).not.toBeNull();
-    // Title should contain the dollar cost
-    expect(title!.textContent).toContain('$0.15');
+    const text = title!.textContent ?? '';
+    expect(text).toContain('$0.15');
+    expect(text).toContain('2m');
+    expect(text).toContain('In: 5.0K');
+    expect(text).toContain('Out: 3.0K');
+    expect(text).toContain('Cached: 1.0K');
   });
 
   it('renders with a single data point without errors', async () => {
     const { container } = await render(
       <DailySpendChart
-        data={[{ date: '2024-05-10', cost: 1.23 }]}
+        data={[makeDay({ date: '2024-05-10', cost: 1.23 })]}
       />,
     );
 
@@ -120,10 +136,9 @@ describe('DailySpendChart', () => {
   });
 
   it('renders with a large number of data points without errors', async () => {
-    const data = Array.from({ length: 30 }, (_, i) => ({
-      date: `2024-05-${String(i + 1).padStart(2, '0')}`,
-      cost: 0.05 * (i + 1),
-    }));
+    const data = Array.from({ length: 30 }, (_, i) =>
+      makeDay({ date: `2024-05-${String(i + 1).padStart(2, '0')}`, cost: 0.05 * (i + 1) }),
+    );
 
     const { container } = await render(<DailySpendChart data={data} />);
 
@@ -133,7 +148,7 @@ describe('DailySpendChart', () => {
 
   it('has role="img" and aria-label on the SVG', async () => {
     const { container } = await render(
-      <DailySpendChart data={[{ date: '2024-05-10', cost: 0.25 }]} />,
+      <DailySpendChart data={[makeDay({ date: '2024-05-10', cost: 0.25 })]} />,
     );
 
     const svg = container.querySelector('svg');

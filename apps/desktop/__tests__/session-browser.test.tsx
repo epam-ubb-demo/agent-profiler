@@ -489,7 +489,7 @@ describe('SessionBrowser', () => {
 
   // ── Analytics panel tests ──────────────────────────────────────────────────
 
-  it('renders analytics panel when sessions are loaded', async () => {
+  it('analytics toggle is in the summary bar header', async () => {
     vi.mocked(mockElectronApi.session.list).mockResolvedValue([
       makeSession({ id: 'session-1', createdAt: '2024-12-01T10:00:00.000Z' }),
     ]);
@@ -497,7 +497,7 @@ describe('SessionBrowser', () => {
     await render(<SessionBrowser onSelectSession={vi.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('analytics-panel')).toBeDefined();
+      expect(screen.getByTestId('analytics-toggle')).toBeDefined();
     });
   });
 
@@ -539,7 +539,7 @@ describe('SessionBrowser', () => {
     expect(screen.getByTestId('daily-spend-chart-stub')).toBeDefined();
   });
 
-  it('analytics panel shows correct day count', async () => {
+  it('summary bar shows day count', async () => {
     vi.mocked(mockElectronApi.session.list).mockResolvedValue([
       makeSession({ id: 's1', createdAt: '2024-12-01T10:00:00.000Z' }),
       makeSession({ id: 's2', createdAt: '2024-12-01T12:00:00.000Z' }),
@@ -549,12 +549,11 @@ describe('SessionBrowser', () => {
     await render(<SessionBrowser onSelectSession={vi.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('analytics-panel')).toBeDefined();
+      expect(screen.getByTestId('summary-bar')).toBeDefined();
     });
 
-    // Should show "2 days" since we have sessions on 2 distinct days with cost data
-    const panel = screen.getByTestId('analytics-panel');
-    expect(panel.textContent).toContain('day');
+    const bar = screen.getByTestId('summary-bar');
+    expect(bar.textContent).toContain('day');
   });
 
   it('collapses analytics panel when toggle is clicked again', async () => {

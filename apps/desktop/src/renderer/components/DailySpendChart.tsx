@@ -9,8 +9,17 @@ import { memo, useMemo } from 'react';
 
 /* ─── Props ─────────────────────────────────────────────────────────────────── */
 
+export interface DailyMetrics {
+  readonly date: string;
+  readonly cost: number;
+  readonly wallTimeMs: number;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly cacheReadTokens: number;
+}
+
 export interface DailySpendChartProps {
-  readonly data: ReadonlyArray<{ readonly date: string; readonly cost: number }>;
+  readonly data: ReadonlyArray<DailyMetrics>;
 }
 
 /* ─── Chart geometry ────────────────────────────────────────────────────────── */
@@ -45,6 +54,36 @@ function formatUsd(value: number): string {
   if (value < 0.01) return `$${value.toFixed(4)}`;
   if (value < 1) return `$${value.toFixed(3)}`;
   return `$${value.toFixed(2)}`;
+}
+
+/** Format a duration in ms as human-readable. */
+function formatMs(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m`;
+  return '<1m';
+}
+
+/** Format a token count as K/M shorthand. */
+function formatTk(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+/** Build a multi-line tooltip string for a daily bar. */
+function buildBarTooltip(item: DailyMetrics): string {
+  const lines = [
+    formatShortDate(item.date),
+    `Cost: ${formatUsd(item.cost)}`,
+    `Time: ${formatMs(item.wallTimeMs)}`,
+    `In: ${formatTk(item.inputTokens)}`,
+    `Out: ${formatTk(item.outputTokens)}`,
+    `Cached: ${formatTk(item.cacheReadTokens)}`,
+  ];
+  return lines.join('\n');
 }
 
 /**
@@ -187,7 +226,7 @@ function DailySpendChartInner({ data }: DailySpendChartProps) {
             );
           }}
         >
-          <title>{`${formatShortDate(bar.item.date)}: ${formatUsd(bar.item.cost)}`}</title>
+          <title>{buildBarTooltip(bar.item)}</title>
         </rect>
       ))}
 
