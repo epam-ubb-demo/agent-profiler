@@ -138,12 +138,12 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
   return (
     <>
       <Button
-        caption="Settings"
+        caption="Open remote session"
         icon={Settings}
         fill="none"
         color="secondary"
         size="36"
-        aria-label="Settings"
+        aria-label="Open remote session"
         onClick={() => setOpen(true)}
       />
 

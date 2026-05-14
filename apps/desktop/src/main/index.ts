@@ -196,6 +196,8 @@ if (gotLock) {
       const settings = appInsightsSettingsSchema.parse(raw);
       setAppInsightsSettings(settings);
       applyAppInsightsSettings(settings);
+      // Re-scan so remote sessions appear in the session list immediately.
+      void indexer.refresh();
     },
   );
 
