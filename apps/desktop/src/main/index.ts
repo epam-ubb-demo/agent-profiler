@@ -20,7 +20,11 @@ import {
   setAppInsightsSettings,
   getSessionRootDir,
   setSessionRootDir,
+  getSyncSettings,
 } from './settings-store';
+import { MarkerStore } from './sync-marker';
+import { SyncService } from './sync-service';
+import { LogsIngestionWriter } from '@agent-profiler/adapters-application-insights';
 
 // ─── Single-instance guard ────────────────────────────────────────────────
 // Must be the very first Electron API call.  If another instance is already
@@ -73,6 +77,23 @@ if (gotLock) {
   const manager = new DataSourceManager(getSessionRootDir() || DEFAULT_ROOT_DIR);
   const indexer = new SessionIndexer(manager);
   let isQuitting = false;
+
+  // ── SyncService setup ─────────────────────────────────────────────────────
+  const markerStore = new MarkerStore();
+  const initialSyncSettings = getSyncSettings();
+  const logsIngestionWriter = new LogsIngestionWriter({
+    dceEndpoint: initialSyncSettings.dceEndpoint,
+    dcrImmutableId: initialSyncSettings.dcrImmutableId,
+    dcrStreamName: initialSyncSettings.dcrStreamName,
+  });
+  const syncService = new SyncService({
+    markerStore,
+    logsIngestionWriter,
+    dataSourceManager: manager,
+    sessionIndexer: indexer,
+    settingsStore: { getSyncSettings },
+    mainWindow: null,
+  });
 
   /** Resolve a time range from the persisted preset. */
   function resolveTimeRange(
@@ -209,6 +230,20 @@ if (gotLock) {
   ipcMain.handle(ipcChannels.SETTINGS_LIST_WORKSPACES, async () => {
     const result = await listLogAnalyticsWorkspaces();
     return listWorkspacesResultSchema.parse(result);
+  });
+
+  // ── Sync IPC handlers ─────────────────────────────────────────────────────
+
+  ipcMain.handle(ipcChannels.SYNC_STATUS, () => {
+    return syncService.getStatus();
+  });
+
+  ipcMain.handle(ipcChannels.SYNC_TRIGGER, async (_event, sessionId: string | undefined) => {
+    if (sessionId !== undefined) {
+      await syncService.syncSession(sessionId);
+    } else {
+      await syncService.syncAll();
+    }
   });
 
   app.whenReady().then(async () => {
