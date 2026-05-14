@@ -1,0 +1,78 @@
+---
+title: "ADR-0008: Sync Local Session Enrichment to Remote Workspace"
+description: Decision record for syncing local-only Copilot CLI session enrichment to a remote Log Analytics workspace via Azure Logs Ingestion.
+---
+
+## Status
+
+Accepted
+
+## Date
+
+2026-05-14
+
+## Context
+
+Remote Copilot CLI sessions can be reconstructed from OpenTelemetry spans, but several local-only fields are not available remotely: utilisation, compactions, `copilotVersion`, `reasoningEffort`, and tool results. As a result, remote viewers see an incomplete session record even when the underlying desktop app has the full local data.
+
+We need a way to publish this enrichment data without overloading the existing telemetry model or weakening the privacy boundary around optional local artefacts.
+
+## Decision
+
+Push local-only session enrichment data to a custom Azure Logs table, `AgentProfilerEnrichment_CL`, using the Azure Logs Ingestion API.
+
+### Why a custom Logs table
+
+We chose a dedicated table rather than extending existing OpenTelemetry spans because it keeps enrichment separate from core telemetry. That avoids coupling the remote session model to local implementation details and preserves a cleaner boundary between trace data and session enrichment.
+
+### How sync is tracked
+
+Each session stores a sidecar marker file, `.agent-profiler-sync.json`, alongside the local session data. The marker records:
+
+- byte offset
+- last event ID
+- categories already pushed
+
+Marker updates are written atomically by creating a temporary file and renaming it into place. This prevents partial writes if the process exits mid-sync.
+
+### Idempotency
+
+Each enrichment row uses a deterministic `EventId` in the form `sessionId:category:index`. This makes retries safe and allows the ingestion pipeline to deduplicate repeated uploads.
+
+### Triggers and settings
+
+Sync can be started in two ways:
+
+1. Manually via a **Sync now** action
+2. Automatically when the desktop app's auto-sync setting is enabled
+
+Users can choose which enrichment categories are uploaded:
+
+- metadata — enabled by default
+- utilisation — enabled by default
+- compactions — enabled by default
+- tool results — disabled by default for privacy
+
+Authentication uses `DefaultAzureCredential`.
+
+## Alternatives considered
+
+### Extend OpenTelemetry spans
+
+Rejected. This would pollute existing telemetry with local-only enrichment and create a tighter coupling between the remote session model and the desktop app's internal data structures.
+
+### Use Application Insights custom events directly
+
+Rejected. Custom events do not provide the same bulk ingestion workflow and are a poorer fit for the volume and shape of session enrichment data.
+
+### Store enrichment in Azure Blob Storage
+
+Rejected. Blob storage would not provide a native KQL join path with the session data, making remote analysis and viewer correlation much harder.
+
+## Consequences
+
+- Remote viewers can see a complete session record, including local-only enrichment.
+- The desktop app now depends on `@azure/monitor-ingestion`.
+- Provisioning must include a Data Collection Endpoint, Data Collection Rule, and custom Logs table.
+- The desktop settings UI gains sync controls, Azure endpoint configuration, and status feedback.
+- The system introduces a small amount of per-session state management through the marker file, but sync remains resumable and idempotent.
