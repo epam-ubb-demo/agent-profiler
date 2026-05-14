@@ -1,0 +1,74 @@
+# Direct Push Detector
+# Fires on every push to main and checks whether each commit arrived
+# via a merged pull request. If a commit bypasses the PR workflow
+# (direct push, force push, or manual merge), opens a GitHub issue
+# alerting maintainers.
+
+name: Direct Push Detector
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for direct pushes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPO="${{ github.repository }}"
+          PUSHER="${{ github.actor }}"
+          DIRECT_COMMITS=""
+
+          # Iterate over each commit in the push event
+          COMMITS='${{ toJSON(github.event.commits) }}'
+          echo "$COMMITS" | jq -r '.[].id' | while read -r SHA; do
+            # Ask GitHub API which PRs delivered this commit
+            PR_COUNT=$(gh api "repos/${REPO}/commits/${SHA}/pulls" \
+              --jq 'length' 2>/dev/null || echo "0")
+
+            if [ "$PR_COUNT" = "0" ]; then
+              echo "::warning::Direct push detected — commit ${SHA} by ${PUSHER}"
+              echo "$SHA" >> /tmp/direct_commits.txt
+            else
+              echo "✓ Commit ${SHA} delivered via PR"
+            fi
+          done
+
+          # If any direct commits were found, create an alert issue
+          if [ -f /tmp/direct_commits.txt ]; then
+            SHAS=$(cat /tmp/direct_commits.txt | tr '\n' ', ' | sed 's/,$//')
+            COMMIT_LIST=$(cat /tmp/direct_commits.txt | while read -r S; do
+              echo "- [\`${S:0:7}\`](https://github.com/${REPO}/commit/${S})"
+            done)
+
+            gh issue create \
+              --repo "$REPO" \
+              --title "⚠️ Direct push to main detected (${PUSHER})" \
+              --label "direct-push" \
+              --body "## Direct push to \`main\` detected
+
+          **Pusher:** @${PUSHER}
+          **Run:** [Actions log](https://github.com/${REPO}/actions/runs/${{ github.run_id }})
+
+          ### Commits that bypassed PR workflow
+
+          ${COMMIT_LIST}
+
+          ---
+
+          These commits were pushed directly to \`main\` without going through a pull request. This bypasses:
+          - CI pipeline checks
+          - Copilot code review
+          - CodeQL / code security scanning
+
+          **Action required:** Review the commits above. If this was intentional (e.g. a hotfix), document the reason and close this issue. Otherwise, consider reverting and re-submitting via PR." || echo "::warning::Failed to create issue (label may not exist yet)"
+          else
+            echo "✓ All commits delivered via PR — no action needed"
+          fi
