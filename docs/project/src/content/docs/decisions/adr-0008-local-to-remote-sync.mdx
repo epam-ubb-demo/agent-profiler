@@ -45,6 +45,26 @@ This is intentional for the initial release and keeps the implementation simple 
 
 True delta/resume sync is deferred to a follow-up PR. The marker schema already carries the fields needed for that work, including `lastSyncedRowCount` and `categoriesPushed`, but v1 does not use them to resume or re-drive a previously synced session.
 
+### Idempotency
+
+Each enrichment row uses a deterministic `EventId` in the form `sessionId:category:index`. This makes retries safe and allows the ingestion pipeline to deduplicate repeated uploads.
+
+### Triggers and settings
+
+Sync can be started in two ways:
+
+1. Manually via a **Sync now** action
+2. Automatically when the desktop app's auto-sync setting is enabled
+
+Users can choose which enrichment categories are uploaded:
+
+- metadata — enabled by default
+- utilisation — enabled by default
+- compactions — enabled by default
+- tool results — disabled by default for privacy
+
+The `tool_result` category includes skill telemetry fields (`skillName`, `skillSource`, `skillContentLength`, `skillOutcome`, `skillErrorMessage`), merged in PR #359 and now available directly on the `ToolCall` type. These fields are conditionally included in the enrichment payload when present.
+
 Authentication uses `DefaultAzureCredential`.
 
 ## Alternatives considered
