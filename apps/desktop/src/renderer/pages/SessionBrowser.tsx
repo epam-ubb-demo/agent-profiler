@@ -144,14 +144,14 @@ function SessionCard({ session, onClick }: SessionCardProps) {
           <div className={styles.metricsGrid} data-testid="metrics-row">
             <div className={styles.metricsSubRow}>
               <Tooltip content={`Cost confidence: ${m.costConfidence}`}>
-                <div className={styles.metricPill} data-testid="cost-pill">
+                <div className={styles.metricPill} data-metric="cost" data-testid="cost-pill">
                   <DollarSign size={14} />
                   <span className={styles.metricLabel}>Cost</span>
                   <span className={styles.metricValue}>{formatCost(m.totalCostUsd, m.costConfidence)}</span>
                 </div>
               </Tooltip>
               <Tooltip content={`Wall-clock time: ${formatDuration(m.wallTimeMs)}`}>
-                <div className={styles.metricPill} data-testid="duration-pill">
+                <div className={styles.metricPill} data-metric="time" data-testid="duration-pill">
                   <Clock size={14} />
                   <span className={styles.metricLabel}>Time</span>
                   <span className={styles.metricValue}>{formatDuration(m.wallTimeMs)}</span>
@@ -160,21 +160,21 @@ function SessionCard({ session, onClick }: SessionCardProps) {
             </div>
             <div className={styles.metricsSubRow}>
               <Tooltip content={`Input tokens: ${m.totalInputTokens.toLocaleString()}`}>
-                <div className={styles.metricPill} data-testid="token-input-pill">
+                <div className={styles.metricPill} data-metric="in" data-testid="token-input-pill">
                   <ArrowDownToLine size={14} />
                   <span className={styles.metricLabel}>In</span>
                   <span className={styles.metricValue}>{formatTokenCount(m.totalInputTokens)}</span>
                 </div>
               </Tooltip>
               <Tooltip content={`Output tokens: ${m.totalOutputTokens.toLocaleString()}`}>
-                <div className={styles.metricPill} data-testid="token-output-pill">
+                <div className={styles.metricPill} data-metric="out" data-testid="token-output-pill">
                   <ArrowUpFromLine size={14} />
                   <span className={styles.metricLabel}>Out</span>
                   <span className={styles.metricValue}>{formatTokenCount(m.totalOutputTokens)}</span>
                 </div>
               </Tooltip>
               <Tooltip content={`Cache-read tokens: ${m.totalCacheReadTokens.toLocaleString()}`}>
-                <div className={styles.metricPill} data-testid="token-cache-pill">
+                <div className={styles.metricPill} data-metric="cached" data-testid="token-cache-pill">
                   <Recycle size={14} />
                   <span className={styles.metricLabel}>Cached</span>
                   <span className={styles.metricValue}>{formatTokenCount(m.totalCacheReadTokens)}</span>
