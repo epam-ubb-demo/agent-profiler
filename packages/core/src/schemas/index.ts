@@ -29,3 +29,9 @@ export {
   turnSchema,
   sessionSchema,
 } from './session';
+
+export { syncMarkerSchema } from './sync-marker';
+export type { SyncMarker } from './sync-marker';
+
+export { enrichmentRowSchema } from './enrichment-row';
+export type { EnrichmentRow } from './enrichment-row';

@@ -44,7 +44,10 @@ export {
   modelChangeSchema,
   turnSchema,
   sessionSchema,
+  syncMarkerSchema,
+  enrichmentRowSchema,
 } from './schemas/index';
+export type { SyncMarker, EnrichmentRow } from './schemas/index';
 
 // Aggregation
 export { aggregateBenchRun } from './aggregation';
@@ -71,6 +74,8 @@ export {
   logAnalyticsWorkspaceSchema,
   listWorkspacesResultSchema,
   ipcChannels,
+  syncSettingsSchema,
+  syncStatusSchema,
 } from './ipc-schemas';
 export type {
   SessionSummary,
@@ -83,4 +88,6 @@ export type {
   TestConnectionResultIpc,
   LogAnalyticsWorkspaceIpc,
   ListWorkspacesResultIpc,
+  SyncSettingsIpc,
+  SyncStatusIpc,
 } from './ipc-schemas';
