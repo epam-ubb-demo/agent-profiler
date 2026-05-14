@@ -5,7 +5,7 @@
  */
 
 import { Text } from '@epam/uui';
-import { memo, useMemo } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 
 /* ─── Props ─────────────────────────────────────────────────────────────────── */
 
@@ -75,19 +75,6 @@ function formatTk(n: number): string {
   return String(n);
 }
 
-/** Build a multi-line tooltip string for a daily bar. */
-function buildBarTooltip(item: DailyMetrics): string {
-  const lines = [
-    formatShortDate(item.date),
-    `Cost: ${item.cost != null ? formatUsd(item.cost) : '—'}`,
-    `Time: ${item.wallTimeMs != null ? formatMs(item.wallTimeMs) : '—'}`,
-    `In: ${formatTk(item.inputTokens)}`,
-    `Out: ${formatTk(item.outputTokens)}`,
-    `Cached: ${formatTk(item.cacheReadTokens)}`,
-  ];
-  return lines.join('\n');
-}
-
 /**
  * Compute a "nice" step size for a Y-axis that produces roughly 4-5 ticks.
  */
@@ -103,9 +90,54 @@ function computeNiceStep(maxVal: number): number {
   return 10 * magnitude;
 }
 
+/* ─── Tooltip state ─────────────────────────────────────────────────────────── */
+
+interface TooltipState {
+  readonly item: DailyMetrics;
+  readonly x: number;
+  readonly y: number;
+}
+
 /* ─── Component ─────────────────────────────────────────────────────────────── */
 
 function DailySpendChartInner({ data }: DailySpendChartProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+
+  const handleBarEnter = useCallback(
+    (item: DailyMetrics, e: React.MouseEvent<SVGRectElement>) => {
+      const svg = svgRef.current;
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      setTooltip({
+        item,
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top - 8,
+      });
+      (e.currentTarget as SVGRectElement).setAttribute('fill', 'var(--uui-primary-60)');
+    },
+    [],
+  );
+
+  const handleBarMove = useCallback(
+    (item: DailyMetrics, e: React.MouseEvent<SVGRectElement>) => {
+      const svg = svgRef.current;
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      setTooltip({
+        item,
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top - 8,
+      });
+    },
+    [],
+  );
+
+  const handleBarLeave = useCallback((e: React.MouseEvent<SVGRectElement>) => {
+    setTooltip(null);
+    (e.currentTarget as SVGRectElement).setAttribute('fill', 'var(--uui-primary-50)');
+  }, []);
+
   const computed = useMemo(() => {
     if (data.length === 0) return null;
 
@@ -158,98 +190,122 @@ function DailySpendChartInner({ data }: DailySpendChartProps) {
   const axisBaseY = CHART_Y + CHART_H;
 
   return (
-    <svg
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-      width="100%"
-      style={{ display: 'block' }}
-      role="img"
-      aria-label="Daily spend bar chart"
-      data-testid="daily-spend-chart"
-    >
-      {/* Y-axis gridlines + labels */}
-      {yTicks.map((v) => {
-        const y = CHART_Y + CHART_H - (v / computed.yMax) * CHART_H;
-        return (
-          <g key={v}>
-            <line
-              x1={CHART_X}
-              y1={y}
-              x2={CHART_X + CHART_W}
-              y2={y}
-              stroke="var(--uui-neutral-40)"
-              strokeDasharray="4,4"
-              strokeWidth={1}
-            />
+    <div style={{ position: 'relative' }}>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+        width="100%"
+        style={{ display: 'block' }}
+        role="img"
+        aria-label="Daily spend bar chart"
+        data-testid="daily-spend-chart"
+      >
+        {/* Y-axis gridlines + labels */}
+        {yTicks.map((v) => {
+          const y = CHART_Y + CHART_H - (v / computed.yMax) * CHART_H;
+          return (
+            <g key={v}>
+              <line
+                x1={CHART_X}
+                y1={y}
+                x2={CHART_X + CHART_W}
+                y2={y}
+                stroke="var(--uui-neutral-40)"
+                strokeDasharray="4,4"
+                strokeWidth={1}
+              />
+              <text
+                x={CHART_X - 6}
+                y={y + 4}
+                textAnchor="end"
+                fontSize={10}
+                fill="var(--uui-text-secondary)"
+              >
+                {formatUsd(v)}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Axis baseline */}
+        <line
+          x1={CHART_X}
+          y1={axisBaseY}
+          x2={CHART_X + CHART_W}
+          y2={axisBaseY}
+          stroke="var(--uui-neutral-40)"
+          strokeWidth={1}
+        />
+
+        {/* Bars */}
+        {bars.map((bar, i) => (
+          <rect
+            key={i}
+            x={bar.x}
+            y={bar.y}
+            width={bar.width}
+            height={bar.height}
+            fill="var(--uui-primary-50)"
+            rx={2}
+            data-testid="spend-bar"
+            style={{ cursor: 'default' }}
+            onMouseEnter={(e) => handleBarEnter(bar.item, e)}
+            onMouseMove={(e) => handleBarMove(bar.item, e)}
+            onMouseLeave={handleBarLeave}
+          />
+        ))}
+
+        {/* X-axis date labels */}
+        {labelIndices.map((idx) => {
+          const bar = bars[idx];
+          if (!bar) return null;
+          return (
             <text
-              x={CHART_X - 6}
-              y={y + 4}
-              textAnchor="end"
+              key={idx}
+              x={bar.cx}
+              y={axisBaseY + 14}
+              textAnchor="middle"
               fontSize={10}
               fill="var(--uui-text-secondary)"
             >
-              {formatUsd(v)}
+              {formatShortDate(bar.item.date)}
             </text>
-          </g>
-        );
-      })}
+          );
+        })}
+      </svg>
 
-      {/* Axis baseline */}
-      <line
-        x1={CHART_X}
-        y1={axisBaseY}
-        x2={CHART_X + CHART_W}
-        y2={axisBaseY}
-        stroke="var(--uui-neutral-40)"
-        strokeWidth={1}
-      />
-
-      {/* Bars */}
-      {bars.map((bar, i) => (
-        <rect
-          key={i}
-          x={bar.x}
-          y={bar.y}
-          width={bar.width}
-          height={bar.height}
-          fill="var(--uui-primary-50)"
-          rx={2}
-          data-testid="spend-bar"
-          style={{ cursor: 'default' }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as SVGRectElement).setAttribute(
-              'fill',
-              'var(--uui-primary-60)',
-            );
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as SVGRectElement).setAttribute(
-              'fill',
-              'var(--uui-primary-50)',
-            );
+      {/* HTML tooltip overlay */}
+      {tooltip && (
+        <div
+          data-testid="chart-tooltip"
+          style={{
+            position: 'absolute',
+            left: tooltip.x,
+            top: tooltip.y,
+            transform: 'translate(-50%, -100%)',
+            background: 'var(--uui-surface-highest, #1f2937)',
+            color: 'var(--uui-text-primary-invert, #fff)',
+            padding: '8px 12px',
+            borderRadius: 6,
+            fontSize: '0.75rem',
+            lineHeight: 1.5,
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap',
+            zIndex: 10,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
           }}
         >
-          <title>{buildBarTooltip(bar.item)}</title>
-        </rect>
-      ))}
-
-      {/* X-axis date labels */}
-      {labelIndices.map((idx) => {
-        const bar = bars[idx];
-        if (!bar) return null;
-        return (
-          <text
-            key={idx}
-            x={bar.cx}
-            y={axisBaseY + 14}
-            textAnchor="middle"
-            fontSize={10}
-            fill="var(--uui-text-secondary)"
-          >
-            {formatShortDate(bar.item.date)}
-          </text>
-        );
-      })}
-    </svg>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+            {formatShortDate(tooltip.item.date)}
+          </div>
+          <div>Cost: {tooltip.item.cost != null ? formatUsd(tooltip.item.cost) : '—'}</div>
+          <div>Time: {tooltip.item.wallTimeMs != null ? formatMs(tooltip.item.wallTimeMs) : '—'}</div>
+          <div>In: {formatTk(tooltip.item.inputTokens)}</div>
+          <div>Out: {formatTk(tooltip.item.outputTokens)}</div>
+          <div>Cached: {formatTk(tooltip.item.cacheReadTokens)}</div>
+        </div>
+      )}
+    </div>
   );
 }
 

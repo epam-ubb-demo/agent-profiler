@@ -212,8 +212,6 @@
 /* ─── Chart area (inside summary bar) ─── */
 .chartArea {
   padding: 0 12px 12px;
-  max-height: 240px;
-  overflow-y: auto;
 }
 
 /* ─── Empty filter state ─── */
