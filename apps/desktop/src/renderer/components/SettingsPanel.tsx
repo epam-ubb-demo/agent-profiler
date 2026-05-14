@@ -424,7 +424,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
                           id="dcr-stream-name"
                           value={dcrStreamName}
                           onValueChange={(v) => setDcrStreamName(v ?? '')}
-                          placeholder="Custom-AgentProfilerSessions_CL"
+                          placeholder="Custom-AgentProfilerEnrichment_CL"
                           size="36"
                         />
                       </div>

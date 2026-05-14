@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 
+import { LogsIngestionWriter } from '@agent-profiler/adapters-application-insights';
 import {
   ipcChannels,
   appInsightsSettingsSchema,
@@ -26,7 +27,6 @@ import {
 } from './settings-store';
 import { MarkerStore } from './sync-marker';
 import { SyncService } from './sync-service';
-import { LogsIngestionWriter } from '@agent-profiler/adapters-application-insights';
 
 // ─── Single-instance guard ────────────────────────────────────────────────
 // Must be the very first Electron API call.  If another instance is already
@@ -255,6 +255,12 @@ if (gotLock) {
   ipcMain.handle(ipcChannels.SYNC_SETTINGS_SET, (_event, raw: unknown) => {
     const settings = syncSettingsSchema.parse(raw);
     setSyncSettings(settings);
+    const newWriter = new LogsIngestionWriter({
+      dceEndpoint: settings.dceEndpoint,
+      dcrImmutableId: settings.dcrImmutableId,
+      dcrStreamName: settings.dcrStreamName,
+    });
+    syncService.updateWriter(newWriter);
   });
 
   app.whenReady().then(async () => {

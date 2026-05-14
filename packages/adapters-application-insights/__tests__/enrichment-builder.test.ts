@@ -5,8 +5,9 @@
  * covering all categories, edge cases, and deterministic event ID generation.
  */
 
+import type { Session } from '@agent-profiler/core';
 import { describe, expect, it } from 'vitest';
-import type { Session, EnrichmentRow } from '@agent-profiler/core';
+
 import { buildEnrichmentRows } from '../src/enrichment-builder';
 
 // ── Fixture builders ────────────────────────────────────────────────────────

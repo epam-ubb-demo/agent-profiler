@@ -437,7 +437,7 @@ describe('syncMarkerSchema', () => {
     const valid = {
       version: 1,
       lastSyncedAt: '2025-01-15T10:00:00Z',
-      lastSyncedByteOffset: 1024,
+      lastSyncedRowCount: 1024,
       lastSyncedEventId: 'evt-001',
       lastEventTimestamp: '2025-01-15T10:00:30Z',
       categoriesPushed: ['metadata', 'utilisation'],
@@ -455,7 +455,7 @@ describe('syncMarkerSchema', () => {
       syncMarkerSchema.parse({
         version: 2,
         lastSyncedAt: '2025-01-15T10:00:00Z',
-        lastSyncedByteOffset: 0,
+        lastSyncedRowCount: 0,
         lastSyncedEventId: 'evt-001',
         lastEventTimestamp: '2025-01-15T10:00:00Z',
         categoriesPushed: [],
@@ -464,12 +464,12 @@ describe('syncMarkerSchema', () => {
     ).toThrow(ZodError);
   });
 
-  it('rejects negative byte offset', () => {
+  it('rejects negative row count', () => {
     expect(() =>
       syncMarkerSchema.parse({
         version: 1,
         lastSyncedAt: '2025-01-15T10:00:00Z',
-        lastSyncedByteOffset: -1,
+        lastSyncedRowCount: -1,
         lastSyncedEventId: 'evt-001',
         lastEventTimestamp: '2025-01-15T10:00:00Z',
         categoriesPushed: [],
@@ -478,11 +478,11 @@ describe('syncMarkerSchema', () => {
     ).toThrow(ZodError);
   });
 
-  it('accepts zero byte offset', () => {
+  it('accepts zero row count', () => {
     const valid = {
       version: 1,
       lastSyncedAt: '2025-01-15T10:00:00Z',
-      lastSyncedByteOffset: 0,
+      lastSyncedRowCount: 0,
       lastSyncedEventId: 'evt-001',
       lastEventTimestamp: '2025-01-15T10:00:00Z',
       categoriesPushed: [],
@@ -495,7 +495,7 @@ describe('syncMarkerSchema', () => {
     const valid = {
       version: 1,
       lastSyncedAt: '2025-01-15T10:00:00Z',
-      lastSyncedByteOffset: 0,
+      lastSyncedRowCount: 0,
       lastSyncedEventId: 'evt-001',
       lastEventTimestamp: '2025-01-15T10:00:00Z',
       categoriesPushed: ['metadata', 'utilisation', 'compactions', 'toolResults'],

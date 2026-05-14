@@ -5,13 +5,13 @@
  * including corruption resilience and cleanup operations.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, rm  } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { rm } from 'node:fs/promises';
 
 import type { SyncMarker } from '@agent-profiler/core';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
 import { MarkerStore } from '../sync-marker';
 
 describe('MarkerStore', () => {
@@ -54,7 +54,7 @@ describe('MarkerStore', () => {
       const invalid = {
         version: 2, // Wrong version
         lastSyncedAt: '2025-01-15T10:00:00Z',
-        lastSyncedByteOffset: 0,
+        lastSyncedRowCount: 0,
         lastSyncedEventId: 'evt-001',
         lastEventTimestamp: '2025-01-15T10:00:00Z',
         categoriesPushed: ['metadata'],
@@ -85,7 +85,7 @@ describe('MarkerStore', () => {
       const valid: SyncMarker = {
         version: 1,
         lastSyncedAt: '2025-01-15T10:00:00Z',
-        lastSyncedByteOffset: 1024,
+        lastSyncedRowCount: 1024,
         lastSyncedEventId: 'evt-001',
         lastEventTimestamp: '2025-01-15T10:00:30Z',
         categoriesPushed: ['metadata', 'utilisation'],
@@ -97,13 +97,13 @@ describe('MarkerStore', () => {
       expect(result).toEqual(valid);
     });
 
-    it('returns null when marker file has negative byte offset', async () => {
+    it('returns null when marker file has negative row count', async () => {
       const { writeFile } = await import('node:fs/promises');
       const markerPath = join(tempDir, '.agent-profiler-sync.json');
       const invalid = {
         version: 1,
         lastSyncedAt: '2025-01-15T10:00:00Z',
-        lastSyncedByteOffset: -1, // Invalid
+        lastSyncedRowCount: -1, // Invalid
         lastSyncedEventId: 'evt-001',
         lastEventTimestamp: '2025-01-15T10:00:00Z',
         categoriesPushed: ['metadata'],
@@ -122,7 +122,7 @@ describe('MarkerStore', () => {
       const marker: SyncMarker = {
         version: 1,
         lastSyncedAt: '2025-01-15T10:00:00Z',
-        lastSyncedByteOffset: 2048,
+        lastSyncedRowCount: 2048,
         lastSyncedEventId: 'evt-002',
         lastEventTimestamp: '2025-01-15T10:01:00Z',
         categoriesPushed: ['metadata', 'utilisation', 'compactions'],
@@ -154,7 +154,7 @@ describe('MarkerStore', () => {
       const marker: SyncMarker = {
         version: 1,
         lastSyncedAt: '2025-01-15T10:00:00Z',
-        lastSyncedByteOffset: 0,
+        lastSyncedRowCount: 0,
         lastSyncedEventId: 'evt-001',
         lastEventTimestamp: '2025-01-15T10:00:00Z',
         categoriesPushed: [],
@@ -174,7 +174,7 @@ describe('MarkerStore', () => {
       const marker1: SyncMarker = {
         version: 1,
         lastSyncedAt: '2025-01-15T10:00:00Z',
-        lastSyncedByteOffset: 100,
+        lastSyncedRowCount: 100,
         lastSyncedEventId: 'evt-001',
         lastEventTimestamp: '2025-01-15T10:00:00Z',
         categoriesPushed: [],
@@ -183,7 +183,7 @@ describe('MarkerStore', () => {
       const marker2: SyncMarker = {
         version: 1,
         lastSyncedAt: '2025-01-15T11:00:00Z',
-        lastSyncedByteOffset: 500,
+        lastSyncedRowCount: 500,
         lastSyncedEventId: 'evt-002',
         lastEventTimestamp: '2025-01-15T11:00:00Z',
         categoriesPushed: ['metadata'],
@@ -206,7 +206,7 @@ describe('MarkerStore', () => {
       const marker: SyncMarker = {
         version: 1,
         lastSyncedAt: '2025-01-15T10:00:00Z',
-        lastSyncedByteOffset: 0,
+        lastSyncedRowCount: 0,
         lastSyncedEventId: 'evt-001',
         lastEventTimestamp: '2025-01-15T10:00:00Z',
         categoriesPushed: [],
@@ -266,7 +266,7 @@ describe('MarkerStore', () => {
       const original: SyncMarker = {
         version: 1,
         lastSyncedAt: '2025-01-15T10:15:30Z',
-        lastSyncedByteOffset: 5120,
+        lastSyncedRowCount: 5120,
         lastSyncedEventId: 'evt-123-abc',
         lastEventTimestamp: '2025-01-15T10:16:00Z',
         categoriesPushed: ['metadata', 'utilisation', 'compactions', 'toolResults'],

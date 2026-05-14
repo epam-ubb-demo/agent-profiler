@@ -1,3 +1,4 @@
+import type { SyncStatusIpc } from '@agent-profiler/core';
 import { MainMenu } from '@epam/loveship';
 import { FlexSpacer, MainMenuButton, Tooltip } from '@epam/uui';
 import { MainMenuCustomElement } from '@epam/uui-components';
@@ -5,7 +6,6 @@ import type { AdaptiveItemProps } from '@epam/uui-components';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import type { SyncStatusIpc } from '@agent-profiler/core';
 
 import epamLogo from '@/assets/epam-white.png';
 import { MoonIcon, SunIcon } from '@/components/icons';

@@ -11,16 +11,16 @@
  * - Sessions that already have a sync marker are skipped (already synced).
  */
 
-import { BrowserWindow } from 'electron';
 
-import { ipcChannels } from '@agent-profiler/core';
-import type { SyncMarker, SyncSettingsIpc, SyncStatusIpc } from '@agent-profiler/core';
 import { buildEnrichmentRows } from '@agent-profiler/adapters-application-insights';
 import type { LogsIngestionWriter } from '@agent-profiler/adapters-application-insights';
+import { ipcChannels } from '@agent-profiler/core';
+import type { SyncMarker, SyncSettingsIpc, SyncStatusIpc } from '@agent-profiler/core';
+import { BrowserWindow } from 'electron';
 
 import type { DataSourceManager } from './data-source-manager';
-import type { MarkerStore } from './sync-marker';
 import type { SessionIndexer } from './session-indexer';
+import type { MarkerStore } from './sync-marker';
 
 // ---------------------------------------------------------------------------
 // Dependency interfaces
@@ -69,6 +69,15 @@ export class SyncService {
   /** Returns a snapshot of the current sync status (cheap copy). */
   getStatus(): SyncStatusIpc {
     return { ...this.status };
+  }
+
+  /**
+   * Replace the LogsIngestionWriter used for future sync operations.
+   * Call this whenever the DCE/DCR settings change so the next sync uses
+   * the updated endpoint and credentials.
+   */
+  updateWriter(newWriter: LogsIngestionWriter): void {
+    this.deps.logsIngestionWriter = newWriter;
   }
 
   /**
@@ -251,9 +260,9 @@ export class SyncService {
     const marker: SyncMarker = {
       version: 1,
       lastSyncedAt: new Date().toISOString(),
-      // Row count used as byte-offset placeholder.
+      // Row count used to track incremental sync progress.
       // Byte-level tracking (for incremental re-sync) is a future enhancement.
-      lastSyncedByteOffset: rows.length,
+      lastSyncedRowCount: rows.length,
       lastSyncedEventId: lastRow.EventId,
       lastEventTimestamp: lastRow.TimeGenerated,
       categoriesPushed,

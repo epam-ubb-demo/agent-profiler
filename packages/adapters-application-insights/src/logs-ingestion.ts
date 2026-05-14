@@ -1,6 +1,6 @@
-import { LogsIngestionClient } from '@azure/monitor-ingestion';
-import { DefaultAzureCredential } from '@azure/identity';
 import type { EnrichmentRow } from '@agent-profiler/core';
+import { DefaultAzureCredential } from '@azure/identity';
+import { LogsIngestionClient } from '@azure/monitor-ingestion';
 
 export interface LogsIngestionConfig {
   /** Data Collection Endpoint URL, e.g. https://dce-xxx.westeurope-1.ingest.monitor.azure.com */
@@ -43,22 +43,5 @@ export class LogsIngestionWriter {
     );
 
     return enrichedRows.length;
-  }
-
-  /**
-   * Validate config by attempting a zero-row upload (tests auth + config).
-   * Returns true if the configuration is valid, or an error message string if not.
-   */
-  async validate(): Promise<true | string> {
-    try {
-      await this.client.upload(
-        this.config.dcrImmutableId,
-        this.config.dcrStreamName,
-        [],
-      );
-      return true;
-    } catch (err) {
-      return err instanceof Error ? err.message : String(err);
-    }
   }
 }

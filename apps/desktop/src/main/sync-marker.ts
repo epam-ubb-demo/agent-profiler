@@ -10,9 +10,10 @@
  * partial-write corruption on crash.
  */
 
-import { type SyncMarker, syncMarkerSchema } from '@agent-profiler/core';
 import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+
+import { type SyncMarker, syncMarkerSchema } from '@agent-profiler/core';
 
 const MARKER_FILENAME = '.agent-profiler-sync.json';
 
