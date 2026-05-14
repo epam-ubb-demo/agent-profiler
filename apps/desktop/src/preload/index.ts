@@ -3,6 +3,7 @@ import type { SyncStatusIpc } from '@agent-profiler/core';
 import { contextBridge, ipcRenderer } from 'electron';
 
 import type { ElectronApi } from './api';
+import type { SyncStatusIpc } from '@agent-profiler/core';
 
 const api: ElectronApi = {
   getVersion: () => ipcRenderer.invoke('app:getVersion'),

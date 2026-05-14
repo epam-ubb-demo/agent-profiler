@@ -270,6 +270,15 @@ if (gotLock) {
     syncService.updateWriter(buildWriterIfConfigured(settings));
   });
 
+  ipcMain.handle(ipcChannels.SYNC_SETTINGS_GET, () => {
+    return getSyncSettings();
+  });
+
+  ipcMain.handle(ipcChannels.SYNC_SETTINGS_SET, (_event, raw: unknown) => {
+    const settings = syncSettingsSchema.parse(raw);
+    setSyncSettings(settings);
+  });
+
   app.whenReady().then(async () => {
     // Register PDF export handlers
     registerPdfExportHandlers();
