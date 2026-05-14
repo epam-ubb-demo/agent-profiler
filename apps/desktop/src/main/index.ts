@@ -81,16 +81,30 @@ if (gotLock) {
   let isQuitting = false;
 
   // ── SyncService setup ─────────────────────────────────────────────────────
+
+  /**
+   * Returns a configured LogsIngestionWriter only when all required fields are
+   * non-empty. Avoids constructing an SDK client with blank endpoint strings at
+   * startup (which may throw or waste credential-provider initialisation).
+   */
+  function buildWriterIfConfigured(
+    settings: ReturnType<typeof getSyncSettings>,
+  ): LogsIngestionWriter | null {
+    if (settings.dceEndpoint && settings.dcrImmutableId && settings.dcrStreamName) {
+      return new LogsIngestionWriter({
+        dceEndpoint: settings.dceEndpoint,
+        dcrImmutableId: settings.dcrImmutableId,
+        dcrStreamName: settings.dcrStreamName,
+      });
+    }
+    return null;
+  }
+
   const markerStore = new MarkerStore();
   const initialSyncSettings = getSyncSettings();
-  const logsIngestionWriter = new LogsIngestionWriter({
-    dceEndpoint: initialSyncSettings.dceEndpoint,
-    dcrImmutableId: initialSyncSettings.dcrImmutableId,
-    dcrStreamName: initialSyncSettings.dcrStreamName,
-  });
   const syncService = new SyncService({
     markerStore,
-    logsIngestionWriter,
+    logsIngestionWriter: buildWriterIfConfigured(initialSyncSettings),
     dataSourceManager: manager,
     sessionIndexer: indexer,
     settingsStore: { getSyncSettings },
@@ -240,12 +254,10 @@ if (gotLock) {
     return syncService.getStatus();
   });
 
-  ipcMain.handle(ipcChannels.SYNC_TRIGGER, async (_event, sessionId: string | undefined) => {
-    if (sessionId !== undefined) {
-      await syncService.syncSession(sessionId);
-    } else {
-      await syncService.syncAll();
-    }
+  // The preload API exposes `trigger: () => Promise<void>` with no arguments,
+  // so a per-session branch here would be unreachable. Just run syncAll().
+  ipcMain.handle(ipcChannels.SYNC_TRIGGER, async () => {
+    await syncService.syncAll();
   });
 
   ipcMain.handle(ipcChannels.SYNC_SETTINGS_GET, () => {
@@ -255,12 +267,7 @@ if (gotLock) {
   ipcMain.handle(ipcChannels.SYNC_SETTINGS_SET, (_event, raw: unknown) => {
     const settings = syncSettingsSchema.parse(raw);
     setSyncSettings(settings);
-    const newWriter = new LogsIngestionWriter({
-      dceEndpoint: settings.dceEndpoint,
-      dcrImmutableId: settings.dcrImmutableId,
-      dcrStreamName: settings.dcrStreamName,
-    });
-    syncService.updateWriter(newWriter);
+    syncService.updateWriter(buildWriterIfConfigured(settings));
   });
 
   app.whenReady().then(async () => {

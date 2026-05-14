@@ -34,7 +34,8 @@ export interface SyncSettingsStore {
 /** Constructor dependencies for SyncService. */
 export interface SyncServiceDeps {
   markerStore: MarkerStore;
-  logsIngestionWriter: LogsIngestionWriter;
+  /** Null when sync is not yet configured (empty endpoint/DCR fields). */
+  logsIngestionWriter: LogsIngestionWriter | null;
   dataSourceManager: DataSourceManager;
   sessionIndexer: SessionIndexer;
   settingsStore: SyncSettingsStore;
@@ -73,10 +74,11 @@ export class SyncService {
 
   /**
    * Replace the LogsIngestionWriter used for future sync operations.
+   * Accepts null when the new settings have empty endpoint/DCR fields.
    * Call this whenever the DCE/DCR settings change so the next sync uses
    * the updated endpoint and credentials.
    */
-  updateWriter(newWriter: LogsIngestionWriter): void {
+  updateWriter(newWriter: LogsIngestionWriter | null): void {
     this.deps.logsIngestionWriter = newWriter;
   }
 
@@ -89,6 +91,7 @@ export class SyncService {
   async syncAll(): Promise<void> {
     if (this.syncing) {
       console.log('[SyncService] syncAll() skipped — sync already in progress');
+      this.broadcastStatus(this.status);
       return;
     }
     this.syncing = true;
@@ -100,11 +103,13 @@ export class SyncService {
         return;
       }
 
-      // Only local sessions are eligible for sync; application-insights sessions
-      // are remote-only and do not have a local directory to write markers into.
+      // Only copilot-cli sessions are eligible for sync: they are the only adapter
+      // backed by a writable on-disk session directory where MarkerStore can write.
+      // Other local adapters (vscode-chat, vscode-agent, ctb) may not have
+      // writable directories, and application-insights sessions are remote-only.
       const localSessions = this.deps.sessionIndexer
         .getSessionList()
-        .filter((s) => s.adapter !== 'application-insights');
+        .filter((s) => s.adapter === 'copilot-cli');
 
       const total = localSessions.length;
       let pending = total;
@@ -158,6 +163,7 @@ export class SyncService {
   async syncSession(sessionId: string): Promise<void> {
     if (this.syncing) {
       console.log(`[SyncService] syncSession("${sessionId}") skipped — sync already in progress`);
+      this.broadcastStatus(this.status);
       return;
     }
     this.syncing = true;
@@ -169,9 +175,10 @@ export class SyncService {
         return;
       }
 
+      // Only copilot-cli sessions have a writable on-disk directory for the marker.
       const sessionItem = this.deps.sessionIndexer
         .getSessionList()
-        .find((s) => s.id === sessionId && s.adapter !== 'application-insights');
+        .find((s) => s.id === sessionId && s.adapter === 'copilot-cli');
 
       if (!sessionItem) {
         console.warn(`[SyncService] Session "${sessionId}" not found or not a local session`);
@@ -245,6 +252,12 @@ export class SyncService {
     }
 
     // Push rows to the Azure Logs Ingestion endpoint.
+    if (!this.deps.logsIngestionWriter) {
+      console.warn(
+        `[SyncService] Sync skipped for session "${sessionId}" — remote endpoint not configured`,
+      );
+      return;
+    }
     await this.deps.logsIngestionWriter.push(rows);
 
     // Record which categories were actually included in this push.
