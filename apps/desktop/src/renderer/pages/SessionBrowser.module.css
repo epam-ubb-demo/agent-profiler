@@ -3,9 +3,10 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow-y: auto;
 }
 
-/* ─── Header section (non-scrolling) ─── */
+/* ─── Header section ─── */
 .headerSection {
   flex-shrink: 0;
   padding: 24px 24px 12px 24px;
@@ -201,8 +202,7 @@
 
 /* ─── Scrollable content ─── */
 .scrollableContent {
-  flex: 1;
-  overflow-y: auto;
+  flex-shrink: 0;
   padding: 24px;
   display: flex;
   flex-direction: column;
