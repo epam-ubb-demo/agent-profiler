@@ -29,7 +29,7 @@ import { extractSessionListMetrics } from './session-list-metrics';
 // ---------------------------------------------------------------------------
 
 const CACHE_FILE_NAME = 'session-index-cache.json';
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const BATCH_SIZE = 50;
 
 // ---------------------------------------------------------------------------

@@ -78,6 +78,13 @@ export interface SessionListMetricsIpc {
   costConfidence: 'known' | 'estimated' | 'unknown';
   wallTimeMs: number | null;
   repository: string;
+  modelUsage: Array<{
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+  }>;
 }
 
 export interface SessionListItemIpc {
