@@ -96,29 +96,29 @@
 
 /* Per-metric colours */
 .metricPill[data-metric="cost"] {
-  background: #fef3c7;
-  border: 1px solid #fbbf24;
-  color: #92400e;
-}
-.metricPill[data-metric="time"] {
-  background: #dbeafe;
-  border: 1px solid #60a5fa;
-  color: #1e40af;
-}
-.metricPill[data-metric="in"] {
   background: #dcfce7;
-  border: 1px solid #4ade80;
+  border: 1px solid #86efac;
   color: #166534;
 }
+.metricPill[data-metric="time"] {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+.metricPill[data-metric="in"] {
+  background: #fef9c3;
+  border: 1px solid #facc15;
+  color: #713f12;
+}
 .metricPill[data-metric="out"] {
-  background: #fce7f3;
-  border: 1px solid #f472b6;
-  color: #9d174d;
+  background: #fef9c3;
+  border: 1px solid #facc15;
+  color: #713f12;
 }
 .metricPill[data-metric="cached"] {
-  background: #e0e7ff;
-  border: 1px solid #818cf8;
-  color: #3730a3;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #166534;
 }
 
 .metricLabel {
