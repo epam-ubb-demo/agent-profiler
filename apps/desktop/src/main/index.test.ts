@@ -76,6 +76,47 @@ vi.mock('./settings-store', () => ({
   setAppInsightsSettings: vi.fn(),
   getSessionRootDir: vi.fn().mockReturnValue(null),
   setSessionRootDir: vi.fn(),
+  getSyncSettings: vi.fn().mockReturnValue({
+    enabled: false,
+    categories: { metadata: true, utilisation: true, compactions: true, toolResults: false },
+    dceEndpoint: '',
+    dcrImmutableId: '',
+    dcrStreamName: '',
+  }),
+  setSyncSettings: vi.fn(),
+}));
+
+vi.mock('./azure-workspaces', () => ({
+  listLogAnalyticsWorkspaces: vi.fn().mockResolvedValue({ success: true, workspaces: [] }),
+}));
+
+vi.mock('./sync-marker', () => ({
+  MarkerStore: vi.fn().mockImplementation(() => ({
+    read: vi.fn().mockResolvedValue(null),
+    write: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
+    cleanupTemp: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
+vi.mock('./sync-service', () => ({
+  SyncService: vi.fn().mockImplementation(() => ({
+    getStatus: vi.fn().mockReturnValue({
+      state: 'idle',
+      lastSyncedAt: null,
+      sessionsPending: 0,
+      sessionsTotal: 0,
+      lastError: null,
+    }),
+    syncAll: vi.fn().mockResolvedValue(undefined),
+    syncSession: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
+vi.mock('@agent-profiler/adapters-application-insights', () => ({
+  LogsIngestionWriter: vi.fn().mockImplementation(() => ({
+    push: vi.fn().mockResolvedValue(undefined),
+  })),
 }));
 
 vi.mock('@agent-profiler/core', () => ({
@@ -89,15 +130,25 @@ vi.mock('@agent-profiler/core', () => ({
     SETTINGS_GET: 'settings:get',
     SETTINGS_SET: 'settings:set',
     SETTINGS_TEST_CONNECTION: 'settings:test-connection',
+    SETTINGS_LIST_WORKSPACES: 'settings:listWorkspaces',
     SESSION_LIST_UPDATED: 'session:list-updated',
     SESSION_SCANNING_STATE_UPDATED: 'session:scanning-state-updated',
+    SYNC_STATUS: 'sync:status',
+    SYNC_TRIGGER: 'sync:trigger',
+    SYNC_SETTINGS_GET: 'sync:settingsGet',
+    SYNC_SETTINGS_SET: 'sync:settingsSet',
+    SYNC_STATUS_UPDATED: 'sync:statusUpdated',
   },
   appInsightsSettingsSchema: {
     parse: vi.fn((v: unknown) => v),
     // Return success:false to skip applyAppInsightsSettings side-effects.
     safeParse: vi.fn().mockReturnValue({ success: false }),
   },
+  syncSettingsSchema: {
+    parse: vi.fn((v: unknown) => v),
+  },
   testConnectionResultSchema: { parse: vi.fn((v: unknown) => v) },
+  listWorkspacesResultSchema: { parse: vi.fn((v: unknown) => v) },
 }));
 
 // ── Test suite ─────────────────────────────────────────────────────────────

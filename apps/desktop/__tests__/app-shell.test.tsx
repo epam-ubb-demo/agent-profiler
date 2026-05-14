@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppShell } from '../src/renderer/components/AppShell';
 
@@ -9,6 +9,25 @@ const mockToggleTheme = vi.fn();
 vi.mock('../src/renderer/components/useTheme', () => ({
   useTheme: () => ({ theme: 'light' as const, toggleTheme: mockToggleTheme }),
 }));
+
+beforeEach(() => {
+  Object.defineProperty(window, 'electronApi', {
+    value: {
+      sync: {
+        getStatus: vi.fn().mockResolvedValue({
+          state: 'idle',
+          lastSyncedAt: null,
+          sessionsPending: 0,
+          sessionsTotal: 0,
+          lastError: null,
+        }),
+        onStatusUpdated: vi.fn().mockReturnValue(() => {}),
+      },
+    },
+    writable: true,
+    configurable: true,
+  });
+});
 
 afterEach(() => {
   cleanup();

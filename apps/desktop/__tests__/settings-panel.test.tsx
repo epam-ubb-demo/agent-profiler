@@ -52,7 +52,7 @@ afterEach(() => {
 
 /** Opens the settings dialog and waits for settings to load. */
 async function openSettingsDialog() {
-  const trigger = screen.getByRole('button', { name: /settings/i });
+  const trigger = screen.getByRole('button', { name: /open remote session/i });
   fireEvent.click(trigger);
 
   // Wait for the dialog to open and settings to load
@@ -67,7 +67,7 @@ describe('SettingsPanel', () => {
   it('renders settings trigger button', async () => {
     await render(<SettingsPanel />);
 
-    expect(screen.getByRole('button', { name: /settings/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open remote session/i })).toBeInTheDocument();
   });
 
   it('opens dialog when settings button is clicked', async () => {
