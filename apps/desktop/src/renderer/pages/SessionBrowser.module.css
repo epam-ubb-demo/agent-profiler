@@ -223,6 +223,7 @@
 /* ─── Chart area (inside summary bar) ─── */
 .chartArea {
   padding: 0 12px 12px;
+  max-width: 960px;
 }
 
 /* ─── Empty filter state ─── */
