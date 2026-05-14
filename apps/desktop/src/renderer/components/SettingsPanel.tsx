@@ -348,7 +348,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
                 <Switch
                   value={syncEnabled}
                   onValueChange={setSyncEnabled}
-                  label="Enable auto-sync"
+                  label="Enable sync"
                 />
 
                 {syncEnabled && (

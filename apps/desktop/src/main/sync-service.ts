@@ -100,6 +100,10 @@ export class SyncService {
       const settings = this.deps.settingsStore.getSyncSettings();
       if (!settings.enabled) {
         console.log('[SyncService] syncAll() skipped — sync is disabled');
+        this.broadcastStatus({
+          ...this.status,
+          lastError: 'Sync is disabled — enable it in settings',
+        });
         return;
       }
 

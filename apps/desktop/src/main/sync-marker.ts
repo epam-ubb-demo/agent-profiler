@@ -29,12 +29,22 @@ export class MarkerStore {
       const parsed = JSON.parse(raw);
       const result = syncMarkerSchema.safeParse(parsed);
       if (!result.success) {
-        // Corrupted or outdated schema — treat as no marker
+        console.warn(
+          `[MarkerStore] Corrupted sync marker in ${sessionDir} — will re-sync:`,
+          result.error.message,
+        );
         return null;
       }
       return result.data;
-    } catch {
-      // ENOENT or read error — no marker
+    } catch (err: unknown) {
+      if (
+        err instanceof Error &&
+        'code' in err &&
+        (err as NodeJS.ErrnoException).code === 'ENOENT'
+      ) {
+        return null; // No marker file — expected for unsynced sessions
+      }
+      console.warn(`[MarkerStore] Failed to read sync marker in ${sessionDir}:`, err);
       return null;
     }
   }
