@@ -44,4 +44,21 @@ export class LogsIngestionWriter {
 
     return enrichedRows.length;
   }
+
+  /**
+   * Validate config by attempting a zero-row upload (tests auth + config).
+   * Returns true if the configuration is valid, or an error message string if not.
+   */
+  async validate(): Promise<true | string> {
+    try {
+      await this.client.upload(
+        this.config.dcrImmutableId,
+        this.config.dcrStreamName,
+        [],
+      );
+      return true;
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err);
+    }
+  }
 }
