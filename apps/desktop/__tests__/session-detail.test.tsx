@@ -72,6 +72,7 @@ const mockElectronApi = {
     get: vi.fn(),
     set: vi.fn(),
     testConnection: vi.fn(),
+    listWorkspaces: vi.fn(),
   },
 } satisfies ElectronApi;
 

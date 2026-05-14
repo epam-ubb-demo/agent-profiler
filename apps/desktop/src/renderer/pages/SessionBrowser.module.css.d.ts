@@ -8,9 +8,10 @@ declare const styles: {
   readonly cardGrid: string;
   readonly sessionCard: string;
   readonly cardContent: string;
-  readonly kpiBar: string;
-  readonly kpiItem: string;
-  readonly cardTokens: string;
+  readonly metricsRow: string;
+  readonly metricPill: string;
+  readonly metricLabel: string;
+  readonly metricValue: string;
   readonly cardMeta: string;
   readonly repoText: string;
   readonly pathText: string;

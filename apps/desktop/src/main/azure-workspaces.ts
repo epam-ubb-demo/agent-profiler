@@ -44,7 +44,7 @@ function runAzCli(args: readonly string[]): Promise<string> {
           return;
         }
 
-        if ((error as NodeJS.ErrnoException).killed) {
+        if ((error as NodeJS.ErrnoException & { killed?: boolean }).killed) {
           reject(new Error(
             'Azure CLI did not respond in time. Check your network connection and Azure CLI login.',
           ));
