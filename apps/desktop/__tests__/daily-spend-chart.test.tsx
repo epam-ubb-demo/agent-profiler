@@ -45,6 +45,19 @@ describe('DailySpendChart', () => {
     expect(screen.getByText('No cost data')).toBeDefined();
   });
 
+  it('renders "No cost data" when all costs are null', async () => {
+    await render(
+      <DailySpendChart
+        data={[
+          makeDay({ date: '2024-05-01', cost: null }),
+          makeDay({ date: '2024-05-02', cost: null }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('No cost data')).toBeDefined();
+  });
+
   it('renders SVG with data-testid when data is provided', async () => {
     const { container } = await render(
       <DailySpendChart
@@ -120,6 +133,21 @@ describe('DailySpendChart', () => {
     expect(text).toContain('In: 5.0K');
     expect(text).toContain('Out: 3.0K');
     expect(text).toContain('Cached: 1.0K');
+  });
+
+  it('shows dash for null cost and wallTime in tooltip', async () => {
+    const { container } = await render(
+      <DailySpendChart
+        data={[makeDay({ date: '2024-05-10', cost: 0.10 }), makeDay({ date: '2024-05-11', cost: null, wallTimeMs: null, inputTokens: 100 })]}
+      />,
+    );
+
+    const titles = container.querySelectorAll('[data-testid="spend-bar"] title');
+    expect(titles.length).toBe(2);
+    const nullTitle = titles[1]!.textContent ?? '';
+    expect(nullTitle).toContain('Cost: —');
+    expect(nullTitle).toContain('Time: —');
+    expect(nullTitle).toContain('In: 100');
   });
 
   it('renders with a single data point without errors', async () => {

@@ -11,8 +11,10 @@ import { memo, useMemo } from 'react';
 
 export interface DailyMetrics {
   readonly date: string;
-  readonly cost: number;
-  readonly wallTimeMs: number;
+  /** Null when no session in this day had cost data. */
+  readonly cost: number | null;
+  /** Null when no session in this day had wall-time data. */
+  readonly wallTimeMs: number | null;
   readonly inputTokens: number;
   readonly outputTokens: number;
   readonly cacheReadTokens: number;
@@ -77,8 +79,8 @@ function formatTk(n: number): string {
 function buildBarTooltip(item: DailyMetrics): string {
   const lines = [
     formatShortDate(item.date),
-    `Cost: ${formatUsd(item.cost)}`,
-    `Time: ${formatMs(item.wallTimeMs)}`,
+    `Cost: ${item.cost != null ? formatUsd(item.cost) : '—'}`,
+    `Time: ${item.wallTimeMs != null ? formatMs(item.wallTimeMs) : '—'}`,
     `In: ${formatTk(item.inputTokens)}`,
     `Out: ${formatTk(item.outputTokens)}`,
     `Cached: ${formatTk(item.cacheReadTokens)}`,
@@ -107,7 +109,7 @@ function DailySpendChartInner({ data }: DailySpendChartProps) {
   const computed = useMemo(() => {
     if (data.length === 0) return null;
 
-    const maxCost = Math.max(...data.map((d) => d.cost));
+    const maxCost = Math.max(...data.map((d) => d.cost ?? 0));
     if (maxCost === 0) return null;
 
     const niceStep = computeNiceStep(maxCost * 1.1);
@@ -119,7 +121,7 @@ function DailySpendChartInner({ data }: DailySpendChartProps) {
     const slotW = barAreaW / n;
 
     const bars = data.map((item, i) => {
-      const barH = (item.cost / yMax) * CHART_H;
+      const barH = ((item.cost ?? 0) / yMax) * CHART_H;
       const cx = CHART_X + slotW * i + slotW / 2;
       const x = cx - barW / 2;
       const y = CHART_Y + CHART_H - barH;

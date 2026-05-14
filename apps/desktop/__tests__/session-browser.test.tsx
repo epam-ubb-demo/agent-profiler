@@ -553,7 +553,7 @@ describe('SessionBrowser', () => {
     });
 
     const bar = screen.getByTestId('summary-bar');
-    expect(bar.textContent).toContain('day');
+    expect(bar.textContent).toContain('2 days');
   });
 
   it('collapses analytics panel when toggle is clicked again', async () => {

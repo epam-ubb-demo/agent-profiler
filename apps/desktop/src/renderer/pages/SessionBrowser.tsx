@@ -352,14 +352,14 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
   // Daily spend for analytics panel — enriched with all metrics
   const dailySpend = useMemo(() => {
-    const map = new Map<string, { cost: number; wallTimeMs: number; inputTokens: number; outputTokens: number; cacheReadTokens: number }>();
+    const map = new Map<string, { cost: number | null; wallTimeMs: number | null; inputTokens: number; outputTokens: number; cacheReadTokens: number }>();
     for (const s of filteredSessions) {
       const m = s.metrics;
       if (m) {
         const key = toLocalDateKey(s.createdAt);
-        const prev = map.get(key) ?? { cost: 0, wallTimeMs: 0, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 };
-        prev.cost += m.totalCostUsd ?? 0;
-        prev.wallTimeMs += m.wallTimeMs ?? 0;
+        const prev = map.get(key) ?? { cost: null, wallTimeMs: null, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 };
+        if (m.totalCostUsd != null) prev.cost = (prev.cost ?? 0) + m.totalCostUsd;
+        if (m.wallTimeMs != null) prev.wallTimeMs = (prev.wallTimeMs ?? 0) + m.wallTimeMs;
         prev.inputTokens += m.totalInputTokens;
         prev.outputTokens += m.totalOutputTokens;
         prev.cacheReadTokens += m.totalCacheReadTokens;
