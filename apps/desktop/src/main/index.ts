@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import {
   ipcChannels,
   appInsightsSettingsSchema,
+  syncSettingsSchema,
   testConnectionResultSchema,
   listWorkspacesResultSchema,
 } from '@agent-profiler/core';
@@ -21,6 +22,7 @@ import {
   getSessionRootDir,
   setSessionRootDir,
   getSyncSettings,
+  setSyncSettings,
 } from './settings-store';
 import { MarkerStore } from './sync-marker';
 import { SyncService } from './sync-service';
@@ -244,6 +246,15 @@ if (gotLock) {
     } else {
       await syncService.syncAll();
     }
+  });
+
+  ipcMain.handle(ipcChannels.SYNC_SETTINGS_GET, () => {
+    return getSyncSettings();
+  });
+
+  ipcMain.handle(ipcChannels.SYNC_SETTINGS_SET, (_event, raw: unknown) => {
+    const settings = syncSettingsSchema.parse(raw);
+    setSyncSettings(settings);
   });
 
   app.whenReady().then(async () => {

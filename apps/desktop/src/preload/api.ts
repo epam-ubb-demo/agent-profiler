@@ -1,4 +1,4 @@
-import type { AdapterTypeIpc, AppInsightsSettingsIpc, ListWorkspacesResultIpc, TestConnectionResultIpc } from '@agent-profiler/core';
+import type { AdapterTypeIpc, AppInsightsSettingsIpc, ListWorkspacesResultIpc, SyncSettingsIpc, SyncStatusIpc, TestConnectionResultIpc } from '@agent-profiler/core';
 
 /**
  * Typed API exposed to the renderer process via contextBridge.
@@ -48,6 +48,19 @@ export interface ElectronApi {
     testConnection: () => Promise<TestConnectionResultIpc>;
     /** Discover available Log Analytics workspaces via Azure CLI. */
     listWorkspaces: () => Promise<ListWorkspacesResultIpc>;
+  };
+
+  sync: {
+    /** Retrieve persisted sync settings. */
+    getSettings: () => Promise<SyncSettingsIpc>;
+    /** Save sync settings. */
+    setSettings: (settings: SyncSettingsIpc) => Promise<void>;
+    /** Get a snapshot of the current sync status. */
+    getStatus: () => Promise<SyncStatusIpc>;
+    /** Trigger a sync run (syncs all pending local sessions). */
+    trigger: () => Promise<void>;
+    /** Register a callback for push-based sync status updates from main process. */
+    onStatusUpdated: (callback: (status: SyncStatusIpc) => void) => () => void;
   };
 }
 

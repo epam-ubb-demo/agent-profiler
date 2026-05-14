@@ -93,6 +93,8 @@ export const ipcChannels = {
   SYNC_TRIGGER: 'sync:trigger',
   SYNC_STATUS: 'sync:status',
   SYNC_STATUS_UPDATED: 'sync:statusUpdated',
+  SYNC_SETTINGS_GET: 'sync:settingsGet',
+  SYNC_SETTINGS_SET: 'sync:settingsSet',
 } as const;
 
 /**

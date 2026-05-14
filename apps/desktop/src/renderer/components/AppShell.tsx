@@ -1,9 +1,11 @@
 import { MainMenu } from '@epam/loveship';
-import { FlexSpacer, MainMenuButton } from '@epam/uui';
+import { FlexSpacer, MainMenuButton, Tooltip } from '@epam/uui';
 import { MainMenuCustomElement } from '@epam/uui-components';
 import type { AdaptiveItemProps } from '@epam/uui-components';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { SyncStatusIpc } from '@agent-profiler/core';
 
 import epamLogo from '@/assets/epam-white.png';
 import { MoonIcon, SunIcon } from '@/components/icons';
@@ -11,6 +13,63 @@ import { useTheme } from '@/components/useTheme';
 
 export interface AppShellProps {
   children: ReactNode;
+}
+
+/** Small pill shown in the header bar reflecting the current sync state. */
+function SyncStatusPill({ status }: { readonly status: SyncStatusIpc | null }) {
+  if (!status || status.state === 'idle') return null;
+
+  if (status.state === 'scanning' || status.state === 'pushing') {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          paddingLeft: 10,
+          paddingRight: 10,
+          height: 24,
+          borderRadius: 12,
+          background: 'rgba(255,255,255,0.12)',
+          color: 'rgba(255,255,255,0.85)',
+          fontSize: 12,
+        }}
+        aria-label="Sync in progress"
+      >
+        <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
+        <span>Syncing…</span>
+      </div>
+    );
+  }
+
+  if (status.state === 'error') {
+    const errorMsg = status.lastError ?? 'Sync failed';
+    return (
+      <Tooltip content={errorMsg} placement="bottom">
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            paddingLeft: 10,
+            paddingRight: 10,
+            height: 24,
+            borderRadius: 12,
+            background: 'rgba(229,67,34,0.25)',
+            color: 'rgba(255,180,160,1)',
+            fontSize: 12,
+            cursor: 'default',
+          }}
+          aria-label={`Sync error: ${errorMsg}`}
+        >
+          <AlertTriangle size={12} />
+          <span>Sync error</span>
+        </div>
+      </Tooltip>
+    );
+  }
+
+  return null;
 }
 
 /**
@@ -25,6 +84,14 @@ export interface AppShellProps {
  */
 export function AppShell({ children }: AppShellProps) {
   const { theme, toggleTheme } = useTheme();
+  const [syncStatus, setSyncStatus] = useState<SyncStatusIpc | null>(null);
+
+  // Fetch initial sync status and subscribe to push updates
+  useEffect(() => {
+    void window.electronApi.sync.getStatus().then(setSyncStatus).catch(() => undefined);
+    const unsub = window.electronApi.sync.onStatusUpdated(setSyncStatus);
+    return unsub;
+  }, []);
 
   const menuItems: AdaptiveItemProps[] = useMemo(
     () => [
@@ -63,6 +130,15 @@ export function AppShell({ children }: AppShellProps) {
         render: () => <FlexSpacer key="spacer" />,
       },
       {
+        id: 'sync-status',
+        priority: 97,
+        render: () => (
+          <MainMenuCustomElement key="sync-status">
+            <SyncStatusPill status={syncStatus} />
+          </MainMenuCustomElement>
+        ),
+      },
+      {
         id: 'theme-toggle',
         priority: 98,
         render: () => (
@@ -78,7 +154,7 @@ export function AppShell({ children }: AppShellProps) {
         ),
       },
     ],
-    [theme, toggleTheme],
+    [theme, toggleTheme, syncStatus],
   );
 
   return (

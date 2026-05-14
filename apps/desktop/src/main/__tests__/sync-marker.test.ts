@@ -6,7 +6,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdir, mkdtemp } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { rm } from 'node:fs/promises';
@@ -148,7 +148,7 @@ describe('MarkerStore', () => {
             }
           },
         }),
-        (e) => ({ exists: async () => false }),
+        (_e) => ({ exists: async () => false }),
       );
 
       const marker: SyncMarker = {
@@ -201,7 +201,7 @@ describe('MarkerStore', () => {
 
   describe('delete()', () => {
     it('removes marker file', async () => {
-      const { writeFile, access } = await import('node:fs/promises');
+      const { access } = await import('node:fs/promises');
       const markerPath = join(tempDir, '.agent-profiler-sync.json');
       const marker: SyncMarker = {
         version: 1,
