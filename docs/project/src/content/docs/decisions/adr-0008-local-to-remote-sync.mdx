@@ -29,11 +29,21 @@ We chose a dedicated table rather than extending existing OpenTelemetry spans be
 
 Each session stores a sidecar marker file, `.agent-profiler-sync.json`, alongside the local session data. The marker records:
 
-- byte offset
+- last synced row count (`lastSyncedRowCount`)
 - last event ID
 - categories already pushed
 
 Marker updates are written atomically by creating a temporary file and renaming it into place. This prevents partial writes if the process exits mid-sync.
+
+### v1 sync scope
+
+v1 implements one-shot sync per session. Once a session has been synced, it is not synced again, even if new events are appended or the selected categories change later.
+
+This is intentional for the initial release and keeps the implementation simple while the marker schema remains ready for a delta/resume model.
+
+### Deferred delta sync
+
+True delta/resume sync is deferred to a follow-up PR. The marker schema already carries the fields needed for that work, including `lastSyncedRowCount` and `categoriesPushed`, but v1 does not use them to resume or re-drive a previously synced session.
 
 ### Idempotency
 
@@ -75,4 +85,5 @@ Rejected. Blob storage would not provide a native KQL join path with the session
 - The desktop app now depends on `@azure/monitor-ingestion`.
 - Provisioning must include a Data Collection Endpoint, Data Collection Rule, and custom Logs table.
 - The desktop settings UI gains sync controls, Azure endpoint configuration, and status feedback.
-- The system introduces a small amount of per-session state management through the marker file, but sync remains resumable and idempotent.
+- The system introduces a small amount of per-session state management through the marker file, but v1 sync is one-shot per session.
+- Delta/resume sync remains a known limitation and follow-up item.
