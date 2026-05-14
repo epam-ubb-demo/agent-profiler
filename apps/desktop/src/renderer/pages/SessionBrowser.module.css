@@ -95,31 +95,36 @@
   color: var(--uui-text-primary);
 }
 
-/* Per-metric colours */
+/* Per-metric colours — neutral pill with coloured left accent border */
 .metricPill[data-metric="cost"] {
-  background: #dcfce7;
-  border: 1px solid #86efac;
-  color: #166534;
+  background: #f8fafb;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #22c55e;
+  color: #1e293b;
 }
 .metricPill[data-metric="time"] {
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
-  color: #374151;
+  background: #f8fafb;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #3b82f6;
+  color: #1e293b;
 }
 .metricPill[data-metric="in"] {
-  background: #fef9c3;
-  border: 1px solid #facc15;
-  color: #713f12;
+  background: #f8fafb;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #f59e0b;
+  color: #1e293b;
 }
 .metricPill[data-metric="out"] {
-  background: #fef9c3;
-  border: 1px solid #facc15;
-  color: #713f12;
+  background: #f8fafb;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #f59e0b;
+  color: #1e293b;
 }
 .metricPill[data-metric="cached"] {
-  background: #dcfce7;
-  border: 1px solid #86efac;
-  color: #166534;
+  background: #f8fafb;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #14b8a6;
+  color: #1e293b;
 }
 
 .metricLabel {
