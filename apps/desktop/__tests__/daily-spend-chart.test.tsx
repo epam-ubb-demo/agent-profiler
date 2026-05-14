@@ -2,7 +2,7 @@
  * Tests for DailySpendChart – hand-crafted SVG bar chart showing cost per day.
  */
 
-import { screen, cleanup } from '@testing-library/react';
+import { screen, cleanup, fireEvent } from '@testing-library/react';
 import { describe, expect, it, afterEach } from 'vitest';
 
 import type { DailyMetrics } from '../src/renderer/components/DailySpendChart';
@@ -118,16 +118,20 @@ describe('DailySpendChart', () => {
     expect(svg!.getAttribute('width')).toBe('100%');
   });
 
-  it('bar titles include all metrics', async () => {
+  it('bar tooltip includes all metrics on hover', async () => {
     const { container } = await render(
       <DailySpendChart
         data={[makeDay({ date: '2024-05-10', cost: 0.15, wallTimeMs: 120_000, inputTokens: 5000, outputTokens: 3000, cacheReadTokens: 1000 })]}
       />,
     );
 
-    const title = container.querySelector('[data-testid="spend-bar"] title');
-    expect(title).not.toBeNull();
-    const text = title!.textContent ?? '';
+    const bar = container.querySelector('[data-testid="spend-bar"]');
+    expect(bar).not.toBeNull();
+    await fireEvent.mouseEnter(bar!);
+
+    const tip = container.querySelector('[data-testid="chart-tooltip"]');
+    expect(tip).not.toBeNull();
+    const text = tip!.textContent ?? '';
     expect(text).toContain('$0.15');
     expect(text).toContain('2m');
     expect(text).toContain('In: 5.0K');
@@ -142,12 +146,16 @@ describe('DailySpendChart', () => {
       />,
     );
 
-    const titles = container.querySelectorAll('[data-testid="spend-bar"] title');
-    expect(titles.length).toBe(2);
-    const nullTitle = titles[1]!.textContent ?? '';
-    expect(nullTitle).toContain('Cost: —');
-    expect(nullTitle).toContain('Time: —');
-    expect(nullTitle).toContain('In: 100');
+    const bars = container.querySelectorAll('[data-testid="spend-bar"]');
+    expect(bars.length).toBe(2);
+    await fireEvent.mouseEnter(bars[1]!);
+
+    const tip = container.querySelector('[data-testid="chart-tooltip"]');
+    expect(tip).not.toBeNull();
+    const text = tip!.textContent ?? '';
+    expect(text).toContain('Cost: —');
+    expect(text).toContain('Time: —');
+    expect(text).toContain('In: 100');
   });
 
   it('renders with a single data point without errors', async () => {
