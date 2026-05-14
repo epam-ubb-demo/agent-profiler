@@ -17,6 +17,7 @@
     "@agent-profiler/core": "workspace:*",
     "@agent-profiler/data-source": "workspace:*",
     "@azure/identity": "^4.6.0",
+    "@azure/monitor-ingestion": "^1.2.0",
     "@azure/monitor-query-logs": "^1.0.0",
     "zod": "^3.24.0"
   },
