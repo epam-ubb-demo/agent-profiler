@@ -45,6 +45,10 @@ function TabOverviewInner({
   modelSpend,
   turns,
 }: TabOverviewProps) {
+  const costByModel = modelSpend
+    ? Object.fromEntries(modelSpend.rows.map((r) => [r.model, r.estimatedUsd]))
+    : undefined;
+
   return (
     <div data-testid="tab-overview">
       {/* Full 11-stat grid */}
@@ -66,8 +70,12 @@ function TabOverviewInner({
         {/* Right column */}
         <div>
           <Section title="Token distribution by model">
-            <ModelTokenDistribution modelColours={modelColours} modelMetrics={modelMetrics} />
-          </Section>
+              <ModelTokenDistribution
+                modelColours={modelColours}
+                modelMetrics={modelMetrics}
+                {...(costByModel ? { costByModel } : {})}
+              />
+            </Section>
 
           <Section title="Token spend per turn (top 15)">
             <TokensPerTurnChart turns={turns} />

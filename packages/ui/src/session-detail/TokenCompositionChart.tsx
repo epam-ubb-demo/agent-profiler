@@ -16,7 +16,7 @@
 import { Text } from '@epam/uui';
 import { memo, useMemo } from 'react';
 
-import { formatTokenCount } from '../comparative/format';
+import { formatTokenCost, formatTokenCount } from '../comparative/format';
 
 import type { ModelSpendResult } from './model-spend';
 import styles from './session-detail.module.css';
@@ -37,6 +37,7 @@ interface TokenBucket {
   readonly label: string;
   readonly tokens: number;
   readonly colour: string;
+  readonly costUsd: number;
 }
 
 /* --- Props ---------------------------------------------------------------- */
@@ -55,10 +56,10 @@ function TokenCompositionChartInner({ modelSpend }: TokenCompositionChartProps) 
     const freshInput = Math.max(0, totals.inputTokens - totals.cacheReadTokens);
 
     return [
-      { label: 'Fresh input', tokens: freshInput, colour: 'var(--uui-warning-50)' },
-      { label: 'Cache reads', tokens: totals.cacheReadTokens, colour: 'var(--uui-success-50)' },
-      { label: 'Output', tokens: totals.outputTokens, colour: 'var(--uui-primary-50)' },
-      { label: 'Cache writes', tokens: totals.cacheWriteTokens, colour: 'var(--uui-info-50)' },
+      { label: 'Fresh input', tokens: freshInput, colour: 'var(--uui-warning-50)', costUsd: totals.inputCostUsd },
+      { label: 'Cache reads', tokens: totals.cacheReadTokens, colour: 'var(--uui-success-50)', costUsd: totals.cacheReadCostUsd },
+      { label: 'Output', tokens: totals.outputTokens, colour: 'var(--uui-primary-50)', costUsd: totals.outputCostUsd },
+      { label: 'Cache writes', tokens: totals.cacheWriteTokens, colour: 'var(--uui-info-50)', costUsd: totals.cacheWriteCostUsd },
     ].filter((b) => b.tokens > 0);
   }, [modelSpend]);
 
@@ -146,7 +147,7 @@ function TokenCompositionChartInner({ modelSpend }: TokenCompositionChartProps) 
               strokeDasharray={`${arc.dashLength} ${CIRCUMFERENCE - arc.dashLength}`}
               strokeDashoffset={arc.dashOffset}
             >
-              <title>{`${arc.label}: ${formatTokenCount(arc.tokens)} (${Math.round(arc.proportion * 100)}%)`}</title>
+              <title>{`${arc.label}: ${formatTokenCount(arc.tokens)} (${Math.round(arc.proportion * 100)}%)${arc.costUsd > 0 ? ` — ${formatTokenCost(arc.costUsd)}` : ''}`}</title>
             </circle>
           ))}
         </g>

@@ -101,6 +101,10 @@ function makeModelSpend(overrides?: Partial<ModelSpendResult>): ModelSpendResult
         cacheReadTokens: 200,
         cacheWriteTokens: 100,
         estimatedUsd: 3.5,
+        inputCostUsd: 0,
+        cacheReadCostUsd: 0,
+        cacheWriteCostUsd: 0,
+        outputCostUsd: 0,
       },
     ],
     totals: {
@@ -112,6 +116,10 @@ function makeModelSpend(overrides?: Partial<ModelSpendResult>): ModelSpendResult
       cacheReadTokens: 200,
       cacheWriteTokens: 100,
       estimatedUsd: 3.5,
+      inputCostUsd: 0,
+      cacheReadCostUsd: 0,
+      cacheWriteCostUsd: 0,
+      outputCostUsd: 0,
     },
     confidence: 'estimated',
     source: 'shutdown',
@@ -238,6 +246,10 @@ describe('computeCostKpis', () => {
           cacheReadTokens: 0,
           cacheWriteTokens: 0,
           estimatedUsd: 0,
+          inputCostUsd: 0,
+          cacheReadCostUsd: 0,
+          cacheWriteCostUsd: 0,
+          outputCostUsd: 0,
         },
       });
       const result = computeCostKpis(spend, makeHotConsumption(), false);
@@ -256,6 +268,10 @@ describe('computeCostKpis', () => {
           cacheReadTokens: 500,
           cacheWriteTokens: 0,
           estimatedUsd: 0,
+          inputCostUsd: 0,
+          cacheReadCostUsd: 0,
+          cacheWriteCostUsd: 0,
+          outputCostUsd: 0,
         },
       });
       const result = computeCostKpis(spend, makeHotConsumption(), false);
@@ -274,6 +290,10 @@ describe('computeCostKpis', () => {
           cacheReadTokens: 0,
           cacheWriteTokens: 0,
           estimatedUsd: 0,
+          inputCostUsd: 0,
+          cacheReadCostUsd: 0,
+          cacheWriteCostUsd: 0,
+          outputCostUsd: 0,
         },
       });
       const result = computeCostKpis(spend, makeHotConsumption(), false);

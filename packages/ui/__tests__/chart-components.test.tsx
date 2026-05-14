@@ -768,6 +768,68 @@ describe('ModelTokenDistribution', () => {
     expect(allText).toMatch(/67%/);
     expect(allText).toMatch(/33%/);
   });
+
+  it('shows cost in arc title when costByModel is provided', () => {
+    const modelMetrics: readonly ModelMetrics[] = [
+      {
+        model: 'claude-3-opus',
+        inputTokens: 8000,
+        outputTokens: 2000,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
+      },
+      {
+        model: 'claude-3-haiku',
+        inputTokens: 4000,
+        outputTokens: 1000,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 50,
+      },
+    ];
+
+    const { container } = render(
+      <ModelTokenDistribution
+        modelColours={{ 'claude-3-opus': '#ff0000', 'claude-3-haiku': '#00ff00' }}
+        modelMetrics={modelMetrics}
+        costByModel={{ 'claude-3-opus': 0.024, 'claude-3-haiku': 0.0005 }}
+      />,
+    );
+
+    const titles = Array.from(container.querySelectorAll('title')).map((el) => el.textContent ?? '');
+    expect(titles.some((t) => t.includes('claude-3-opus') && t.includes('$0.0240'))).toBe(true);
+    expect(titles.some((t) => t.includes('claude-3-haiku') && t.includes('$0.0005'))).toBe(true);
+  });
+
+  it('omits cost from arc title when costByModel is not provided', () => {
+    const modelMetrics: readonly ModelMetrics[] = [
+      {
+        model: 'model-a',
+        inputTokens: 5000,
+        outputTokens: 1000,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        reasoningTokens: 0,
+        requestCount: 1,
+        premiumRequestCost: 0,
+        apiDurationMs: 100,
+      },
+    ];
+
+    const { container } = render(
+      <ModelTokenDistribution modelColours={{ 'model-a': '#ff0000' }} modelMetrics={modelMetrics} />,
+    );
+
+    const titles = Array.from(container.querySelectorAll('title')).map((el) => el.textContent ?? '');
+    expect(titles.every((t) => !t.includes('$'))).toBe(true);
+  });
 });
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -783,6 +845,11 @@ describe('TokenCompositionChart', () => {
     outputTokens: number;
     cacheReadTokens: number;
     cacheWriteTokens: number;
+    estimatedUsd?: number;
+    inputCostUsd?: number;
+    cacheReadCostUsd?: number;
+    cacheWriteCostUsd?: number;
+    outputCostUsd?: number;
   }) {
     return {
       rows: [],
@@ -790,10 +857,17 @@ describe('TokenCompositionChart', () => {
         requestCount: 1,
         premiumRequests: 0,
         premiumRequestCostUsd: 0,
-        estimatedUsd: 0,
-        ...totals,
+        estimatedUsd: totals.estimatedUsd ?? 0,
+        inputCostUsd: totals.inputCostUsd ?? 0,
+        cacheReadCostUsd: totals.cacheReadCostUsd ?? 0,
+        cacheWriteCostUsd: totals.cacheWriteCostUsd ?? 0,
+        outputCostUsd: totals.outputCostUsd ?? 0,
+        inputTokens: totals.inputTokens,
+        outputTokens: totals.outputTokens,
+        cacheReadTokens: totals.cacheReadTokens,
+        cacheWriteTokens: totals.cacheWriteTokens,
       },
-      confidence: 'approximate' as const,
+      confidence: 'estimated' as const,
       source: 'messages' as const,
     };
   }
@@ -922,6 +996,45 @@ describe('TokenCompositionChart', () => {
     // Fresh input (5000 - 0 = 5000) and Output should still appear
     expect(allText).toContain('Fresh input');
     expect(allText).toContain('Output');
+  });
+
+  it('shows cost in arc title when cost is non-zero', () => {
+    const { container } = render(
+      <TokenCompositionChart
+        modelSpend={makeModelSpend({
+          inputTokens: 5000,
+          outputTokens: 1500,
+          cacheReadTokens: 1000,
+          cacheWriteTokens: 500,
+          inputCostUsd: 0.0015,
+          cacheReadCostUsd: 0.00025,
+          outputCostUsd: 0.006,
+          cacheWriteCostUsd: 0.0005,
+        })}
+      />,
+    );
+
+    const titles = Array.from(container.querySelectorAll('title')).map((el) => el.textContent ?? '');
+    expect(titles.some((t) => t.includes('Fresh input') && t.includes('$0.0015'))).toBe(true);
+    expect(titles.some((t) => t.includes('Output') && t.includes('$0.0060'))).toBe(true);
+    expect(titles.some((t) => t.includes('Cache reads') && t.includes('$0.0003'))).toBe(true);
+    expect(titles.some((t) => t.includes('Cache writes') && t.includes('$0.0005'))).toBe(true);
+  });
+
+  it('omits cost from arc title when all costs are zero', () => {
+    const { container } = render(
+      <TokenCompositionChart
+        modelSpend={makeModelSpend({
+          inputTokens: 5000,
+          outputTokens: 1500,
+          cacheReadTokens: 1000,
+          cacheWriteTokens: 500,
+        })}
+      />,
+    );
+
+    const titles = Array.from(container.querySelectorAll('title')).map((el) => el.textContent ?? '');
+    expect(titles.every((t) => !t.includes('$'))).toBe(true);
   });
 });
 

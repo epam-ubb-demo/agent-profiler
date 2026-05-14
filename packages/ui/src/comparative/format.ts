@@ -28,6 +28,17 @@ export function formatCost(n: number | null): string {
 }
 
 /**
+ * Format a token-billing cost with enough precision for small amounts.
+ * e.g. 0.000023 → "<$0.0001", 0.0023 → "$0.0023", 1.23 → "$1.23"
+ */
+export function formatTokenCost(usd: number): string {
+  if (usd <= 0) return '$0.00';
+  if (usd < 0.0001) return '<$0.0001';
+  if (usd < 1) return `$${usd.toFixed(4)}`;
+  return `$${usd.toFixed(2)}`;
+}
+
+/**
  * Format a duration in ms to human-readable string.
  * e.g. 150 → "150ms", 2500 → "2.5s", 150000 → "2m 30s"
  */

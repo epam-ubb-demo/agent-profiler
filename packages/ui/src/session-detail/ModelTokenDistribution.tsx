@@ -13,13 +13,14 @@ import type { ModelMetrics } from '@agent-profiler/core';
 import { Text } from '@epam/uui';
 import { memo, useMemo } from 'react';
 
-import { formatTokenCount } from '../comparative/format';
+import { formatTokenCost, formatTokenCount } from '../comparative/format';
 
 import styles from './session-detail.module.css';
 
 export interface ModelTokenDistributionProps {
   readonly modelColours: Record<string, string>;
   readonly modelMetrics: readonly ModelMetrics[];
+  readonly costByModel?: Record<string, number>;
 }
 
 /* --- SVG layout constants (match ContextWindowBar) ---------------------- */
@@ -50,7 +51,7 @@ function truncateName(name: string, max: number): string {
 
 /* --- Component ----------------------------------------------------------- */
 
-function ModelTokenDistributionInner({ modelColours, modelMetrics }: ModelTokenDistributionProps) {
+function ModelTokenDistributionInner({ modelColours, modelMetrics, costByModel }: ModelTokenDistributionProps) {
   const segments = useMemo((): readonly Segment[] => {
     if (modelMetrics.length === 0) return [];
 
@@ -114,7 +115,9 @@ function ModelTokenDistributionInner({ modelColours, modelMetrics }: ModelTokenD
     const dashLength = seg.proportion * CIRCUMFERENCE;
     const dashOffset = CIRCUMFERENCE * (1 - cumulativeProportion);
     cumulativeProportion += seg.proportion;
-    return { ...seg, dashLength, dashOffset };
+    const cost = costByModel?.[seg.model] ?? 0;
+    const costSuffix = cost > 0 ? ` — ${formatTokenCost(cost)}` : '';
+    return { ...seg, dashLength, dashOffset, costSuffix };
   });
 
   /* --- Layout ----------------------------------------------------------- */
@@ -169,7 +172,7 @@ function ModelTokenDistributionInner({ modelColours, modelMetrics }: ModelTokenD
               strokeDasharray={`${arc.dashLength} ${CIRCUMFERENCE - arc.dashLength}`}
               strokeDashoffset={arc.dashOffset}
             >
-              <title>{`${arc.model}: ${formatTokenCount(arc.tokens)} (${Math.round(arc.proportion * 100)}%)`}</title>
+              <title>{`${arc.model}: ${formatTokenCount(arc.tokens)} (${Math.round(arc.proportion * 100)}%)${arc.costSuffix}`}</title>
             </circle>
           ))}
         </g>
