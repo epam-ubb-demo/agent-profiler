@@ -28,6 +28,7 @@ const mockElectronApi: ElectronApi = {
     get: vi.fn().mockResolvedValue({ workspaceId: 'test-ws', timeRangePreset: '7d' }),
     set: vi.fn().mockResolvedValue(undefined),
     testConnection: vi.fn<() => Promise<{ success: boolean; sessionCount?: number; error?: string }>>().mockResolvedValue({ success: true, sessionCount: 5 }),
+    listWorkspaces: vi.fn().mockResolvedValue({ success: true, workspaces: [] }),
   },
 };
 

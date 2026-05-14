@@ -208,7 +208,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
                   <PickerInput
                     dataSource={workspaceDataSource}
                     value={workspaceId || null}
-                    onValueChange={(v) => {
+                    onValueChange={(v: string | null) => {
                       setWorkspaceId(v ?? '');
                       setTestResult(null);
                       setSaveError(null);

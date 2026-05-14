@@ -552,7 +552,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
                   {analyticsExpanded ? '▾' : '▸'} Daily Spend
                 </Text>
                 <FlexSpacer />
-                <Text size="14" color="secondary">
+                <Text fontSize="14" color="secondary">
                   {dailySpend.length} day{dailySpend.length !== 1 ? 's' : ''}
                 </Text>
               </FlexRow>
