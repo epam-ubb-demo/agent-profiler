@@ -14,6 +14,9 @@ import { Text } from '@epam/uui';
 import { memo, useMemo } from 'react';
 
 import { formatTokenCost, formatTokenCount } from '../comparative/format';
+import { TimelineTooltip } from '../timeline/TimelineTooltip';
+import type { TooltipContent } from '../timeline/types';
+import { useTimelineTooltip } from '../timeline/useTimelineTooltip';
 
 import styles from './session-detail.module.css';
 
@@ -88,6 +91,8 @@ function ModelTokenDistributionInner({ modelColours, modelMetrics, costByModel }
     }));
   }, [modelMetrics, modelColours]);
 
+  const { state: tooltipState, handlers: tooltip, tooltipRef } = useTimelineTooltip();
+
   /* --- Edge cases -------------------------------------------------------- */
 
   if (modelMetrics.length === 0) {
@@ -117,7 +122,15 @@ function ModelTokenDistributionInner({ modelColours, modelMetrics, costByModel }
     cumulativeProportion += seg.proportion;
     const cost = costByModel?.[seg.model] ?? 0;
     const costSuffix = cost > 0 ? ` — ${formatTokenCost(cost)}` : '';
-    return { ...seg, dashLength, dashOffset, costSuffix };
+    const pct = Math.round(seg.proportion * 100);
+    const rows: { key: string; value: string }[] = [
+      { key: 'Tokens', value: `${formatTokenCount(seg.tokens)} (${pct}%)` },
+    ];
+    if (cost > 0) {
+      rows.push({ key: 'Est. cost', value: formatTokenCost(cost) });
+    }
+    const tooltipContent: TooltipContent = { header: seg.model, rows };
+    return { ...seg, dashLength, dashOffset, costSuffix, tooltipContent };
   });
 
   /* --- Layout ----------------------------------------------------------- */
@@ -171,6 +184,10 @@ function ModelTokenDistributionInner({ modelColours, modelMetrics, costByModel }
               strokeWidth={STROKE_WIDTH}
               strokeDasharray={`${arc.dashLength} ${CIRCUMFERENCE - arc.dashLength}`}
               strokeDashoffset={arc.dashOffset}
+              style={{ cursor: 'pointer' }}
+              onMouseEnter={(e) => { tooltip.show(arc.tooltipContent, e); }}
+              onMouseMove={tooltip.move}
+              onMouseLeave={tooltip.hide}
             >
               <title>{`${arc.model}: ${formatTokenCount(arc.tokens)} (${Math.round(arc.proportion * 100)}%)${arc.costSuffix}`}</title>
             </circle>
@@ -228,6 +245,7 @@ function ModelTokenDistributionInner({ modelColours, modelMetrics, costByModel }
           );
         })}
       </svg>
+      <TimelineTooltip state={tooltipState} tooltipRef={tooltipRef} />
     </div>
   );
 }

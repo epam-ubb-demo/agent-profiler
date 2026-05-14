@@ -17,6 +17,9 @@ import { Text } from '@epam/uui';
 import { memo, useMemo } from 'react';
 
 import { formatTokenCost, formatTokenCount } from '../comparative/format';
+import { TimelineTooltip } from '../timeline/TimelineTooltip';
+import type { TooltipContent } from '../timeline/types';
+import { useTimelineTooltip } from '../timeline/useTimelineTooltip';
 
 import type { ModelSpendResult } from './model-spend';
 import styles from './session-detail.module.css';
@@ -63,6 +66,8 @@ function TokenCompositionChartInner({ modelSpend }: TokenCompositionChartProps) 
     ].filter((b) => b.tokens > 0);
   }, [modelSpend]);
 
+  const { state: tooltipState, handlers: tooltip, tooltipRef } = useTimelineTooltip();
+
   if (!modelSpend) {
     return (
       <Text size="18" color="secondary">
@@ -88,7 +93,15 @@ function TokenCompositionChartInner({ modelSpend }: TokenCompositionChartProps) 
     const dashLength = bucket.proportion * CIRCUMFERENCE;
     const dashOffset = CIRCUMFERENCE * (1 - cumulativeProportion);
     cumulativeProportion += bucket.proportion;
-    return { ...bucket, dashLength, dashOffset };
+    const pct = Math.round(bucket.proportion * 100);
+    const rows: { key: string; value: string }[] = [
+      { key: 'Tokens', value: `${formatTokenCount(bucket.tokens)} (${pct}%)` },
+    ];
+    if (bucket.costUsd > 0) {
+      rows.push({ key: 'Est. cost', value: formatTokenCost(bucket.costUsd) });
+    }
+    const tooltipContent: TooltipContent = { header: bucket.label, rows };
+    return { ...bucket, dashLength, dashOffset, tooltipContent };
   });
 
   const { totals } = modelSpend;
@@ -146,6 +159,10 @@ function TokenCompositionChartInner({ modelSpend }: TokenCompositionChartProps) 
               strokeWidth={STROKE_WIDTH}
               strokeDasharray={`${arc.dashLength} ${CIRCUMFERENCE - arc.dashLength}`}
               strokeDashoffset={arc.dashOffset}
+              style={{ cursor: 'pointer' }}
+              onMouseEnter={(e) => { tooltip.show(arc.tooltipContent, e); }}
+              onMouseMove={tooltip.move}
+              onMouseLeave={tooltip.hide}
             >
               <title>{`${arc.label}: ${formatTokenCount(arc.tokens)} (${Math.round(arc.proportion * 100)}%)${arc.costUsd > 0 ? ` — ${formatTokenCost(arc.costUsd)}` : ''}`}</title>
             </circle>
@@ -190,6 +207,7 @@ function TokenCompositionChartInner({ modelSpend }: TokenCompositionChartProps) 
           );
         })}
       </svg>
+      <TimelineTooltip state={tooltipState} tooltipRef={tooltipRef} />
     </div>
   );
 }
