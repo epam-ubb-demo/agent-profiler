@@ -77,7 +77,7 @@ declare const styles: {
   readonly turnsBarRow: string;
   readonly turnsBarTrack: string;
   readonly turnsBarValue: string;
-  readonly twoColumnGrid: string;
+  readonly chartsGrid: string;
   readonly typeBadge: string;
   readonly typeBadgeCompaction: string;
   readonly typeBadgeSubagent: string;

@@ -633,19 +633,27 @@
   padding-top: 16px;
 }
 
-/* --- Two-Column Layout ------------------------------------------------- */
+/* --- Charts Grid (responsive: 4-col → 2-col → 1-col) ------------------- */
 
-.twoColumnGrid {
+.chartsGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 24px;
   margin-top: 16px;
-  max-width: 1100px;
+  max-width: 1400px;
+}
+
+@media (max-width: 1300px) {
+  .chartsGrid {
+    grid-template-columns: 1fr 1fr;
+    max-width: 1100px;
+  }
 }
 
 @media (max-width: 900px) {
-  .twoColumnGrid {
+  .chartsGrid {
     grid-template-columns: 1fr;
+    max-width: none;
   }
 }
 

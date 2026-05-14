@@ -54,33 +54,27 @@ function TabOverviewInner({
       {/* Full 11-stat grid */}
       <StatsGrid stats={stats} />
 
-      {/* Two-column layout: left = context composition + token composition; right = model distribution + per-turn spend */}
-      <div className={styles['twoColumnGrid']}>
-        {/* Left column */}
-        <div>
-          <Section title="Context window composition">
-            <ContextWindowBar data={contextWindow} />
-          </Section>
+      {/* Charts grid: 4 columns on wide screens, 2 on medium, 1 on narrow */}
+      <div className={styles['chartsGrid']}>
+        <Section title="Context window composition">
+          <ContextWindowBar data={contextWindow} />
+        </Section>
 
-          <Section title="Token composition">
-            <TokenCompositionChart modelSpend={modelSpend} />
-          </Section>
-        </div>
+        <Section title="Token composition">
+          <TokenCompositionChart modelSpend={modelSpend} />
+        </Section>
 
-        {/* Right column */}
-        <div>
-          <Section title="Token distribution by model">
-              <ModelTokenDistribution
-                modelColours={modelColours}
-                modelMetrics={modelMetrics}
-                {...(costByModel ? { costByModel } : {})}
-              />
-            </Section>
+        <Section title="Token distribution by model">
+          <ModelTokenDistribution
+            modelColours={modelColours}
+            modelMetrics={modelMetrics}
+            {...(costByModel ? { costByModel } : {})}
+          />
+        </Section>
 
-          <Section title="Token spend per turn (top 15)">
-            <TokensPerTurnChart turns={turns} />
-          </Section>
-        </div>
+        <Section title="Token spend per turn (top 15)">
+          <TokensPerTurnChart turns={turns} />
+        </Section>
       </div>
     </div>
   );
