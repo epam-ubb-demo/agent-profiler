@@ -1,5 +1,5 @@
 /**
- * SVG bar chart showing cost (USD) per day.
+ * SVG line chart showing cost (USD) per day with area fill.
  *
  * Hand-crafted SVG — no external charting library.
  */
@@ -38,6 +38,9 @@ const CHART_X = MARGIN_LEFT;
 const CHART_Y = MARGIN_TOP;
 const CHART_W = VIEW_W - MARGIN_LEFT - MARGIN_RIGHT;
 const CHART_H = VIEW_H - MARGIN_TOP - MARGIN_BOTTOM;
+
+const DOT_RADIUS = 4;
+const HIT_RADIUS = 14; // invisible hit target for hover
 
 /* ─── Helpers ───────────────────────────────────────────────────────────────── */
 
@@ -103,9 +106,10 @@ interface TooltipState {
 function DailySpendChartInner({ data }: DailySpendChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
 
-  const handleBarEnter = useCallback(
-    (item: DailyMetrics, e: React.MouseEvent<SVGRectElement>) => {
+  const handlePointEnter = useCallback(
+    (item: DailyMetrics, idx: number, e: React.MouseEvent<SVGCircleElement>) => {
       const svg = svgRef.current;
       if (!svg) return;
       const rect = svg.getBoundingClientRect();
@@ -114,13 +118,13 @@ function DailySpendChartInner({ data }: DailySpendChartProps) {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top - 8,
       });
-      (e.currentTarget as SVGRectElement).setAttribute('fill', 'var(--uui-primary-60)');
+      setActiveIdx(idx);
     },
     [],
   );
 
-  const handleBarMove = useCallback(
-    (item: DailyMetrics, e: React.MouseEvent<SVGRectElement>) => {
+  const handlePointMove = useCallback(
+    (item: DailyMetrics, e: React.MouseEvent<SVGCircleElement>) => {
       const svg = svgRef.current;
       if (!svg) return;
       const rect = svg.getBoundingClientRect();
@@ -133,9 +137,9 @@ function DailySpendChartInner({ data }: DailySpendChartProps) {
     [],
   );
 
-  const handleBarLeave = useCallback((e: React.MouseEvent<SVGRectElement>) => {
+  const handlePointLeave = useCallback(() => {
     setTooltip(null);
-    (e.currentTarget as SVGRectElement).setAttribute('fill', 'var(--uui-primary-50)');
+    setActiveIdx(null);
   }, []);
 
   const computed = useMemo(() => {
@@ -148,17 +152,22 @@ function DailySpendChartInner({ data }: DailySpendChartProps) {
     const yMax = Math.ceil((maxCost * 1.1) / niceStep) * niceStep || niceStep;
 
     const n = data.length;
-    const barAreaW = CHART_W;
-    const barW = Math.max(4, Math.min(40, barAreaW / n - 4));
-    const slotW = barAreaW / n;
+    const slotW = n > 1 ? CHART_W / (n - 1) : 0;
 
-    const bars = data.map((item, i) => {
-      const barH = ((item.cost ?? 0) / yMax) * CHART_H;
-      const cx = CHART_X + slotW * i + slotW / 2;
-      const x = cx - barW / 2;
-      const y = CHART_Y + CHART_H - barH;
-      return { x, y, width: barW, height: barH, item, cx };
+    const points = data.map((item, i) => {
+      const cx = n > 1 ? CHART_X + slotW * i : CHART_X + CHART_W / 2;
+      const cy = CHART_Y + CHART_H - ((item.cost ?? 0) / yMax) * CHART_H;
+      return { cx, cy, item };
     });
+
+    // Build SVG polyline path for the line
+    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.cx},${p.cy}`).join(' ');
+
+    // Build area fill path (line + close along the baseline)
+    const areaPath =
+      linePath +
+      ` L${points[points.length - 1]!.cx},${CHART_Y + CHART_H}` +
+      ` L${points[0]!.cx},${CHART_Y + CHART_H} Z`;
 
     const yTicks: number[] = [];
     for (let v = 0; v <= yMax + niceStep * 0.5; v += niceStep) {
@@ -174,7 +183,7 @@ function DailySpendChartInner({ data }: DailySpendChartProps) {
             Math.round((i * (n - 1)) / (maxLabels - 1)),
           );
 
-    return { bars, yTicks, yMax, labelIndices };
+    return { points, linePath, areaPath, yTicks, yMax, labelIndices };
   }, [data]);
 
   if (data.length === 0 || computed === null) {
@@ -185,7 +194,7 @@ function DailySpendChartInner({ data }: DailySpendChartProps) {
     );
   }
 
-  const { bars, yTicks, labelIndices } = computed;
+  const { points, linePath, areaPath, yTicks, labelIndices } = computed;
 
   const axisBaseY = CHART_Y + CHART_H;
 
@@ -197,7 +206,7 @@ function DailySpendChartInner({ data }: DailySpendChartProps) {
         width="100%"
         style={{ display: 'block' }}
         role="img"
-        aria-label="Daily spend bar chart"
+        aria-label="Daily spend line chart"
         data-testid="daily-spend-chart"
       >
         {/* Y-axis gridlines + labels */}
@@ -237,38 +246,63 @@ function DailySpendChartInner({ data }: DailySpendChartProps) {
           strokeWidth={1}
         />
 
-        {/* Bars */}
-        {bars.map((bar, i) => (
-          <rect
+        {/* Area fill */}
+        <path d={areaPath} fill="var(--uui-primary-50)" opacity={0.15} />
+
+        {/* Line */}
+        <path
+          d={linePath}
+          fill="none"
+          stroke="var(--uui-primary-50)"
+          strokeWidth={2}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          data-testid="spend-line"
+        />
+
+        {/* Data points (visible dots) */}
+        {points.map((pt, i) => (
+          <circle
             key={i}
-            x={bar.x}
-            y={bar.y}
-            width={bar.width}
-            height={bar.height}
-            fill="var(--uui-primary-50)"
-            rx={2}
-            data-testid="spend-bar"
+            cx={pt.cx}
+            cy={pt.cy}
+            r={activeIdx === i ? DOT_RADIUS + 2 : DOT_RADIUS}
+            fill={activeIdx === i ? 'var(--uui-primary-60)' : 'var(--uui-primary-50)'}
+            stroke="#fff"
+            strokeWidth={2}
+            data-testid="spend-point"
+          />
+        ))}
+
+        {/* Invisible hit targets for hover */}
+        {points.map((pt, i) => (
+          <circle
+            key={`hit-${i}`}
+            cx={pt.cx}
+            cy={pt.cy}
+            r={HIT_RADIUS}
+            fill="transparent"
             style={{ cursor: 'default' }}
-            onMouseEnter={(e) => handleBarEnter(bar.item, e)}
-            onMouseMove={(e) => handleBarMove(bar.item, e)}
-            onMouseLeave={handleBarLeave}
+            onMouseEnter={(e) => handlePointEnter(pt.item, i, e)}
+            onMouseMove={(e) => handlePointMove(pt.item, e)}
+            onMouseLeave={handlePointLeave}
           />
         ))}
 
         {/* X-axis date labels */}
         {labelIndices.map((idx) => {
-          const bar = bars[idx];
-          if (!bar) return null;
+          const pt = points[idx];
+          if (!pt) return null;
           return (
             <text
               key={idx}
-              x={bar.cx}
+              x={pt.cx}
               y={axisBaseY + 14}
               textAnchor="middle"
               fontSize={10}
               fill="var(--uui-text-secondary)"
             >
-              {formatShortDate(bar.item.date)}
+              {formatShortDate(pt.item.date)}
             </text>
           );
         })}
@@ -283,8 +317,8 @@ function DailySpendChartInner({ data }: DailySpendChartProps) {
             left: tooltip.x,
             top: tooltip.y,
             transform: 'translate(-50%, -100%)',
-            background: 'var(--uui-surface-highest, #1f2937)',
-            color: 'var(--uui-text-primary-invert, #fff)',
+            background: '#1e293b',
+            color: '#f1f5f9',
             padding: '8px 12px',
             borderRadius: 6,
             fontSize: '0.75rem',

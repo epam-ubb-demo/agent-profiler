@@ -1,5 +1,5 @@
 /**
- * Tests for DailySpendChart – hand-crafted SVG bar chart showing cost per day.
+ * Tests for DailySpendChart – hand-crafted SVG line chart showing cost per day.
  */
 
 import { screen, cleanup, fireEvent } from '@testing-library/react';
@@ -72,7 +72,7 @@ describe('DailySpendChart', () => {
     expect(svg).not.toBeNull();
   });
 
-  it('renders one bar rect per data point', async () => {
+  it('renders a line path and one point per data point', async () => {
     const { container } = await render(
       <DailySpendChart
         data={[
@@ -83,26 +83,11 @@ describe('DailySpendChart', () => {
       />,
     );
 
-    const bars = container.querySelectorAll('[data-testid="spend-bar"]');
-    expect(bars.length).toBe(3);
-  });
+    const line = container.querySelector('[data-testid="spend-line"]');
+    expect(line).not.toBeNull();
 
-  it('bar height is proportional to cost (taller bar for higher cost)', async () => {
-    const { container } = await render(
-      <DailySpendChart
-        data={[
-          makeDay({ date: '2024-05-10', cost: 0.10 }),
-          makeDay({ date: '2024-05-11', cost: 0.50 }),
-        ]}
-      />,
-    );
-
-    const bars = container.querySelectorAll('[data-testid="spend-bar"]');
-    expect(bars.length).toBe(2);
-
-    const h0 = parseFloat((bars[0] as SVGRectElement).getAttribute('height') ?? '0');
-    const h1 = parseFloat((bars[1] as SVGRectElement).getAttribute('height') ?? '0');
-    expect(h1).toBeGreaterThan(h0);
+    const points = container.querySelectorAll('[data-testid="spend-point"]');
+    expect(points.length).toBe(3);
   });
 
   it('renders SVG with viewBox and responsive width', async () => {
@@ -118,16 +103,17 @@ describe('DailySpendChart', () => {
     expect(svg!.getAttribute('width')).toBe('100%');
   });
 
-  it('bar tooltip includes all metrics on hover', async () => {
+  it('tooltip includes all metrics on hover', async () => {
     const { container } = await render(
       <DailySpendChart
         data={[makeDay({ date: '2024-05-10', cost: 0.15, wallTimeMs: 120_000, inputTokens: 5000, outputTokens: 3000, cacheReadTokens: 1000 })]}
       />,
     );
 
-    const bar = container.querySelector('[data-testid="spend-bar"]');
-    expect(bar).not.toBeNull();
-    await fireEvent.mouseEnter(bar!);
+    // Hover over the invisible hit target (rendered after visible dots)
+    const hitTargets = container.querySelectorAll('circle[fill="transparent"]');
+    expect(hitTargets.length).toBe(1);
+    await fireEvent.mouseEnter(hitTargets[0]!);
 
     const tip = container.querySelector('[data-testid="chart-tooltip"]');
     expect(tip).not.toBeNull();
@@ -146,9 +132,9 @@ describe('DailySpendChart', () => {
       />,
     );
 
-    const bars = container.querySelectorAll('[data-testid="spend-bar"]');
-    expect(bars.length).toBe(2);
-    await fireEvent.mouseEnter(bars[1]!);
+    const hitTargets = container.querySelectorAll('circle[fill="transparent"]');
+    expect(hitTargets.length).toBe(2);
+    await fireEvent.mouseEnter(hitTargets[1]!);
 
     const tip = container.querySelector('[data-testid="chart-tooltip"]');
     expect(tip).not.toBeNull();
@@ -167,8 +153,8 @@ describe('DailySpendChart', () => {
 
     const svg = container.querySelector('[data-testid="daily-spend-chart"]');
     expect(svg).not.toBeNull();
-    const bars = container.querySelectorAll('[data-testid="spend-bar"]');
-    expect(bars.length).toBe(1);
+    const points = container.querySelectorAll('[data-testid="spend-point"]');
+    expect(points.length).toBe(1);
   });
 
   it('renders with a large number of data points without errors', async () => {
@@ -178,8 +164,8 @@ describe('DailySpendChart', () => {
 
     const { container } = await render(<DailySpendChart data={data} />);
 
-    const bars = container.querySelectorAll('[data-testid="spend-bar"]');
-    expect(bars.length).toBe(30);
+    const points = container.querySelectorAll('[data-testid="spend-point"]');
+    expect(points.length).toBe(30);
   });
 
   it('has role="img" and aria-label on the SVG', async () => {
