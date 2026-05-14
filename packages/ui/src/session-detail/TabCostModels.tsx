@@ -1,13 +1,14 @@
 /**
  * TabCostModels — content panel for the "Cost & Models" tab.
  *
- * Renders the per-model spend table, optional sub-agent table, and
- * hottest token consumption table.
+ * Renders the per-model spend table, optional sub-agent table, hottest
+ * token consumption table, and (when present) the compactions table.
  */
 
-import type { SubagentInvocation } from '@agent-profiler/core';
+import type { Compaction, SubagentInvocation } from '@agent-profiler/core';
 import { memo } from 'react';
 
+import { CompactionsTable } from './CompactionsTable';
 import { costKpiSeverity } from './cost-kpis';
 import type { HotConsumptionResult } from './hot-consumption';
 import { HotConsumptionTable } from './HotConsumptionTable';
@@ -31,6 +32,7 @@ export interface TabCostModelsProps {
   readonly hotConsumption: HotConsumptionResult;
   readonly includeCompactions: boolean;
   readonly onToggleCompactions: () => void;
+  readonly compactions: readonly Compaction[];
   /** Called when the user wants to drill into a sub-agent's child session. */
   readonly onSessionNavigate?: ((sessionId: string) => void) | undefined;
   /** Pre-computed KPI stats for the cost strip. */
@@ -49,6 +51,7 @@ function TabCostModelsInner({
   hotConsumption,
   includeCompactions,
   onToggleCompactions,
+  compactions,
   onSessionNavigate,
   costKpis,
 }: TabCostModelsProps) {
@@ -61,6 +64,13 @@ function TabCostModelsInner({
       {modelSpend && (
         <Section title="Per-model spend">
           <ModelSpendTable result={modelSpend} modelColours={modelColours} isLive={isLive} />
+        </Section>
+      )}
+
+      {/* Compactions (when present) */}
+      {compactions.length > 0 && (
+        <Section title="Compactions">
+          <CompactionsTable compactions={compactions} />
         </Section>
       )}
 

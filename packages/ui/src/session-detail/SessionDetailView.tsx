@@ -199,11 +199,10 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
           <TabOverview
             stats={stats}
             contextWindow={contextWindow}
-            utilisationSamples={session.utilisation}
-            compactions={session.compactions}
-            eventTypes={eventTypes}
             modelColours={modelColours}
             modelMetrics={session.shutdown?.modelMetrics ?? []}
+            modelSpend={modelSpend}
+            turns={session.turns}
           />
         )}
 
@@ -216,6 +215,7 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
             hotConsumption={hotConsumption}
             includeCompactions={includeCompactions}
             onToggleCompactions={toggleCompactions}
+            compactions={session.compactions}
             onSessionNavigate={onSessionNavigate}
             costKpis={costKpis}
           />
@@ -235,6 +235,7 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
           <TabTimeline
             session={session}
             modelColours={modelColours}
+            eventTypes={eventTypes}
             onSessionNavigate={onSessionNavigate}
             timelineKpis={timelineKpis}
           />

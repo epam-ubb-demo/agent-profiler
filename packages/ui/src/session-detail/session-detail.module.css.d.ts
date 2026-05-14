@@ -71,6 +71,12 @@ declare const styles: {
   readonly turnPanelSingle: string;
   readonly turnPanelUser: string;
   readonly turnTokenSummary: string;
+  readonly turnsBarChart: string;
+  readonly turnsBarFill: string;
+  readonly turnsBarLabel: string;
+  readonly turnsBarRow: string;
+  readonly turnsBarTrack: string;
+  readonly turnsBarValue: string;
   readonly twoColumnGrid: string;
   readonly typeBadge: string;
   readonly typeBadgeCompaction: string;

@@ -1,26 +1,23 @@
 /**
  * TabOverview — content panel for the "Overview" tab.
  *
- * Renders the full KPI grid, context window composition, context
- * utilisation chart, compactions table, and event types table in a
- * two-column layout.
+ * Renders the full KPI grid plus four actionable token-analysis charts
+ * in a two-column layout to help users understand and optimise token spending.
  */
 
-import type { Compaction, ModelMetrics, UtilisationSample } from '@agent-profiler/core';
+import type { ModelMetrics, Turn } from '@agent-profiler/core';
 import { memo } from 'react';
 
-import { CompactionsTable } from './CompactionsTable';
 import type { ContextWindowData } from './context-window';
-import { ContextTokenTimeline } from './ContextTokenTimeline';
-import { ContextUtilisationChart } from './ContextUtilisationChart';
 import { ContextWindowBar } from './ContextWindowBar';
-import type { EventTypeRow } from './event-type-stats';
-import { EventTypesTable } from './EventTypesTable';
+import type { ModelSpendResult } from './model-spend';
 import { ModelTokenDistribution } from './ModelTokenDistribution';
 import { Section } from './Section';
 import styles from './session-detail.module.css';
 import type { SessionStats } from './session-stats';
 import { StatsGrid } from './StatsGrid';
+import { TokenCompositionChart } from './TokenCompositionChart';
+import { TokensPerTurnChart } from './TokensPerTurnChart';
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -30,11 +27,10 @@ import { StatsGrid } from './StatsGrid';
 export interface TabOverviewProps {
   readonly stats: SessionStats;
   readonly contextWindow: ContextWindowData | null;
-  readonly utilisationSamples: readonly UtilisationSample[];
-  readonly compactions: readonly Compaction[];
-  readonly eventTypes: readonly EventTypeRow[];
   readonly modelColours: Record<string, string>;
   readonly modelMetrics: readonly ModelMetrics[];
+  readonly modelSpend: ModelSpendResult | null;
+  readonly turns: readonly Turn[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -44,48 +40,37 @@ export interface TabOverviewProps {
 function TabOverviewInner({
   stats,
   contextWindow,
-  utilisationSamples,
-  compactions,
-  eventTypes,
   modelColours,
   modelMetrics,
+  modelSpend,
+  turns,
 }: TabOverviewProps) {
   return (
     <div data-testid="tab-overview">
       {/* Full 11-stat grid */}
       <StatsGrid stats={stats} />
 
-      {/* Two-column layout for context views + event tables */}
+      {/* Two-column layout: left = context composition + token composition; right = model distribution + per-turn spend */}
       <div className={styles['twoColumnGrid']}>
-        {/* Left column: context bar + chart */}
+        {/* Left column */}
         <div>
           <Section title="Context window composition">
             <ContextWindowBar data={contextWindow} />
           </Section>
 
-          <Section title="Context utilisation over time">
-            <ContextUtilisationChart samples={utilisationSamples} />
-          </Section>
-
-          <Section title="Token usage over time">
-            <ContextTokenTimeline samples={utilisationSamples} compactions={compactions} />
+          <Section title="Token composition">
+            <TokenCompositionChart modelSpend={modelSpend} />
           </Section>
         </div>
 
-        {/* Right column: token distribution + compactions + events */}
+        {/* Right column */}
         <div>
           <Section title="Token distribution by model">
             <ModelTokenDistribution modelColours={modelColours} modelMetrics={modelMetrics} />
           </Section>
 
-          {compactions.length > 0 && (
-            <Section title="Compactions">
-              <CompactionsTable compactions={compactions} />
-            </Section>
-          )}
-
-          <Section title="Event types observed">
-            <EventTypesTable rows={eventTypes} />
+          <Section title="Token spend per turn (top 15)">
+            <TokensPerTurnChart turns={turns} />
           </Section>
         </div>
       </div>

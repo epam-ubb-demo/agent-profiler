@@ -658,3 +658,45 @@
   width: 100%;
   height: auto;
 }
+
+/* --- Tokens Per Turn Bar Chart ------------------------------------------ */
+
+.turnsBarChart {
+  margin-top: 8px;
+}
+
+.turnsBarRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.turnsBarLabel {
+  flex: 0 0 52px;
+  text-align: right;
+  color: var(--uui-text-secondary);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.turnsBarTrack {
+  flex: 1;
+  height: 14px;
+  background: var(--uui-neutral-20);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.turnsBarFill {
+  height: 100%;
+  background: var(--uui-primary-50);
+  border-radius: 3px;
+}
+
+.turnsBarValue {
+  flex: 0 0 68px;
+  color: var(--uui-text-secondary);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}

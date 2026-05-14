@@ -1,5 +1,6 @@
 /**
- * Tests for SVG chart components: ContextTokenTimeline and ModelTokenDistribution.
+ * Tests for SVG chart components: ContextTokenTimeline, ModelTokenDistribution,
+ * TokenCompositionChart, and TokensPerTurnChart.
  *
  * These are hand-crafted SVG charts with no external charting libraries.
  * Tests focus on rendering, data visualization, and edge cases.
@@ -11,6 +12,8 @@ import { describe, expect, it, afterEach } from 'vitest';
 
 import { ContextTokenTimeline } from '../src/session-detail/ContextTokenTimeline';
 import { ModelTokenDistribution } from '../src/session-detail/ModelTokenDistribution';
+import { TokenCompositionChart } from '../src/session-detail/TokenCompositionChart';
+import { TokensPerTurnChart } from '../src/session-detail/TokensPerTurnChart';
 
 import { render } from './test-utils';
 
@@ -764,5 +767,286 @@ describe('ModelTokenDistribution', () => {
     // model-b is 5K out of 15K = 33.33% ≈ 33%
     expect(allText).toMatch(/67%/);
     expect(allText).toMatch(/33%/);
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* TokenCompositionChart Tests                                                 */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+describe('TokenCompositionChart', () => {
+  /**
+   * Builds a minimal ModelSpendResult with the given totals.
+   */
+  function makeModelSpend(totals: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+  }) {
+    return {
+      rows: [],
+      totals: {
+        requestCount: 1,
+        premiumRequests: 0,
+        premiumRequestCostUsd: 0,
+        estimatedUsd: 0,
+        ...totals,
+      },
+      confidence: 'approximate' as const,
+      source: 'messages' as const,
+    };
+  }
+
+  it('renders "No token data available" when modelSpend is null', () => {
+    render(<TokenCompositionChart modelSpend={null} />);
+    expect(screen.getByText('No token data available.')).toBeInTheDocument();
+  });
+
+  it('renders "No token usage recorded" when all tokens are zero', () => {
+    render(
+      <TokenCompositionChart
+        modelSpend={makeModelSpend({
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
+        })}
+      />,
+    );
+    expect(screen.getByText('No token usage recorded.')).toBeInTheDocument();
+  });
+
+  it('renders an SVG donut with aria-label when token data is present', () => {
+    const { container } = render(
+      <TokenCompositionChart
+        modelSpend={makeModelSpend({
+          inputTokens: 8000,
+          outputTokens: 2000,
+          cacheReadTokens: 3000,
+          cacheWriteTokens: 500,
+        })}
+      />,
+    );
+
+    const svg = container.querySelector('svg');
+    expect(svg).toBeInTheDocument();
+    expect(svg?.getAttribute('aria-label')).toContain('Token composition');
+  });
+
+  it('computes cache-hit percentage correctly (cacheReadTokens / inputTokens)', () => {
+    // 3000 / 8000 = 37.5% → rounds to 38%
+    const { container } = render(
+      <TokenCompositionChart
+        modelSpend={makeModelSpend({
+          inputTokens: 8000,
+          outputTokens: 2000,
+          cacheReadTokens: 3000,
+          cacheWriteTokens: 500,
+        })}
+      />,
+    );
+
+    const textElements = container.querySelectorAll('text');
+    const allText = Array.from(textElements)
+      .map((el) => el.textContent)
+      .join(' ');
+    expect(allText).toContain('38%');
+    expect(allText).toContain('cache hit');
+  });
+
+  it('shows 0% cache-hit when cacheReadTokens is zero', () => {
+    const { container } = render(
+      <TokenCompositionChart
+        modelSpend={makeModelSpend({
+          inputTokens: 5000,
+          outputTokens: 1000,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
+        })}
+      />,
+    );
+
+    const textElements = container.querySelectorAll('text');
+    const allText = Array.from(textElements)
+      .map((el) => el.textContent)
+      .join(' ');
+    expect(allText).toContain('0%');
+    expect(allText).toContain('cache hit');
+  });
+
+  it('renders legend entries for each non-zero bucket', () => {
+    const { container } = render(
+      <TokenCompositionChart
+        modelSpend={makeModelSpend({
+          inputTokens: 6000,
+          outputTokens: 2000,
+          cacheReadTokens: 2000,
+          cacheWriteTokens: 500,
+        })}
+      />,
+    );
+
+    const textElements = container.querySelectorAll('text');
+    const allText = Array.from(textElements)
+      .map((el) => el.textContent)
+      .join(' ');
+
+    // freshInput = 6000 - 2000 = 4000 (non-zero → should appear)
+    expect(allText).toContain('Fresh input');
+    expect(allText).toContain('Cache reads');
+    expect(allText).toContain('Output');
+    expect(allText).toContain('Cache writes');
+  });
+
+  it('omits zero-token buckets from legend', () => {
+    // cacheWriteTokens = 0 → should not render that legend entry
+    const { container } = render(
+      <TokenCompositionChart
+        modelSpend={makeModelSpend({
+          inputTokens: 5000,
+          outputTokens: 1500,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
+        })}
+      />,
+    );
+
+    const textElements = container.querySelectorAll('text');
+    const allText = Array.from(textElements)
+      .map((el) => el.textContent)
+      .join(' ');
+
+    expect(allText).not.toContain('Cache reads');
+    expect(allText).not.toContain('Cache writes');
+    // Fresh input (5000 - 0 = 5000) and Output should still appear
+    expect(allText).toContain('Fresh input');
+    expect(allText).toContain('Output');
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* TokensPerTurnChart Tests                                                    */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+describe('TokensPerTurnChart', () => {
+  /** Create a minimal Turn with the given assistant-message token counts. */
+  function makeTurn(turnId: string, tokens: { input: number; output: number; cacheRead?: number; cacheWrite?: number }) {
+    return {
+      turnId,
+      startTs: null,
+      endTs: null,
+      userMessage: null,
+      toolCalls: [],
+      subagents: [],
+      assistantMessages: [
+        {
+          interactionId: null,
+          requestId: null,
+          inputTokens: tokens.input,
+          outputTokens: tokens.output,
+          cacheReadTokens: tokens.cacheRead ?? 0,
+          cacheWriteTokens: tokens.cacheWrite ?? 0,
+          model: 'gpt-4',
+          timestamp: null,
+          turnId,
+          eventId: null,
+          parentId: null,
+          content: '',
+          reasoningText: '',
+        },
+      ],
+    };
+  }
+
+  it('renders "No per-turn token data available" when turns array is empty', () => {
+    render(<TokensPerTurnChart turns={[]} />);
+    expect(screen.getByText('No per-turn token data available.')).toBeInTheDocument();
+  });
+
+  it('renders bar rows when turns have token data', () => {
+    const turns = [
+      makeTurn('t1', { input: 1000, output: 200 }),
+      makeTurn('t2', { input: 500, output: 100 }),
+    ];
+
+    const { container } = render(<TokensPerTurnChart turns={turns} />);
+
+    // Should render at least one bar row
+    const rows = container.querySelectorAll('[class*="turnsBarRow"]');
+    expect(rows.length).toBeGreaterThan(0);
+  });
+
+  it('labels bars with 1-based turn positions (not raw UUIDs)', () => {
+    const turns = [
+      makeTurn('uuid-abc-123', { input: 2000, output: 400 }),
+      makeTurn('uuid-def-456', { input: 1000, output: 200 }),
+    ];
+
+    render(<TokensPerTurnChart turns={turns} />);
+
+    // Should display "Turn 1" and "Turn 2", not raw UUIDs
+    expect(screen.getByText('Turn 1')).toBeInTheDocument();
+    expect(screen.getByText('Turn 2')).toBeInTheDocument();
+    expect(screen.queryByText('uuid-abc-123')).not.toBeInTheDocument();
+  });
+
+  it('sorts turns by total token count descending', () => {
+    // Turn 2 has more tokens than Turn 1 — it should appear first in the list
+    const turns = [
+      makeTurn('t1', { input: 300, output: 100 }),   // 400 total
+      makeTurn('t2', { input: 1500, output: 500 }),  // 2000 total
+    ];
+
+    const { container } = render(<TokensPerTurnChart turns={turns} />);
+
+    const labels = Array.from(container.querySelectorAll('[class*="turnsBarLabel"]')).map(
+      (el) => el.textContent,
+    );
+
+    // t2 (position 2 in original array) should appear first due to sort
+    expect(labels[0]).toBe('Turn 2');
+    expect(labels[1]).toBe('Turn 1');
+  });
+
+  it('limits output to top 15 bars', () => {
+    // Create 20 turns with varying token counts
+    const turns = Array.from({ length: 20 }, (_, i) =>
+      makeTurn(`t${i + 1}`, { input: (i + 1) * 100, output: 50 }),
+    );
+
+    const { container } = render(<TokensPerTurnChart turns={turns} />);
+
+    const rows = container.querySelectorAll('[class*="turnsBarRow"]');
+    expect(rows.length).toBeLessThanOrEqual(15);
+  });
+
+  it('omits turns with zero total tokens', () => {
+    const turns = [
+      makeTurn('t1', { input: 0, output: 0 }),
+      makeTurn('t2', { input: 1000, output: 200 }),
+    ];
+
+    const { container } = render(<TokensPerTurnChart turns={turns} />);
+
+    const rows = container.querySelectorAll('[class*="turnsBarRow"]');
+    // Only t2 has tokens — only 1 bar should render
+    expect(rows.length).toBe(1);
+  });
+
+  it('includes all four token types (input, output, cacheRead, cacheWrite) in total', () => {
+    // Single turn with 100 of each type = 400 total
+    const turns = [
+      makeTurn('t1', { input: 100, output: 100, cacheRead: 100, cacheWrite: 100 }),
+    ];
+
+    const { container } = render(<TokensPerTurnChart turns={turns} />);
+
+    // The value label should reflect the total of all four buckets (400)
+    const values = Array.from(container.querySelectorAll('[class*="turnsBarValue"]')).map(
+      (el) => el.textContent,
+    );
+    // formatTokenCount(400) → '400' (below 1K threshold)
+    expect(values[0]).toContain('400');
   });
 });
