@@ -5,7 +5,7 @@
  * covering all categories, edge cases, and deterministic event ID generation.
  */
 
-import type { Session } from '@agent-profiler/core';
+import type { Session, ToolCall } from '@agent-profiler/core';
 import { describe, expect, it } from 'vitest';
 
 import { buildEnrichmentRows } from '../src/enrichment-builder';
@@ -496,6 +496,87 @@ describe('buildEnrichmentRows', () => {
       expect(payload?.turnId).toBe('turn-1');
       expect(payload?.eventId).toBe('evt-001');
       expect(payload?.argumentsPreview).toBe('ls -la');
+    });
+
+    describe('skill field forwarding', () => {
+      it('includes skill fields in payload when present on toolCall', () => {
+        const toolCallWithSkills = {
+          toolCallId: 'tc-skill-001',
+          toolName: 'skill',
+          model: 'claude-sonnet-4-20250514',
+          startTs: '2025-01-15T10:00:05Z',
+          endTs: '2025-01-15T10:00:06Z',
+          durationMs: 1000,
+          success: true,
+          parentId: null,
+          turnId: 'turn-1',
+          eventId: 'evt-skill-001',
+          argumentsPreview: 'invoke skill',
+          skillName: 'oss.pick-up-issue',
+          skillSource: 'personal-copilot',
+          skillContentLength: 1578,
+          skillOutcome: 'loaded',
+          skillErrorMessage: null,
+        };
+
+        const session = makeSession({
+          toolCalls: [toolCallWithSkills as unknown as ToolCall],
+        });
+        const options = {
+          categories: {
+            metadata: false,
+            utilisation: false,
+            compactions: false,
+            toolResults: true,
+          },
+        };
+
+        const rows = buildEnrichmentRows(session, options);
+
+        const payload = rows[0]?.Payload;
+        expect(payload?.skillName).toBe('oss.pick-up-issue');
+        expect(payload?.skillSource).toBe('personal-copilot');
+        expect(payload?.skillContentLength).toBe(1578);
+        expect(payload?.skillOutcome).toBe('loaded');
+        expect(Object.prototype.hasOwnProperty.call(payload, 'skillErrorMessage')).toBe(false);
+      });
+
+      it('omits skill fields from payload when absent on toolCall', () => {
+        const session = makeSession({
+          toolCalls: [
+            {
+              toolCallId: 'tc-001',
+              toolName: 'bash',
+              model: 'claude-sonnet-4-20250514',
+              startTs: '2025-01-15T10:00:05Z',
+              endTs: '2025-01-15T10:00:06Z',
+              durationMs: 1000,
+              success: true,
+              parentId: null,
+              turnId: 'turn-1',
+              eventId: 'evt-001',
+              argumentsPreview: 'ls -la',
+            },
+          ],
+        });
+        const options = {
+          categories: {
+            metadata: false,
+            utilisation: false,
+            compactions: false,
+            toolResults: true,
+          },
+        };
+
+        const rows = buildEnrichmentRows(session, options);
+
+        const payload = rows[0]?.Payload;
+        expect(Object.prototype.hasOwnProperty.call(payload, 'skillName')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(payload, 'skillSource')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(payload, 'skillContentLength')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(payload, 'skillOutcome')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(payload, 'skillErrorMessage')).toBe(false);
+      });
     });
   });
 
