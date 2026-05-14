@@ -25,6 +25,10 @@ export interface SkillRow {
   readonly avgDurationMs: number | null;
   /** Fraction of total skill invocations attributed to this skill. */
   readonly proportion: number;
+  /** Most common resolution outcome for this skill across its invocations. */
+  readonly outcome: 'loaded' | 'not_found' | 'disabled' | 'read_error';
+  /** Error message from the most recent read_error invocation, if any. */
+  readonly skillErrorMessage?: string | null;
 }
 
 /** Aggregated skill stats for a full session. */
@@ -36,6 +40,10 @@ export interface SkillStatsResult {
   readonly totalContentLength: number;
   /** Invocations grouped by skillSource, sorted by count descending. */
   readonly sourceBreakdown: readonly { readonly source: string; readonly count: number }[];
+  /** Invocations grouped by skillOutcome, sorted by count descending. */
+  readonly outcomeBreakdown: readonly { readonly outcome: string; readonly count: number }[];
+  /** Count of invocations where the outcome is not 'loaded' (failed skill loads). */
+  readonly failedInvocations: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -67,22 +75,38 @@ export function computeSkillStats(session: Session): SkillStatsResult {
   const skillCalls = session.toolCalls.filter((tc) => tc.toolName === 'skill');
 
   if (skillCalls.length === 0) {
-    return { rows: [], totalInvocations: 0, uniqueSkills: 0, totalContentLength: 0, sourceBreakdown: [] };
+    return { rows: [], totalInvocations: 0, uniqueSkills: 0, totalContentLength: 0, sourceBreakdown: [], outcomeBreakdown: [], failedInvocations: 0 };
   }
 
   const bySkill = new Map<
     string,
-    { callCount: number; sourceCounts: Map<string, number>; contentLengths: number[]; durations: number[] }
+    {
+      callCount: number;
+      sourceCounts: Map<string, number>;
+      outcomeCounts: Map<string, number>;
+      contentLengths: number[];
+      durations: number[];
+      lastErrorMessage: string | null;
+    }
   >();
   const sourceTotals = new Map<string, number>();
+  const outcomeTotals = new Map<string, number>();
   let totalContentLength = 0;
+  let failedInvocations = 0;
 
   for (const tc of skillCalls) {
     const name = resolveSkillName(tc);
     const src = tc.skillSource ?? null;
+    // For sessions parsed before outcome tracking, default to 'loaded'
+    const outcome: 'loaded' | 'not_found' | 'disabled' | 'read_error' =
+      (tc.skillOutcome ?? 'loaded') as 'loaded' | 'not_found' | 'disabled' | 'read_error';
 
     if (src) {
       sourceTotals.set(src, (sourceTotals.get(src) ?? 0) + 1);
+    }
+    outcomeTotals.set(outcome, (outcomeTotals.get(outcome) ?? 0) + 1);
+    if (outcome !== 'loaded') {
+      failedInvocations++;
     }
     if (tc.skillContentLength != null) {
       totalContentLength += tc.skillContentLength;
@@ -93,14 +117,20 @@ export function computeSkillStats(session: Session): SkillStatsResult {
       bySkill.set(name, {
         callCount: 1,
         sourceCounts: new Map(src ? [[src, 1]] : []),
+        outcomeCounts: new Map([[outcome, 1]]),
         contentLengths: tc.skillContentLength != null ? [tc.skillContentLength] : [],
         durations: tc.durationMs != null ? [tc.durationMs] : [],
+        lastErrorMessage: outcome === 'read_error' ? (tc.skillErrorMessage ?? null) : null,
       });
     } else {
       entry.callCount++;
       if (src) entry.sourceCounts.set(src, (entry.sourceCounts.get(src) ?? 0) + 1);
+      entry.outcomeCounts.set(outcome, (entry.outcomeCounts.get(outcome) ?? 0) + 1);
       if (tc.skillContentLength != null) entry.contentLengths.push(tc.skillContentLength);
       if (tc.durationMs != null) entry.durations.push(tc.durationMs);
+      if (outcome === 'read_error' && tc.skillErrorMessage) {
+        entry.lastErrorMessage = tc.skillErrorMessage;
+      }
     }
   }
 
@@ -114,6 +144,15 @@ export function computeSkillStats(session: Session): SkillStatsResult {
       if (c > topCount) { topSource = s; topCount = c; }
     }
 
+    let topOutcome: 'loaded' | 'not_found' | 'disabled' | 'read_error' = 'loaded';
+    let topOutcomeCount = 0;
+    for (const [o, c] of entry.outcomeCounts) {
+      if (c > topOutcomeCount) {
+        topOutcome = o as 'loaded' | 'not_found' | 'disabled' | 'read_error';
+        topOutcomeCount = c;
+      }
+    }
+
     const avgContentLength =
       entry.contentLengths.length > 0
         ? Math.round(entry.contentLengths.reduce((s, v) => s + v, 0) / entry.contentLengths.length)
@@ -122,7 +161,7 @@ export function computeSkillStats(session: Session): SkillStatsResult {
     const avgDurationMs =
       entry.durations.length > 0 ? Math.round(totalDurationMs / entry.durations.length) : null;
 
-    rows.push({
+    const rowBase = {
       skillName,
       callCount: entry.callCount,
       source: topSource,
@@ -130,7 +169,14 @@ export function computeSkillStats(session: Session): SkillStatsResult {
       totalDurationMs,
       avgDurationMs,
       proportion: entry.callCount / total,
-    });
+      outcome: topOutcome,
+    };
+
+    rows.push(
+      entry.lastErrorMessage !== null
+        ? { ...rowBase, skillErrorMessage: entry.lastErrorMessage }
+        : rowBase,
+    );
   }
 
   rows.sort((a, b) => b.callCount - a.callCount);
@@ -139,5 +185,9 @@ export function computeSkillStats(session: Session): SkillStatsResult {
     .map(([source, count]) => ({ source, count }))
     .sort((a, b) => b.count - a.count);
 
-  return { rows, totalInvocations: total, uniqueSkills: bySkill.size, totalContentLength, sourceBreakdown };
+  const outcomeBreakdown = [...outcomeTotals.entries()]
+    .map(([outcome, count]) => ({ outcome, count }))
+    .sort((a, b) => b.count - a.count);
+
+  return { rows, totalInvocations: total, uniqueSkills: bySkill.size, totalContentLength, sourceBreakdown, outcomeBreakdown, failedInvocations };
 }

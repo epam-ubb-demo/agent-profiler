@@ -47,6 +47,37 @@ function sourceColour(source: string): string {
   return SOURCE_COLOURS[source] ?? 'var(--uui-neutral-50)';
 }
 
+/* --- Outcome helpers ------------------------------------------------------ */
+
+/** Returns the display text for a skill resolution outcome. */
+function outcomeLabel(outcome: 'loaded' | 'not_found' | 'disabled' | 'read_error'): string {
+  switch (outcome) {
+    case 'loaded': return '✓ Loaded';
+    case 'not_found': return '⚠ Not found';
+    case 'disabled': return '⊘ Disabled';
+    case 'read_error': return '✗ Read error';
+  }
+}
+
+/** Returns the CSS colour variable for a skill resolution outcome. */
+function outcomeColour(outcome: 'loaded' | 'not_found' | 'disabled' | 'read_error'): string {
+  switch (outcome) {
+    case 'loaded': return 'var(--uui-success-50)';
+    case 'not_found': return 'var(--uui-warning-50)';
+    case 'disabled': return 'var(--uui-neutral-50)';
+    case 'read_error': return 'var(--uui-critical-50)';
+  }
+}
+
+/** Severity function for the KPI strip — highlights the "Failed loads" card when > 0. */
+function skillKpiSeverity(index: number, stat: StatEntry): string {
+  // Index 3 is the "Failed loads" KPI
+  if (index === 3 && stat.value !== null && stat.value > 0) {
+    return styles['statCardWarning'] ?? '';
+  }
+  return '';
+}
+
 function formatChars(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M ch`;
   if (n >= 1_000) return `${Math.round(n / 1_000)}K ch`;
@@ -55,7 +86,7 @@ function formatChars(n: number): string {
 
 /* --- Constants ----------------------------------------------------------- */
 
-const FILTER_KEYS = ['skillName', 'source'] as const;
+const FILTER_KEYS = ['skillName', 'source', 'outcome'] as const;
 const DEFAULT_SORT = { key: 'callCount' as const, direction: 'desc' as const };
 
 /* --- Props --------------------------------------------------------------- */
@@ -95,18 +126,19 @@ function TabSkillsInner({ skillStats }: TabSkillsProps) {
   }, [skillStats.sourceBreakdown]);
 
   const kpis = useMemo<readonly StatEntry[]>(() => {
-    const { totalInvocations, uniqueSkills, totalContentLength } = skillStats;
+    const { totalInvocations, uniqueSkills, totalContentLength, failedInvocations } = skillStats;
     return [
       { label: 'Total invocations', display: totalInvocations > 0 ? String(totalInvocations) : '—', value: totalInvocations },
       { label: 'Unique skills', display: uniqueSkills > 0 ? String(uniqueSkills) : '—', value: uniqueSkills },
       { label: 'Total context loaded', display: totalContentLength > 0 ? formatChars(totalContentLength) : '—', value: totalContentLength },
+      { label: 'Failed loads', display: failedInvocations > 0 ? String(failedInvocations) : '—', value: failedInvocations },
     ];
   }, [skillStats]);
 
   if (skillStats.totalInvocations === 0) {
     return (
       <div data-testid="tab-skills">
-        <TabKpiStrip stats={kpis} testIdPrefix="skill-kpi" />
+        <TabKpiStrip stats={kpis} severityFn={skillKpiSeverity} testIdPrefix="skill-kpi" />
         <div style={{ padding: '24px 0' }}>
           <Text size="18" color="secondary">No skill invocations recorded in this session.</Text>
         </div>
@@ -119,7 +151,7 @@ function TabSkillsInner({ skillStats }: TabSkillsProps) {
 
   return (
     <div data-testid="tab-skills">
-      <TabKpiStrip stats={kpis} testIdPrefix="skill-kpi" />
+      <TabKpiStrip stats={kpis} severityFn={skillKpiSeverity} testIdPrefix="skill-kpi" />
 
       {donutData && donutData.length > 0 && (
         <Section title="Skills by source">
@@ -224,6 +256,7 @@ function TabSkillsInner({ skillStats }: TabSkillsProps) {
             <tr>
               <SortableHeader label="Skill" sortKey="skillName" direction={getSortDirection('skillName')} onSort={requestSort} />
               <SortableHeader label="Source" sortKey="source" direction={getSortDirection('source')} onSort={requestSort} />
+              <SortableHeader label="Outcome" sortKey="outcome" direction={getSortDirection('outcome')} onSort={requestSort} />
               <SortableHeader label="Calls" sortKey="callCount" direction={getSortDirection('callCount')} onSort={requestSort} numeric />
               <th scope="col" className={styles.barCell} />
               <SortableHeader label="Avg context" sortKey="avgContentLength" direction={getSortDirection('avgContentLength')} onSort={requestSort} numeric />
@@ -251,6 +284,22 @@ function TabSkillsInner({ skillStats }: TabSkillsProps) {
                       {row.source}
                     </span>
                   ) : '—'}
+                </td>
+                <td>
+                  {row.outcome === 'read_error' ? (
+                    <span
+                      style={{ color: outcomeColour(row.outcome), cursor: 'help' }}
+                      onMouseEnter={(e) => tooltip.show({ header: 'Read Error', rows: [{ key: 'Error', value: row.skillErrorMessage ?? '' }] }, e)}
+                      onMouseMove={tooltip.move}
+                      onMouseLeave={tooltip.hide}
+                    >
+                      {outcomeLabel(row.outcome)}
+                    </span>
+                  ) : (
+                    <span style={{ color: outcomeColour(row.outcome) }}>
+                      {outcomeLabel(row.outcome)}
+                    </span>
+                  )}
                 </td>
                 <td className={styles.numericCell}>{row.callCount}</td>
                 <td className={styles.barCell}>

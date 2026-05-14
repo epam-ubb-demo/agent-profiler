@@ -100,6 +100,8 @@ interface SkillTelemetry {
   readonly skillName: string | null;
   readonly skillSource: string | null;
   readonly skillContentLength: number | null;
+  readonly skillOutcome: 'loaded' | 'not_found' | 'disabled' | 'read_error';
+  readonly skillErrorMessage: string | null;
 }
 
 function extractSkillTelemetry(data: Record<string, unknown>): SkillTelemetry | null {
@@ -117,9 +119,22 @@ function extractSkillTelemetry(data: Record<string, unknown>): SkillTelemetry | 
   const skillContentLength =
     typeof rawLen === 'number' && Number.isFinite(rawLen) ? Math.trunc(rawLen) : null;
 
-  if (skillName === null && skillSource === null && skillContentLength === null) return null;
+  // Derive outcome from property flags (see delegation contract for precedence rules)
+  let skillOutcome: 'loaded' | 'not_found' | 'disabled' | 'read_error';
+  if (props?.['disabled'] === 'true') {
+    skillOutcome = 'disabled';
+  } else if (props?.['found'] === 'false') {
+    skillOutcome = 'not_found';
+  } else if (props?.['readError'] === 'true') {
+    skillOutcome = 'read_error';
+  } else {
+    skillOutcome = 'loaded';
+  }
 
-  return { skillName, skillSource, skillContentLength };
+  const skillErrorMessage =
+    typeof restricted?.['errorMessage'] === 'string' ? restricted['errorMessage'] : null;
+
+  return { skillName, skillSource, skillContentLength, skillOutcome, skillErrorMessage };
 }
 
 // ---------------------------------------------------------------------------
@@ -226,7 +241,13 @@ function onToolComplete(
       turnId: turnIdOf(event),
       eventId: event.id ?? null,
       argumentsPreview: '',
-      ...(st !== null ? { skillName: st.skillName, skillSource: st.skillSource, skillContentLength: st.skillContentLength } : {}),
+      ...(st !== null ? {
+        skillName: st.skillName,
+        skillSource: st.skillSource,
+        skillContentLength: st.skillContentLength,
+        skillOutcome: st.skillOutcome,
+        ...(st.skillErrorMessage !== null ? { skillErrorMessage: st.skillErrorMessage } : {}),
+      } : {}),
     };
     sb.toolCalls.push(tc);
   } else {
@@ -242,7 +263,13 @@ function onToolComplete(
       durationMs: durationMs != null && Number.isFinite(durationMs) ? durationMs : null,
       success: data['success'] != null ? Boolean(data['success']) : null,
       model: existing.model || safeStr(data['model']) || currentModel,
-      ...(st !== null ? { skillName: st.skillName, skillSource: st.skillSource, skillContentLength: st.skillContentLength } : {}),
+      ...(st !== null ? {
+        skillName: st.skillName,
+        skillSource: st.skillSource,
+        skillContentLength: st.skillContentLength,
+        skillOutcome: st.skillOutcome,
+        ...(st.skillErrorMessage !== null ? { skillErrorMessage: st.skillErrorMessage } : {}),
+      } : {}),
     };
     sb.toolCalls.push(tc);
   }

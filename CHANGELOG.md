@@ -40,6 +40,8 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 - Schema evolution guidance documented in `DEVELOPING.md`.
 - Documentation split into two independent Astro + Starlight sites: `docs/project/` (architecture decisions, operations runbooks, contributor guides) at base path `/agent-profiler/project/`, and `docs/tool/` (OTel Gateway, desktop app, adapters) at base path `/agent-profiler/tool/`. Each site builds independently and is merged into a single GitHub Pages deployment.
 - GitHub Actions workflow updated to build both sites and merge their `dist/` outputs before upload (`.github/workflows/docs.yml`).
+- **Skills tab** — new tab in the session detail view surfacing Copilot skill invocations with KPI strip, source distribution donut chart, and filterable, sortable table.
+- **Skill outcome status tracking** — each skill invocation now shows its outcome (`loaded`, `not_found`, `disabled`, `read_error`) with coloured badges and a failure KPI highlight.
 
 ### Fixed
 

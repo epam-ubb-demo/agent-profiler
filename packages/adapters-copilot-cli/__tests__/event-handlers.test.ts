@@ -161,6 +161,141 @@ describe('processEvents', () => {
     expect(tc.success).toBe(true);
   });
 
+  describe('skill outcome extraction', () => {
+    it('extracts skillOutcome=loaded for found=true skill', () => {
+      const events: RawEvent[] = [
+        {
+          type: 'tool.execution_start',
+          timestamp: '2025-01-15T10:00:00.000Z',
+          id: 'evt-1',
+          data: { toolCallId: 'tc-loaded', toolName: 'skill', turnId: '0' },
+        },
+        {
+          type: 'tool.execution_complete',
+          timestamp: '2025-01-15T10:00:00.500Z',
+          id: 'evt-2',
+          data: {
+            toolCallId: 'tc-loaded',
+            toolName: 'skill',
+            success: true,
+            turnId: '0',
+            toolTelemetry: {
+              properties: { skillNameHash: '7304af9', skillSource: 'personal-copilot', found: 'true' },
+              restrictedProperties: { skillName: 'oss.pick-up-issue' },
+              metrics: { skillContentLength: 1578 },
+            },
+          },
+        },
+      ];
+
+      const sb = processEvents(events);
+      const tc = sb.toolCalls[0]!;
+      expect(tc.skillName).toBe('oss.pick-up-issue');
+      expect(tc.skillSource).toBe('personal-copilot');
+      expect(tc.skillOutcome).toBe('loaded');
+      expect(tc.skillErrorMessage).toBeUndefined();
+    });
+
+    it('extracts skillOutcome=not_found for found=false skill', () => {
+      const events: RawEvent[] = [
+        {
+          type: 'tool.execution_start',
+          timestamp: '2025-01-15T10:00:00.000Z',
+          id: 'evt-1',
+          data: { toolCallId: 'tc-not-found', toolName: 'skill', turnId: '0' },
+        },
+        {
+          type: 'tool.execution_complete',
+          timestamp: '2025-01-15T10:00:00.500Z',
+          id: 'evt-2',
+          data: {
+            toolCallId: 'tc-not-found',
+            toolName: 'skill',
+            success: false,
+            turnId: '0',
+            toolTelemetry: {
+              properties: { skillNameHash: '46fcb20', found: 'false' },
+              restrictedProperties: { skillName: 'agent-forgemarketplace' },
+            },
+          },
+        },
+      ];
+
+      const sb = processEvents(events);
+      const tc = sb.toolCalls[0]!;
+      expect(tc.skillName).toBe('agent-forgemarketplace');
+      expect(tc.skillSource).toBeNull();
+      expect(tc.skillOutcome).toBe('not_found');
+      expect(tc.skillErrorMessage).toBeUndefined();
+    });
+
+    it('extracts skillOutcome=disabled for disabled skill', () => {
+      const events: RawEvent[] = [
+        {
+          type: 'tool.execution_start',
+          timestamp: '2025-01-15T10:00:00.000Z',
+          id: 'evt-1',
+          data: { toolCallId: 'tc-disabled', toolName: 'skill', turnId: '0' },
+        },
+        {
+          type: 'tool.execution_complete',
+          timestamp: '2025-01-15T10:00:00.500Z',
+          id: 'evt-2',
+          data: {
+            toolCallId: 'tc-disabled',
+            toolName: 'skill',
+            success: false,
+            turnId: '0',
+            toolTelemetry: {
+              properties: { skillNameHash: 'eed4688', disabled: 'true' },
+              restrictedProperties: { skillName: 'performance-code-quality' },
+            },
+          },
+        },
+      ];
+
+      const sb = processEvents(events);
+      const tc = sb.toolCalls[0]!;
+      expect(tc.skillName).toBe('performance-code-quality');
+      expect(tc.skillOutcome).toBe('disabled');
+      expect(tc.skillErrorMessage).toBeUndefined();
+    });
+
+    it('extracts skillOutcome=read_error with errorMessage', () => {
+      const errorMsg = "Error: ENOENT: no such file or directory, open '/Users/test/.agents/skills/SKILL.md'";
+      const events: RawEvent[] = [
+        {
+          type: 'tool.execution_start',
+          timestamp: '2025-01-15T10:00:00.000Z',
+          id: 'evt-1',
+          data: { toolCallId: 'tc-read-error', toolName: 'skill', turnId: '0' },
+        },
+        {
+          type: 'tool.execution_complete',
+          timestamp: '2025-01-15T10:00:00.500Z',
+          id: 'evt-2',
+          data: {
+            toolCallId: 'tc-read-error',
+            toolName: 'skill',
+            success: false,
+            turnId: '0',
+            toolTelemetry: {
+              properties: { skillNameHash: '0fa8df3', skillSource: 'inherited', found: 'true', readError: 'true' },
+              restrictedProperties: { skillName: 'markitdown.document-conversion', errorMessage: errorMsg },
+            },
+          },
+        },
+      ];
+
+      const sb = processEvents(events);
+      const tc = sb.toolCalls[0]!;
+      expect(tc.skillName).toBe('markitdown.document-conversion');
+      expect(tc.skillSource).toBe('inherited');
+      expect(tc.skillOutcome).toBe('read_error');
+      expect(tc.skillErrorMessage).toBe(errorMsg);
+    });
+  });
+
   it('processes assistant.message', () => {
     const events: RawEvent[] = [
       {
