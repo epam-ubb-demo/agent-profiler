@@ -23,6 +23,12 @@ export interface ToolCall {
   readonly turnId: string | null;
   readonly eventId: string | null;
   readonly argumentsPreview: string;
+  /** Resolved skill name from telemetry (only present for toolName === 'skill'). */
+  readonly skillName?: string | null;
+  /** Skill source category from telemetry (e.g. 'personal-copilot', 'project'). */
+  readonly skillSource?: string | null;
+  /** Number of characters of skill content loaded into context. */
+  readonly skillContentLength?: number | null;
 }
 
 /**

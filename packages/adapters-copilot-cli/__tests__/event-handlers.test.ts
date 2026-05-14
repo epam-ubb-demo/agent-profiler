@@ -119,6 +119,48 @@ describe('processEvents', () => {
     expect(tc.success).toBe(false);
   });
 
+  it('extracts skill telemetry from skill tool.execution_complete', () => {
+    const events: RawEvent[] = [
+      {
+        type: 'tool.execution_start',
+        timestamp: '2025-01-15T10:00:00.000Z',
+        id: 'evt-1',
+        data: {
+          toolCallId: 'tc-skill-1',
+          toolName: 'skill',
+          turnId: '0',
+          arguments: { skill: 'my-skill' },
+        },
+      },
+      {
+        type: 'tool.execution_complete',
+        timestamp: '2025-01-15T10:00:00.500Z',
+        id: 'evt-2',
+        data: {
+          toolCallId: 'tc-skill-1',
+          toolName: 'skill',
+          success: true,
+          turnId: '0',
+          toolTelemetry: {
+            properties: { skillSource: 'project', found: 'true' },
+            restrictedProperties: { skillName: 'my-skill' },
+            metrics: { skillContentLength: 8192 },
+          },
+        },
+      },
+    ];
+
+    const sb = processEvents(events);
+
+    expect(sb.toolCalls).toHaveLength(1);
+    const tc = sb.toolCalls[0]!;
+    expect(tc.toolName).toBe('skill');
+    expect(tc.skillName).toBe('my-skill');
+    expect(tc.skillSource).toBe('project');
+    expect(tc.skillContentLength).toBe(8192);
+    expect(tc.success).toBe(true);
+  });
+
   it('processes assistant.message', () => {
     const events: RawEvent[] = [
       {

@@ -16,6 +16,9 @@ export const toolCallSchema = z.object({
   turnId: z.string().nullable(),
   eventId: z.string().nullable(),
   argumentsPreview: z.string(),
+  skillName: z.string().nullable().optional(),
+  skillSource: z.string().nullable().optional(),
+  skillContentLength: z.number().int().nonnegative().nullable().optional(),
 });
 
 export const assistantMessageSchema = z.object({

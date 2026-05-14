@@ -25,8 +25,10 @@ import { SessionAlerts } from './SessionAlerts';
 import { SessionHeader } from './SessionHeader';
 import type { TabId } from './SessionTabs';
 import { SessionTabs } from './SessionTabs';
+import { computeSkillStats } from './skill-stats';
 import { TabCostModels } from './TabCostModels';
 import { TabOverview } from './TabOverview';
+import { TabSkills } from './TabSkills';
 import { TabTimeline } from './TabTimeline';
 import { TabTools } from './TabTools';
 import { computeTimelineKpis } from './timeline-kpis';
@@ -109,6 +111,7 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
   const toolStats = useMemo(() => computeToolStats(session), [session]);
   const toolInventory = useMemo(() => computeToolInventory(session), [session]);
   const eventTypes = useMemo(() => computeEventTypeStats(session), [session]);
+  const skillStats = useMemo(() => computeSkillStats(session), [session]);
 
   /* --- per-tab KPI strips ------------------------------------------ */
   const costKpis = useMemo(
@@ -229,6 +232,10 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
             modelColours={modelColours}
             toolKpis={toolKpis}
           />
+        )}
+
+        {activeTab === 'skills' && (
+          <TabSkills skillStats={skillStats} />
         )}
 
         {activeTab === 'timeline' && (

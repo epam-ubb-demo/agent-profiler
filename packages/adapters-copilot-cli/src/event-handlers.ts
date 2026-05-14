@@ -96,6 +96,32 @@ function summariseArguments(args: unknown): string {
   return flat.length > limit ? flat.slice(0, limit) + '…' : flat;
 }
 
+interface SkillTelemetry {
+  readonly skillName: string | null;
+  readonly skillSource: string | null;
+  readonly skillContentLength: number | null;
+}
+
+function extractSkillTelemetry(data: Record<string, unknown>): SkillTelemetry | null {
+  const telemetry = data['toolTelemetry'];
+  if (telemetry == null || typeof telemetry !== 'object') return null;
+
+  const t = telemetry as Record<string, unknown>;
+  const props = t['properties'] as Record<string, unknown> | undefined;
+  const restricted = t['restrictedProperties'] as Record<string, unknown> | undefined;
+  const metrics = t['metrics'] as Record<string, unknown> | undefined;
+
+  const skillName = typeof restricted?.['skillName'] === 'string' ? restricted['skillName'] : null;
+  const skillSource = typeof props?.['skillSource'] === 'string' ? props['skillSource'] : null;
+  const rawLen = metrics?.['skillContentLength'];
+  const skillContentLength =
+    typeof rawLen === 'number' && Number.isFinite(rawLen) ? Math.trunc(rawLen) : null;
+
+  if (skillName === null && skillSource === null && skillContentLength === null) return null;
+
+  return { skillName, skillSource, skillContentLength };
+}
+
 // ---------------------------------------------------------------------------
 // Handler type
 // ---------------------------------------------------------------------------
@@ -187,6 +213,7 @@ function onToolComplete(
 
   if (existing == null) {
     // No matching start — create a complete record with start=end
+    const st = extractSkillTelemetry(data);
     const tc: ToolCall = {
       toolCallId: tcid,
       toolName: safeStr(data['toolName'], '<unknown>'),
@@ -199,6 +226,7 @@ function onToolComplete(
       turnId: turnIdOf(event),
       eventId: event.id ?? null,
       argumentsPreview: '',
+      ...(st !== null ? { skillName: st.skillName, skillSource: st.skillSource, skillContentLength: st.skillContentLength } : {}),
     };
     sb.toolCalls.push(tc);
   } else {
@@ -207,12 +235,14 @@ function onToolComplete(
       existing.startTs && ts
         ? new Date(ts).getTime() - new Date(existing.startTs).getTime()
         : null;
+    const st = extractSkillTelemetry(data);
     const tc: ToolCall = {
       ...existing,
       endTs: ts,
       durationMs: durationMs != null && Number.isFinite(durationMs) ? durationMs : null,
       success: data['success'] != null ? Boolean(data['success']) : null,
       model: existing.model || safeStr(data['model']) || currentModel,
+      ...(st !== null ? { skillName: st.skillName, skillSource: st.skillSource, skillContentLength: st.skillContentLength } : {}),
     };
     sb.toolCalls.push(tc);
   }
