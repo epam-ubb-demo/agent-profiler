@@ -277,6 +277,12 @@ if (gotLock) {
   ipcMain.handle(ipcChannels.SYNC_SETTINGS_SET, (_event, raw: unknown) => {
     const settings = syncSettingsSchema.parse(raw);
     setSyncSettings(settings);
+    const newWriter = new LogsIngestionWriter({
+      dceEndpoint: settings.dceEndpoint,
+      dcrImmutableId: settings.dcrImmutableId,
+      dcrStreamName: settings.dcrStreamName,
+    });
+    syncService.updateWriter(newWriter);
   });
 
   app.whenReady().then(async () => {
