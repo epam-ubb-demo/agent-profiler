@@ -88,16 +88,42 @@
   gap: 4px;
   padding: 4px 10px;
   border-radius: 4px;
-  background: var(--uui-surface-section);
-  border: 1px solid var(--uui-neutral-40);
   white-space: nowrap;
   font-size: 0.75rem;
   line-height: 1;
   color: var(--uui-text-primary);
 }
 
+/* Per-metric colours */
+.metricPill[data-metric="cost"] {
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  color: #92400e;
+}
+.metricPill[data-metric="time"] {
+  background: #dbeafe;
+  border: 1px solid #60a5fa;
+  color: #1e40af;
+}
+.metricPill[data-metric="in"] {
+  background: #dcfce7;
+  border: 1px solid #4ade80;
+  color: #166534;
+}
+.metricPill[data-metric="out"] {
+  background: #fce7f3;
+  border: 1px solid #f472b6;
+  color: #9d174d;
+}
+.metricPill[data-metric="cached"] {
+  background: #e0e7ff;
+  border: 1px solid #818cf8;
+  color: #3730a3;
+}
+
 .metricLabel {
-  color: var(--uui-text-secondary);
+  color: inherit;
+  opacity: 0.7;
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
