@@ -113,18 +113,24 @@
   border: 1px solid #e2e8f0;
   border-left: 3px solid #f59e0b;
   color: #1e293b;
+  font-size: 0.6875rem;
+  padding: 3px 8px;
 }
 .metricPill[data-metric="out"] {
   background: #f8fafb;
   border: 1px solid #e2e8f0;
   border-left: 3px solid #f59e0b;
   color: #1e293b;
+  font-size: 0.6875rem;
+  padding: 3px 8px;
 }
 .metricPill[data-metric="cached"] {
   background: #f8fafb;
   border: 1px solid #e2e8f0;
   border-left: 3px solid #f59e0b;
   color: #1e293b;
+  font-size: 0.6875rem;
+  padding: 3px 8px;
 }
 
 .metricLabel {
