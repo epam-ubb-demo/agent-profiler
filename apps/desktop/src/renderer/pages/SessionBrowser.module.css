@@ -69,8 +69,14 @@
   gap: 12px;
 }
 
-/* ─── Metrics strip: 5 compact pills ─── */
-.metricsRow {
+/* ─── Metrics strip: two-row grid ─── */
+.metricsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metricsSubRow {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
@@ -177,11 +183,11 @@
   gap: 18px;
 }
 
-/* ─── Analytics panel ─── */
-.analyticsPanel {
-  background: var(--uui-surface-higher);
-  border: 1px solid var(--uui-neutral-40);
-  border-radius: 6px;
+/* ─── Chart area (inside summary bar) ─── */
+.chartArea {
+  padding: 0 12px 12px;
+  max-height: 240px;
+  overflow-y: auto;
 }
 
 /* ─── Empty filter state ─── */

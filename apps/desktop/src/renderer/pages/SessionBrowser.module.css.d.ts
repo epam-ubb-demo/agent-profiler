@@ -8,7 +8,8 @@ declare const styles: {
   readonly cardGrid: string;
   readonly sessionCard: string;
   readonly cardContent: string;
-  readonly metricsRow: string;
+  readonly metricsGrid: string;
+  readonly metricsSubRow: string;
   readonly metricPill: string;
   readonly metricLabel: string;
   readonly metricValue: string;
@@ -18,7 +19,7 @@ declare const styles: {
   readonly summaryBar: string;
   readonly summaryRow: string;
   readonly summaryDivider: string;
-  readonly analyticsPanel: string;
+  readonly chartArea: string;
   readonly dayGroup: string;
   readonly dayHeading: string;
   readonly emptyFilterState: string;

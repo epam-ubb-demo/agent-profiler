@@ -139,44 +139,48 @@ function SessionCard({ session, onClick }: SessionCardProps) {
           />
         </FlexRow>
 
-        {/* Row 2: unified metrics strip */}
+        {/* Row 2: unified metrics strip — two rows */}
         {m && (
-          <div className={styles.metricsRow} data-testid="metrics-row">
-            <Tooltip content={`Cost confidence: ${m.costConfidence}`}>
-              <div className={styles.metricPill} data-testid="cost-pill">
-                <DollarSign size={14} />
-                <span className={styles.metricLabel}>Cost</span>
-                <span className={styles.metricValue}>{formatCost(m.totalCostUsd, m.costConfidence)}</span>
-              </div>
-            </Tooltip>
-            <Tooltip content={`Input tokens: ${m.totalInputTokens.toLocaleString()}`}>
-              <div className={styles.metricPill} data-testid="token-input-pill">
-                <ArrowDownToLine size={14} />
-                <span className={styles.metricLabel}>In</span>
-                <span className={styles.metricValue}>{formatTokenCount(m.totalInputTokens)}</span>
-              </div>
-            </Tooltip>
-            <Tooltip content={`Output tokens: ${m.totalOutputTokens.toLocaleString()}`}>
-              <div className={styles.metricPill} data-testid="token-output-pill">
-                <ArrowUpFromLine size={14} />
-                <span className={styles.metricLabel}>Out</span>
-                <span className={styles.metricValue}>{formatTokenCount(m.totalOutputTokens)}</span>
-              </div>
-            </Tooltip>
-            <Tooltip content={`Cache-read tokens: ${m.totalCacheReadTokens.toLocaleString()}`}>
-              <div className={styles.metricPill} data-testid="token-cache-pill">
-                <Recycle size={14} />
-                <span className={styles.metricLabel}>Cached</span>
-                <span className={styles.metricValue}>{formatTokenCount(m.totalCacheReadTokens)}</span>
-              </div>
-            </Tooltip>
-            <Tooltip content={`Wall-clock time: ${formatDuration(m.wallTimeMs)}`}>
-              <div className={styles.metricPill} data-testid="duration-pill">
-                <Clock size={14} />
-                <span className={styles.metricLabel}>Time</span>
-                <span className={styles.metricValue}>{formatDuration(m.wallTimeMs)}</span>
-              </div>
-            </Tooltip>
+          <div className={styles.metricsGrid} data-testid="metrics-row">
+            <div className={styles.metricsSubRow}>
+              <Tooltip content={`Cost confidence: ${m.costConfidence}`}>
+                <div className={styles.metricPill} data-testid="cost-pill">
+                  <DollarSign size={14} />
+                  <span className={styles.metricLabel}>Cost</span>
+                  <span className={styles.metricValue}>{formatCost(m.totalCostUsd, m.costConfidence)}</span>
+                </div>
+              </Tooltip>
+              <Tooltip content={`Wall-clock time: ${formatDuration(m.wallTimeMs)}`}>
+                <div className={styles.metricPill} data-testid="duration-pill">
+                  <Clock size={14} />
+                  <span className={styles.metricLabel}>Time</span>
+                  <span className={styles.metricValue}>{formatDuration(m.wallTimeMs)}</span>
+                </div>
+              </Tooltip>
+            </div>
+            <div className={styles.metricsSubRow}>
+              <Tooltip content={`Input tokens: ${m.totalInputTokens.toLocaleString()}`}>
+                <div className={styles.metricPill} data-testid="token-input-pill">
+                  <ArrowDownToLine size={14} />
+                  <span className={styles.metricLabel}>In</span>
+                  <span className={styles.metricValue}>{formatTokenCount(m.totalInputTokens)}</span>
+                </div>
+              </Tooltip>
+              <Tooltip content={`Output tokens: ${m.totalOutputTokens.toLocaleString()}`}>
+                <div className={styles.metricPill} data-testid="token-output-pill">
+                  <ArrowUpFromLine size={14} />
+                  <span className={styles.metricLabel}>Out</span>
+                  <span className={styles.metricValue}>{formatTokenCount(m.totalOutputTokens)}</span>
+                </div>
+              </Tooltip>
+              <Tooltip content={`Cache-read tokens: ${m.totalCacheReadTokens.toLocaleString()}`}>
+                <div className={styles.metricPill} data-testid="token-cache-pill">
+                  <Recycle size={14} />
+                  <span className={styles.metricLabel}>Cached</span>
+                  <span className={styles.metricValue}>{formatTokenCount(m.totalCacheReadTokens)}</span>
+                </div>
+              </Tooltip>
+            </div>
           </div>
         )}
 
@@ -346,18 +350,25 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
   // Sessions grouped by day
   const groupedSessions = useMemo(() => groupByDay(filteredSessions), [filteredSessions]);
 
-  // Daily spend for analytics panel
+  // Daily spend for analytics panel — enriched with all metrics
   const dailySpend = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, { cost: number | null; wallTimeMs: number | null; inputTokens: number; outputTokens: number; cacheReadTokens: number }>();
     for (const s of filteredSessions) {
-      if (s.metrics?.totalCostUsd != null) {
+      const m = s.metrics;
+      if (m) {
         const key = toLocalDateKey(s.createdAt);
-        map.set(key, (map.get(key) ?? 0) + s.metrics.totalCostUsd);
+        const prev = map.get(key) ?? { cost: null, wallTimeMs: null, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 };
+        if (m.totalCostUsd != null) prev.cost = (prev.cost ?? 0) + m.totalCostUsd;
+        if (m.wallTimeMs != null) prev.wallTimeMs = (prev.wallTimeMs ?? 0) + m.wallTimeMs;
+        prev.inputTokens += m.totalInputTokens;
+        prev.outputTokens += m.totalOutputTokens;
+        prev.cacheReadTokens += m.totalCacheReadTokens;
+        map.set(key, prev);
       }
     }
     return Array.from(map.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, cost]) => ({ date, cost }));
+      .map(([date, d]) => ({ date, ...d }));
   }, [filteredSessions]);
 
   // Aggregated summary for filtered sessions
@@ -500,10 +511,31 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
           </FlexRow>
         </Panel>
 
-        {/* Summary bar */}
+        {/* Summary + analytics (collapsible chart) */}
         <Panel cx={styles.summaryBar} rawProps={{ 'data-testid': 'summary-bar' }}>
-          <FlexRow padding="12" spacing="12" cx={styles.summaryRow} alignItems="center">
-            <Text size="18" fontWeight="600">{summary.count} session{summary.count !== 1 ? 's' : ''}</Text>
+          <FlexRow
+            padding="12"
+            spacing="12"
+            cx={styles.summaryRow}
+            alignItems="center"
+            onClick={() => setAnalyticsExpanded((v) => !v)}
+            rawProps={{
+              style: { cursor: 'pointer' },
+              'data-testid': 'analytics-toggle',
+              role: 'button',
+              tabIndex: 0,
+              'aria-expanded': analyticsExpanded,
+              onKeyDown: (e: React.KeyboardEvent) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setAnalyticsExpanded((v) => !v);
+                }
+              },
+            }}
+          >
+            <Text size="18" fontWeight="600">
+              {analyticsExpanded ? '▾' : '▸'} {summary.count} session{summary.count !== 1 ? 's' : ''}
+            </Text>
             <div className={styles.summaryDivider} />
             <Text size="18" color="secondary">
               Tokens: {formatTokenCount(summary.totalTokens)}
@@ -520,7 +552,16 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
             <Text size="18" color="secondary">
               Avg time: {formatDuration(summary.avgWallMs)}
             </Text>
+            <FlexSpacer />
+            <Text fontSize="14" color="secondary">
+              {dailySpend.length} day{dailySpend.length !== 1 ? 's' : ''}
+            </Text>
           </FlexRow>
+          {analyticsExpanded && (
+            <div className={styles.chartArea} data-testid="analytics-panel">
+              <DailySpendChart data={dailySpend} />
+            </div>
+          )}
         </Panel>
       </div>
 
@@ -534,35 +575,6 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
           </div>
         ) : (
           <div data-testid="session-list">
-            {/* Analytics panel */}
-            <Panel cx={styles.analyticsPanel} rawProps={{ 'data-testid': 'analytics-panel' }}>
-              <FlexRow
-                alignItems="center"
-                padding="12"
-                spacing="6"
-                onClick={() => setAnalyticsExpanded((v) => !v)}
-                rawProps={{
-                  style: { cursor: 'pointer' },
-                  'data-testid': 'analytics-toggle',
-                  role: 'button',
-                  'aria-expanded': analyticsExpanded,
-                }}
-              >
-                <Text size="18" fontWeight="600">
-                  {analyticsExpanded ? '▾' : '▸'} Daily Spend
-                </Text>
-                <FlexSpacer />
-                <Text fontSize="14" color="secondary">
-                  {dailySpend.length} day{dailySpend.length !== 1 ? 's' : ''}
-                </Text>
-              </FlexRow>
-              {analyticsExpanded && (
-                <div style={{ padding: '0 12px 12px' }}>
-                  <DailySpendChart data={dailySpend} />
-                </div>
-              )}
-            </Panel>
-
             {groupedSessions.map(({ dateKey, items }) => (
               <div key={dateKey} className={styles.dayGroup}>
                 <div className={styles.dayHeading} data-testid="day-heading">
