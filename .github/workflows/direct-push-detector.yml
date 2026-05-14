@@ -1,0 +1,108 @@
+# Direct Push Detector
+# Fires on every push to main and checks whether each commit arrived
+# via a merged pull request. If a commit bypasses the PR workflow
+# (direct push, force push, or manual merge), opens a GitHub issue
+# alerting maintainers.
+#
+# Limitation: rebase-merged PRs replay commits as new SHAs that may
+# not always be associated with the originating PR via the GitHub API.
+# If your repo uses rebase merges, expect occasional false positives.
+# Squash-merge is recommended to avoid this.
+
+name: Direct Push Detector
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    env:
+      COMMITS_JSON: ${{ toJSON(github.event.commits) }}
+      PUSHER: ${{ github.actor }}
+      REPO: ${{ github.repository }}
+      RUN_ID: ${{ github.run_id }}
+    steps:
+      - name: Check for direct pushes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Iterate over each commit in the push event
+          echo "$COMMITS_JSON" | jq -r '.[].id' | while read -r SHA; do
+            # Ask GitHub API which PRs delivered this commit
+            PR_COUNT=$(gh api "repos/${REPO}/commits/${SHA}/pulls" \
+              --jq 'length' || echo "error")
+
+            if [ "$PR_COUNT" = "error" ]; then
+              echo "::warning::GitHub API error for commit ${SHA} — skipping"
+              continue
+            fi
+
+            if [ "$PR_COUNT" = "0" ]; then
+              echo "::warning::Direct push detected — commit ${SHA} by ${PUSHER}"
+              echo "$SHA" >> /tmp/direct_commits.txt
+            else
+              echo "✓ Commit ${SHA} delivered via PR"
+            fi
+          done
+
+          # If any direct commits were found, create or update an alert issue
+          if [ -f /tmp/direct_commits.txt ]; then
+            COMMIT_LIST=$(while read -r S; do
+              echo "- [\`${S:0:7}\`](https://github.com/${REPO}/commit/${S})"
+            done < /tmp/direct_commits.txt)
+
+            # Check for an existing open direct-push issue to avoid duplicates
+            EXISTING=$(gh issue list --repo "$REPO" --label "direct-push" \
+              --state open --limit 1 --json number --jq '.[0].number // empty' || true)
+
+            if [ -n "$EXISTING" ]; then
+              echo "Appending to existing issue #${EXISTING}"
+              BODY=$(cat <<EOF
+          ## Additional direct push detected
+
+          Pusher: @${PUSHER}
+          Run: [Actions log](https://github.com/${REPO}/actions/runs/${RUN_ID})
+
+          ### Commits
+
+          ${COMMIT_LIST}
+          EOF
+              )
+              gh issue comment "$EXISTING" --repo "$REPO" --body "$BODY"
+            else
+              BODY=$(cat <<EOF
+          ## Direct push to main detected
+
+          Pusher: @${PUSHER}
+          Run: [Actions log](https://github.com/${REPO}/actions/runs/${RUN_ID})
+
+          ### Commits that bypassed PR workflow
+
+          ${COMMIT_LIST}
+
+          ---
+
+          These commits were pushed directly to main without going through a pull request. This bypasses:
+          - CI pipeline checks
+          - Copilot code review
+          - CodeQL / code security scanning
+
+          Action required: Review the commits above. If this was intentional (e.g. a hotfix), document the reason and close this issue. Otherwise, consider reverting and re-submitting via PR.
+          EOF
+              )
+              gh issue create --repo "$REPO" \
+                --title "⚠️ Direct push to main detected (${PUSHER})" \
+                --label "direct-push" \
+                --body "$BODY"
+            fi
+          else
+            echo "✓ All commits delivered via PR — no action needed"
+          fi
