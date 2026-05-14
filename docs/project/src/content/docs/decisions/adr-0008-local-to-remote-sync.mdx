@@ -63,6 +63,8 @@ Users can choose which enrichment categories are uploaded:
 - compactions — enabled by default
 - tool results — disabled by default for privacy
 
+The `tool_result` category is forward-compatible with skill telemetry fields (`skillName`, `skillSource`, `skillContentLength`, `skillOutcome`, `skillErrorMessage`). These fields are conditionally included in the enrichment payload when present on `ToolCall` objects, ensuring no data is lost regardless of feature merge order.
+
 Authentication uses `DefaultAzureCredential`.
 
 ## Alternatives considered
