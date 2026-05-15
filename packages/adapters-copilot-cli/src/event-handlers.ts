@@ -120,12 +120,14 @@ function extractSkillTelemetry(data: Record<string, unknown>): SkillTelemetry | 
     typeof rawLen === 'number' && Number.isFinite(rawLen) ? Math.trunc(rawLen) : null;
 
   // Derive outcome from property flags (see delegation contract for precedence rules)
+  // Flags may arrive as strings ('true'/'false') or actual booleans depending on the
+  // OpenTelemetry exporter, so both forms are accepted.
   let skillOutcome: 'loaded' | 'not_found' | 'disabled' | 'read_error';
-  if (props?.['disabled'] === 'true') {
+  if (props?.['disabled'] === 'true' || props?.['disabled'] === true) {
     skillOutcome = 'disabled';
-  } else if (props?.['found'] === 'false') {
+  } else if (props?.['found'] === 'false' || props?.['found'] === false) {
     skillOutcome = 'not_found';
-  } else if (props?.['readError'] === 'true') {
+  } else if (props?.['readError'] === 'true' || props?.['readError'] === true) {
     skillOutcome = 'read_error';
   } else {
     skillOutcome = 'loaded';
@@ -228,7 +230,7 @@ function onToolComplete(
 
   if (existing == null) {
     // No matching start — create a complete record with start=end
-    const st = extractSkillTelemetry(data);
+    const st = safeStr(data['toolName']) === 'skill' ? extractSkillTelemetry(data) : null;
     const tc: ToolCall = {
       toolCallId: tcid,
       toolName: safeStr(data['toolName'], '<unknown>'),
@@ -256,7 +258,7 @@ function onToolComplete(
       existing.startTs && ts
         ? new Date(ts).getTime() - new Date(existing.startTs).getTime()
         : null;
-    const st = extractSkillTelemetry(data);
+    const st = safeStr(data['toolName']) === 'skill' ? extractSkillTelemetry(data) : null;
     const tc: ToolCall = {
       ...existing,
       endTs: ts,

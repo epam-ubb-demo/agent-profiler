@@ -294,6 +294,140 @@ describe('processEvents', () => {
       expect(tc.skillOutcome).toBe('read_error');
       expect(tc.skillErrorMessage).toBe(errorMsg);
     });
+
+    it('handles boolean outcome flags (disabled=true, found=false, readError=true)', () => {
+      // OpenTelemetry exporters may send actual booleans instead of strings.
+      const events: RawEvent[] = [
+        {
+          type: 'tool.execution_start',
+          timestamp: '2025-01-15T10:00:00.000Z',
+          id: 'evt-1',
+          data: { toolCallId: 'tc-bool-disabled', toolName: 'skill', turnId: '0' },
+        },
+        {
+          type: 'tool.execution_complete',
+          timestamp: '2025-01-15T10:00:00.500Z',
+          id: 'evt-2',
+          data: {
+            toolCallId: 'tc-bool-disabled',
+            toolName: 'skill',
+            success: false,
+            turnId: '0',
+            toolTelemetry: {
+              // boolean true, not the string 'true'
+              properties: { disabled: true },
+              restrictedProperties: { skillName: 'my-skill' },
+            },
+          },
+        },
+      ];
+
+      const sb = processEvents(events);
+      const tc = sb.toolCalls[0]!;
+      expect(tc.skillOutcome).toBe('disabled');
+    });
+
+    it('handles boolean found=false outcome flag', () => {
+      const events: RawEvent[] = [
+        {
+          type: 'tool.execution_start',
+          timestamp: '2025-01-15T10:00:00.000Z',
+          id: 'evt-1',
+          data: { toolCallId: 'tc-bool-not-found', toolName: 'skill', turnId: '0' },
+        },
+        {
+          type: 'tool.execution_complete',
+          timestamp: '2025-01-15T10:00:00.500Z',
+          id: 'evt-2',
+          data: {
+            toolCallId: 'tc-bool-not-found',
+            toolName: 'skill',
+            success: false,
+            turnId: '0',
+            toolTelemetry: {
+              // boolean false, not the string 'false'
+              properties: { found: false },
+              restrictedProperties: { skillName: 'missing-skill' },
+            },
+          },
+        },
+      ];
+
+      const sb = processEvents(events);
+      const tc = sb.toolCalls[0]!;
+      expect(tc.skillOutcome).toBe('not_found');
+    });
+
+    it('handles boolean readError=true outcome flag', () => {
+      const events: RawEvent[] = [
+        {
+          type: 'tool.execution_start',
+          timestamp: '2025-01-15T10:00:00.000Z',
+          id: 'evt-1',
+          data: { toolCallId: 'tc-bool-read-error', toolName: 'skill', turnId: '0' },
+        },
+        {
+          type: 'tool.execution_complete',
+          timestamp: '2025-01-15T10:00:00.500Z',
+          id: 'evt-2',
+          data: {
+            toolCallId: 'tc-bool-read-error',
+            toolName: 'skill',
+            success: false,
+            turnId: '0',
+            toolTelemetry: {
+              // boolean true, not the string 'true'
+              properties: { readError: true },
+              restrictedProperties: { skillName: 'broken-skill' },
+            },
+          },
+        },
+      ];
+
+      const sb = processEvents(events);
+      const tc = sb.toolCalls[0]!;
+      expect(tc.skillOutcome).toBe('read_error');
+    });
+  });
+
+  it('does not attach skill telemetry to non-skill tools', () => {
+    // A non-skill tool (e.g. run_command) must not have skill fields populated
+    // even if it happens to carry a toolTelemetry payload.
+    const events: RawEvent[] = [
+      {
+        type: 'tool.execution_start',
+        timestamp: '2025-01-15T10:00:00.000Z',
+        id: 'evt-1',
+        data: { toolCallId: 'tc-run', toolName: 'run_command', turnId: '0' },
+      },
+      {
+        type: 'tool.execution_complete',
+        timestamp: '2025-01-15T10:00:01.000Z',
+        id: 'evt-2',
+        data: {
+          toolCallId: 'tc-run',
+          toolName: 'run_command',
+          success: true,
+          turnId: '0',
+          // toolTelemetry present but this is not a skill tool
+          toolTelemetry: {
+            properties: { disabled: 'true' },
+            restrictedProperties: { skillName: 'should-not-appear' },
+            metrics: { skillContentLength: 999 },
+          },
+        },
+      },
+    ];
+
+    const sb = processEvents(events);
+    expect(sb.toolCalls).toHaveLength(1);
+    const tc = sb.toolCalls[0]!;
+    expect(tc.toolName).toBe('run_command');
+    expect(tc.skillName).toBeUndefined();
+    expect(tc.skillSource).toBeUndefined();
+    expect(tc.skillOutcome).toBeUndefined();
+    expect(tc.skillContentLength).toBeUndefined();
+    expect(tc.skillErrorMessage).toBeUndefined();
   });
 
   it('processes assistant.message', () => {
