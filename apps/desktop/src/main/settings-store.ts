@@ -40,7 +40,7 @@ const store = new Store<SettingsSchema>({
     sessionRootDir: DEFAULT_ROOT_DIR,
     sync: {
       enabled: false,
-      categories: { metadata: true, utilisation: true, compactions: true, toolResults: false },
+      categories: { metadata: true, utilisation: true, compactions: true, toolResults: false, turns: true, assistantMessages: true },
       otlpEndpoint: '',
     },
   },

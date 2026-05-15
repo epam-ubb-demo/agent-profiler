@@ -6,12 +6,15 @@
  */
 
 import type {
+  AssistantMessage,
   Compaction,
   ModelChange,
   ParseStatus,
   Session,
   ShutdownMetrics,
   ToolCall,
+  Turn,
+  UserMessage,
   UtilisationSample,
 } from '@agent-profiler/core';
 import type {
@@ -448,6 +451,96 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
       }
     });
 
+    // --- assistant messages ---
+    const assistantMessageRows = rows.filter((r) => r['category'] === 'assistant_message');
+    const assistantMessages: AssistantMessage[] = assistantMessageRows.flatMap((r) => {
+      try {
+        const p = parseJson(r['message']);
+        return [{
+          interactionId: p['interactionId'] != null ? String(p['interactionId']) : null,
+          requestId: p['requestId'] != null ? String(p['requestId']) : null,
+          outputTokens: Number(p['outputTokens'] ?? 0),
+          inputTokens: Number(p['inputTokens'] ?? 0),
+          cacheReadTokens: Number(p['cacheReadTokens'] ?? 0),
+          cacheWriteTokens: Number(p['cacheWriteTokens'] ?? 0),
+          model: p['model'] != null ? String(p['model']) : null,
+          timestamp: p['timestamp'] != null ? String(p['timestamp']) : null,
+          turnId: p['turnId'] != null ? String(p['turnId']) : null,
+          eventId: p['eventId'] != null ? String(p['eventId']) : null,
+          parentId: p['parentId'] != null ? String(p['parentId']) : null,
+          content: String(p['content'] ?? ''),
+          reasoningText: String(p['reasoningText'] ?? ''),
+        }];
+      } catch {
+        return [];
+      }
+    });
+
+    // Group assistant messages by turnId so each Turn can be built with them inline.
+    const assistantMessagesByTurnId = new Map<string, AssistantMessage[]>();
+    for (const msg of assistantMessages) {
+      const key = msg.turnId ?? '';
+      const bucket = assistantMessagesByTurnId.get(key) ?? [];
+      bucket.push(msg);
+      assistantMessagesByTurnId.set(key, bucket);
+    }
+
+    // --- turns ---
+    const turnRows = rows.filter((r) => r['category'] === 'turn');
+    const turns: Turn[] = turnRows.flatMap((r) => {
+      try {
+        const p = parseJson(r['message']);
+        const toolCallIds = Array.isArray(p['toolCallIds'])
+          ? (p['toolCallIds'] as string[])
+          : [];
+        // Match tool calls by ID from the already-parsed toolCalls array.
+        const turnToolCalls = toolCallIds
+          .map((id) => toolCalls.find((tc) => tc.toolCallId === id))
+          .filter((tc): tc is ToolCall => tc != null);
+
+        const rawUserMsg = p['userMessage'];
+        const userMessage: UserMessage | null =
+          rawUserMsg != null && typeof rawUserMsg === 'object'
+            ? {
+                interactionId:
+                  (rawUserMsg as Record<string, unknown>)['interactionId'] != null
+                    ? String((rawUserMsg as Record<string, unknown>)['interactionId'])
+                    : null,
+                timestamp:
+                  (rawUserMsg as Record<string, unknown>)['timestamp'] != null
+                    ? String((rawUserMsg as Record<string, unknown>)['timestamp'])
+                    : null,
+                turnId:
+                  (rawUserMsg as Record<string, unknown>)['turnId'] != null
+                    ? String((rawUserMsg as Record<string, unknown>)['turnId'])
+                    : null,
+                content: String(
+                  (rawUserMsg as Record<string, unknown>)['content'] ?? '',
+                ),
+              }
+            : null;
+
+        const turnId = String(p['turnId'] ?? '');
+        return [{
+          turnId,
+          startTs: p['startTs'] != null ? String(p['startTs']) : null,
+          endTs: p['endTs'] != null ? String(p['endTs']) : null,
+          userMessage,
+          // Attach assistant messages inline to avoid mutating a readonly property.
+          assistantMessages: assistantMessagesByTurnId.get(turnId) ?? [],
+          toolCalls: turnToolCalls,
+          subagents: [],
+        }];
+      } catch {
+        return [];
+      }
+    });
+
+    // Derive user messages from turns (avoids storing them twice).
+    const userMessages: UserMessage[] = turns
+      .filter((t) => t.userMessage != null)
+      .map((t) => t.userMessage!);
+
     // --- shutdown (from metadata payload) ---
     let shutdown: ShutdownMetrics | null = null;
     const rawShutdown = metaPayload['shutdown'];
@@ -525,13 +618,13 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
       success: metaPayload['success'] != null ? Boolean(metaPayload['success']) : null,
       modelChanges,
       toolCalls,
-      assistantMessages: [],
-      userMessages: [],
+      assistantMessages,
+      userMessages,
       compactions,
       subagents: [],
       shutdown,
       fanoutTurns: [],
-      turns: [],
+      turns,
       parseStatus,
       utilisation,
     };

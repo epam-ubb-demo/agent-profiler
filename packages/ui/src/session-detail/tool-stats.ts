@@ -123,6 +123,23 @@ export function computeToolStats(session: Session): ToolStatsResult {
     }
   }
 
+  // Fallback for enrichment sessions where turns are absent but toolCalls exist.
+  // Populate accumulators with zero token attribution so call counts are still
+  // surfaced in the UI.
+  if (accumulators.size === 0 && session.toolCalls.length > 0) {
+    for (const tc of session.toolCalls) {
+      let acc = accumulators.get(tc.toolName);
+      if (!acc) {
+        acc = { tokens: 0, callCount: 0, models: new Set<string>() };
+        accumulators.set(tc.toolName, acc);
+      }
+      acc.callCount += 1;
+      if (tc.model !== null) {
+        acc.models.add(tc.model);
+      }
+    }
+  }
+
   /* ---- Phase 2: build sorted token rows ---- */
   const unsortedRows: Omit<ToolTokenRow, 'proportion'>[] = [];
   for (const [tool, acc] of accumulators) {

@@ -12,6 +12,8 @@ export interface EnrichmentBuilderOptions {
     utilisation: boolean;
     compactions: boolean;
     toolResults: boolean;
+    turns?: boolean;
+    assistantMessages?: boolean;
   };
 }
 
@@ -131,6 +133,47 @@ export function buildEnrichmentRows(
           ...(toolCall.skillContentLength != null ? { skillContentLength: toolCall.skillContentLength } : {}),
           ...(toolCall.skillOutcome != null ? { skillOutcome: toolCall.skillOutcome } : {}),
           ...(toolCall.skillErrorMessage != null ? { skillErrorMessage: toolCall.skillErrorMessage } : {}),
+        }),
+      );
+    }
+  }
+
+  // ── turns ────────────────────────────────────────────────────────────────────
+  if (options.categories.turns) {
+    for (const [index, turn] of session.turns.entries()) {
+      const timeGenerated = turn.startTs ?? session.startTs ?? now;
+      rows.push(
+        makeRow('turn', index, timeGenerated, {
+          turnId: turn.turnId,
+          startTs: turn.startTs,
+          endTs: turn.endTs,
+          userMessage: turn.userMessage,
+          toolCallIds: turn.toolCalls.map((tc) => tc.toolCallId),
+          subagentCount: turn.subagents.length,
+        }),
+      );
+    }
+  }
+
+  // ── assistantMessages ────────────────────────────────────────────────────────
+  if (options.categories.assistantMessages) {
+    for (const [index, msg] of session.assistantMessages.entries()) {
+      const timeGenerated = msg.timestamp ?? session.startTs ?? now;
+      rows.push(
+        makeRow('assistant_message', index, timeGenerated, {
+          interactionId: msg.interactionId,
+          requestId: msg.requestId,
+          outputTokens: msg.outputTokens,
+          inputTokens: msg.inputTokens,
+          cacheReadTokens: msg.cacheReadTokens,
+          cacheWriteTokens: msg.cacheWriteTokens,
+          model: msg.model,
+          timestamp: msg.timestamp,
+          turnId: msg.turnId,
+          eventId: msg.eventId,
+          parentId: msg.parentId,
+          content: msg.content,
+          reasoningText: msg.reasoningText,
         }),
       );
     }

@@ -8,7 +8,7 @@ export const enrichmentRowSchema = z.object({
   TimeGenerated: z.string(),
   EventId: z.string(),
   SessionId: z.string(),
-  Category: z.enum(['utilisation', 'compaction', 'tool_result', 'metadata']),
+  Category: z.enum(['utilisation', 'compaction', 'tool_result', 'metadata', 'turn', 'assistant_message']),
   Payload: z.record(z.unknown()),
   SchemaVersion: z.number().int(),
   SourceUser: z.string(),

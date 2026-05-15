@@ -19,7 +19,7 @@ const DEFAULT_SETTINGS: AppInsightsSettingsIpc = {
 
 const DEFAULT_SYNC_SETTINGS: SyncSettingsIpc = {
   enabled: false,
-  categories: { metadata: true, utilisation: true, compactions: true, toolResults: false },
+  categories: { metadata: true, utilisation: true, compactions: true, toolResults: false, turns: true, assistantMessages: true },
   otlpEndpoint: '',
 };
 

@@ -498,7 +498,7 @@ describe('syncMarkerSchema', () => {
       lastSyncedRowCount: 0,
       lastSyncedEventId: 'evt-001',
       lastEventTimestamp: '2025-01-15T10:00:00Z',
-      categoriesPushed: ['metadata', 'utilisation', 'compactions', 'toolResults'],
+    categoriesPushed: ['metadata', 'utilisation', 'compactions', 'toolResults', 'turns', 'assistantMessages'],
       schemaVersion: 1,
     };
     expect(syncMarkerSchema.parse(valid)).toEqual(valid);
@@ -542,7 +542,7 @@ describe('enrichmentRowSchema', () => {
   });
 
   it('accepts all valid Category enum values', () => {
-    const categories = ['metadata', 'utilisation', 'compaction', 'tool_result'] as const;
+    const categories = ['metadata', 'utilisation', 'compaction', 'tool_result', 'turn', 'assistant_message'] as const;
     for (const cat of categories) {
       const valid = {
         TimeGenerated: '2025-01-15T10:00:00Z',
@@ -584,6 +584,8 @@ describe('syncSettingsSchema', () => {
         utilisation: true,
         compactions: true,
         toolResults: false,
+        turns: true,
+        assistantMessages: true,
       },
       otlpEndpoint: 'https://ca-otel-gw-demo.azurecontainerapps.io',
     };
@@ -597,6 +599,8 @@ describe('syncSettingsSchema', () => {
     expect(defaults.categories.utilisation).toBe(true);
     expect(defaults.categories.compactions).toBe(true);
     expect(defaults.categories.toolResults).toBe(false);
+    expect(defaults.categories.turns).toBe(true);
+    expect(defaults.categories.assistantMessages).toBe(true);
     expect(defaults.otlpEndpoint).toBe('');
   });
 

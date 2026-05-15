@@ -13,7 +13,7 @@ export const syncMarkerSchema = z.object({
   lastSyncedEventId: z.string(),
   lastEventTimestamp: z.string(),
   categoriesPushed: z.array(
-    z.enum(['metadata', 'utilisation', 'compactions', 'toolResults']),
+    z.enum(['metadata', 'utilisation', 'compactions', 'toolResults', 'turns', 'assistantMessages']),
   ),
   schemaVersion: z.number().int().positive(),
 });

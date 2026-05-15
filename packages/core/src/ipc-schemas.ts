@@ -162,8 +162,10 @@ export const syncSettingsSchema = z.object({
       utilisation: z.boolean(),
       compactions: z.boolean(),
       toolResults: z.boolean(),
+      turns: z.boolean().default(true),
+      assistantMessages: z.boolean().default(true),
     })
-    .default({ metadata: true, utilisation: true, compactions: true, toolResults: false }),
+    .default({ metadata: true, utilisation: true, compactions: true, toolResults: false, turns: true, assistantMessages: true }),
   otlpEndpoint: z.string().default(''),
 });
 

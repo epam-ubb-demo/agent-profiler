@@ -78,7 +78,7 @@ vi.mock('./settings-store', () => ({
   setSessionRootDir: vi.fn(),
   getSyncSettings: vi.fn().mockReturnValue({
     enabled: false,
-    categories: { metadata: true, utilisation: true, compactions: true, toolResults: false },
+    categories: { metadata: true, utilisation: true, compactions: true, toolResults: false, turns: true, assistantMessages: true },
     otlpEndpoint: '',
   }),
   setSyncSettings: vi.fn(),

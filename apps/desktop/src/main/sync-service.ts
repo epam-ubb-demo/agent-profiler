@@ -296,6 +296,8 @@ export class SyncService {
     if (settings.categories.utilisation) categoriesPushed.push('utilisation');
     if (settings.categories.compactions) categoriesPushed.push('compactions');
     if (settings.categories.toolResults) categoriesPushed.push('toolResults');
+    if (settings.categories.turns) categoriesPushed.push('turns');
+    if (settings.categories.assistantMessages) categoriesPushed.push('assistantMessages');
 
     // rows.length > 0 is guaranteed by the check above.
     const lastRow = rows[rows.length - 1]!;

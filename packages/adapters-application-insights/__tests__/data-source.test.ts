@@ -596,5 +596,384 @@ describe('ApplicationInsightsDataSource', () => {
       expect(session!.utilisation).toHaveLength(1);
     });
 
+    // --- turn and assistant_message enrichment rows ---
+    it('turns are reconstructed from enrichment turn rows', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+
+      const turnPayload = JSON.stringify({
+        turnId: 'turn-1',
+        startTs: '2024-06-15T10:00:00Z',
+        endTs: '2024-06-15T10:00:10Z',
+        userMessage: {
+          interactionId: null,
+          timestamp: '2024-06-15T10:00:00Z',
+          turnId: 'turn-1',
+          content: 'Hello, what is 2+2?',
+        },
+        toolCallIds: [],
+        subagentCount: 0,
+      });
+
+      const toolResultPayload = JSON.stringify({
+        toolCallId: 'tc-001',
+        toolName: 'bash',
+        model: 'claude-sonnet-4-20250514',
+        startTs: '2024-06-15T10:00:01Z',
+        endTs: '2024-06-15T10:00:02Z',
+        durationMs: 1000,
+        success: true,
+        parentId: null,
+        turnId: 'turn-1',
+        eventId: 'evt-001',
+        argumentsPreview: 'echo "4"',
+      });
+
+      const assistantMessagePayload = JSON.stringify({
+        interactionId: null,
+        requestId: null,
+        outputTokens: 50,
+        inputTokens: 100,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        model: 'claude-sonnet-4-20250514',
+        timestamp: '2024-06-15T10:00:03Z',
+        turnId: 'turn-1',
+        eventId: null,
+        parentId: null,
+        content: '2 + 2 = 4',
+        reasoningText: '',
+      });
+
+      mock.query.mockResolvedValueOnce({
+        rows: [
+          mockEnrichmentMetaRow,
+          { timestamp: new Date('2024-06-15T10:00:00Z'), category: 'turn', message: turnPayload },
+          { timestamp: new Date('2024-06-15T10:00:01Z'), category: 'tool_result', message: toolResultPayload },
+          { timestamp: new Date('2024-06-15T10:00:03Z'), category: 'assistant_message', message: assistantMessagePayload },
+        ],
+      });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.turns).toHaveLength(1);
+      expect(session!.turns[0]?.turnId).toBe('turn-1');
+      expect(session!.turns[0]?.userMessage?.content).toBe('Hello, what is 2+2?');
+    });
+
+    it('assistant messages are grouped by turnId within turns', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+
+      const turnPayload = JSON.stringify({
+        turnId: 'turn-1',
+        startTs: '2024-06-15T10:00:00Z',
+        endTs: '2024-06-15T10:00:10Z',
+        userMessage: null,
+        toolCallIds: [],
+        subagentCount: 0,
+      });
+
+      const assistantMessage1 = JSON.stringify({
+        interactionId: null,
+        requestId: null,
+        outputTokens: 50,
+        inputTokens: 100,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        model: 'claude-sonnet-4-20250514',
+        timestamp: '2024-06-15T10:00:01Z',
+        turnId: 'turn-1',
+        eventId: null,
+        parentId: null,
+        content: 'First response',
+        reasoningText: '',
+      });
+
+      const assistantMessage2 = JSON.stringify({
+        interactionId: null,
+        requestId: null,
+        outputTokens: 75,
+        inputTokens: 150,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        model: 'claude-sonnet-4-20250514',
+        timestamp: '2024-06-15T10:00:02Z',
+        turnId: 'turn-1',
+        eventId: null,
+        parentId: null,
+        content: 'Second response',
+        reasoningText: '',
+      });
+
+      mock.query.mockResolvedValueOnce({
+        rows: [
+          mockEnrichmentMetaRow,
+          { timestamp: new Date('2024-06-15T10:00:00Z'), category: 'turn', message: turnPayload },
+          { timestamp: new Date('2024-06-15T10:00:01Z'), category: 'assistant_message', message: assistantMessage1 },
+          { timestamp: new Date('2024-06-15T10:00:02Z'), category: 'assistant_message', message: assistantMessage2 },
+        ],
+      });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.turns[0]?.assistantMessages).toHaveLength(2);
+      expect(session!.turns[0]?.assistantMessages[0]?.content).toBe('First response');
+      expect(session!.turns[0]?.assistantMessages[1]?.content).toBe('Second response');
+    });
+
+    it('user messages are derived from turns', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+
+      const turnPayload = JSON.stringify({
+        turnId: 'turn-1',
+        startTs: '2024-06-15T10:00:00Z',
+        endTs: '2024-06-15T10:00:10Z',
+        userMessage: {
+          interactionId: null,
+          timestamp: '2024-06-15T10:00:00Z',
+          turnId: 'turn-1',
+          content: 'What is the capital of France?',
+        },
+        toolCallIds: [],
+        subagentCount: 0,
+      });
+
+      mock.query.mockResolvedValueOnce({
+        rows: [
+          mockEnrichmentMetaRow,
+          { timestamp: new Date('2024-06-15T10:00:00Z'), category: 'turn', message: turnPayload },
+        ],
+      });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.userMessages).toHaveLength(1);
+      expect(session!.userMessages[0]?.content).toBe('What is the capital of France?');
+    });
+
+    it('turns without userMessage still reconstruct correctly', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+
+      const turnPayload = JSON.stringify({
+        turnId: 'turn-1',
+        startTs: '2024-06-15T10:00:00Z',
+        endTs: '2024-06-15T10:00:10Z',
+        userMessage: null,
+        toolCallIds: [],
+        subagentCount: 0,
+      });
+
+      mock.query.mockResolvedValueOnce({
+        rows: [
+          mockEnrichmentMetaRow,
+          { timestamp: new Date('2024-06-15T10:00:00Z'), category: 'turn', message: turnPayload },
+        ],
+      });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.turns).toHaveLength(1);
+      expect(session!.turns[0]?.userMessage).toBeNull();
+      expect(session!.userMessages).toHaveLength(0);
+    });
+
+    it('assistant messages at session level when no turn rows exist', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+
+      const assistantMessagePayload = JSON.stringify({
+        interactionId: null,
+        requestId: null,
+        outputTokens: 50,
+        inputTokens: 100,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        model: 'claude-sonnet-4-20250514',
+        timestamp: '2024-06-15T10:00:01Z',
+        turnId: null,
+        eventId: null,
+        parentId: null,
+        content: 'Standalone response',
+        reasoningText: '',
+      });
+
+      mock.query.mockResolvedValueOnce({
+        rows: [
+          mockEnrichmentMetaRow,
+          { timestamp: new Date('2024-06-15T10:00:01Z'), category: 'assistant_message', message: assistantMessagePayload },
+        ],
+      });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.turns).toHaveLength(0);
+      expect(session!.assistantMessages).toHaveLength(1);
+      expect(session!.assistantMessages[0]?.content).toBe('Standalone response');
+    });
+
+    it('tool calls are reconstructed and linked to turns', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+
+      const turnPayload = JSON.stringify({
+        turnId: 'turn-1',
+        startTs: '2024-06-15T10:00:00Z',
+        endTs: '2024-06-15T10:00:10Z',
+        userMessage: null,
+        toolCallIds: ['tc-001', 'tc-002'],
+        subagentCount: 0,
+      });
+
+      const toolResult1 = JSON.stringify({
+        toolCallId: 'tc-001',
+        toolName: 'bash',
+        model: 'claude-sonnet-4-20250514',
+        startTs: '2024-06-15T10:00:01Z',
+        endTs: '2024-06-15T10:00:02Z',
+        durationMs: 1000,
+        success: true,
+        parentId: null,
+        turnId: 'turn-1',
+        eventId: 'evt-001',
+        argumentsPreview: 'ls -la',
+      });
+
+      const toolResult2 = JSON.stringify({
+        toolCallId: 'tc-002',
+        toolName: 'bash',
+        model: 'claude-sonnet-4-20250514',
+        startTs: '2024-06-15T10:00:03Z',
+        endTs: '2024-06-15T10:00:04Z',
+        durationMs: 1000,
+        success: true,
+        parentId: null,
+        turnId: 'turn-1',
+        eventId: 'evt-002',
+        argumentsPreview: 'pwd',
+      });
+
+      mock.query.mockResolvedValueOnce({
+        rows: [
+          mockEnrichmentMetaRow,
+          { timestamp: new Date('2024-06-15T10:00:00Z'), category: 'turn', message: turnPayload },
+          { timestamp: new Date('2024-06-15T10:00:01Z'), category: 'tool_result', message: toolResult1 },
+          { timestamp: new Date('2024-06-15T10:00:03Z'), category: 'tool_result', message: toolResult2 },
+        ],
+      });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.turns[0]?.toolCalls).toHaveLength(2);
+      expect(session!.turns[0]?.toolCalls[0]?.toolCallId).toBe('tc-001');
+      expect(session!.turns[0]?.toolCalls[1]?.toolCallId).toBe('tc-002');
+      expect(session!.toolCalls).toHaveLength(2);
+    });
+
+    it('multiple turns reconstruct with correct assistant message grouping', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+
+      const turn1Payload = JSON.stringify({
+        turnId: 'turn-1',
+        startTs: '2024-06-15T10:00:00Z',
+        endTs: '2024-06-15T10:00:05Z',
+        userMessage: null,
+        toolCallIds: [],
+        subagentCount: 0,
+      });
+
+      const turn2Payload = JSON.stringify({
+        turnId: 'turn-2',
+        startTs: '2024-06-15T10:00:05Z',
+        endTs: '2024-06-15T10:00:10Z',
+        userMessage: null,
+        toolCallIds: [],
+        subagentCount: 0,
+      });
+
+      const msg1Turn1 = JSON.stringify({
+        interactionId: null,
+        requestId: null,
+        outputTokens: 50,
+        inputTokens: 100,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        model: 'claude-sonnet-4-20250514',
+        timestamp: '2024-06-15T10:00:01Z',
+        turnId: 'turn-1',
+        eventId: null,
+        parentId: null,
+        content: 'Turn 1, Message 1',
+        reasoningText: '',
+      });
+
+      const msg2Turn1 = JSON.stringify({
+        interactionId: null,
+        requestId: null,
+        outputTokens: 60,
+        inputTokens: 110,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        model: 'claude-sonnet-4-20250514',
+        timestamp: '2024-06-15T10:00:02Z',
+        turnId: 'turn-1',
+        eventId: null,
+        parentId: null,
+        content: 'Turn 1, Message 2',
+        reasoningText: '',
+      });
+
+      const msg1Turn2 = JSON.stringify({
+        interactionId: null,
+        requestId: null,
+        outputTokens: 70,
+        inputTokens: 120,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        model: 'claude-sonnet-4-20250514',
+        timestamp: '2024-06-15T10:00:06Z',
+        turnId: 'turn-2',
+        eventId: null,
+        parentId: null,
+        content: 'Turn 2, Message 1',
+        reasoningText: '',
+      });
+
+      mock.query.mockResolvedValueOnce({
+        rows: [
+          mockEnrichmentMetaRow,
+          { timestamp: new Date('2024-06-15T10:00:00Z'), category: 'turn', message: turn1Payload },
+          { timestamp: new Date('2024-06-15T10:00:01Z'), category: 'assistant_message', message: msg1Turn1 },
+          { timestamp: new Date('2024-06-15T10:00:02Z'), category: 'assistant_message', message: msg2Turn1 },
+          { timestamp: new Date('2024-06-15T10:00:05Z'), category: 'turn', message: turn2Payload },
+          { timestamp: new Date('2024-06-15T10:00:06Z'), category: 'assistant_message', message: msg1Turn2 },
+        ],
+      });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.turns).toHaveLength(2);
+      expect(session!.turns[0]?.assistantMessages).toHaveLength(2);
+      expect(session!.turns[1]?.assistantMessages).toHaveLength(1);
+      expect(session!.assistantMessages).toHaveLength(3);
+    });
+
   });
 });
