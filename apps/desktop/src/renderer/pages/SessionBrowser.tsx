@@ -378,7 +378,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
         prev.inputTokens += m.totalInputTokens;
         prev.outputTokens += m.totalOutputTokens;
         prev.cacheReadTokens += m.totalCacheReadTokens;
-        for (const mu of m.modelUsage) {
+        for (const mu of m.modelUsage ?? []) {
           const tokens = mu.inputTokens + mu.outputTokens;
           prev.modelTokens.set(mu.model, (prev.modelTokens.get(mu.model) ?? 0) + tokens);
         }
