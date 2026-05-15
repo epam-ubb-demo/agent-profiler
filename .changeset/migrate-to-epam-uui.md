@@ -1,5 +1,4 @@
 ---
-'@agent-profiler/desktop': minor
 '@agent-profiler/ui': minor
 ---
 
