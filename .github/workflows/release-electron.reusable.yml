@@ -43,7 +43,7 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     outputs:
       version: ${{ steps.derive.outputs.version }}
       prerelease: ${{ steps.derive.outputs.prerelease }}
@@ -94,6 +94,35 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "Releasing version: ${version} (prerelease=${prerelease}, platforms=${PLATFORMS})"
 
+      - name: Verify desktop package.json version matches the tag
+        env:
+          VERSION: ${{ steps.derive.outputs.version }}
+        run: |
+          set -euo pipefail
+          pkg_version=$(node -p "require('./apps/desktop/package.json').version")
+          if [[ "${pkg_version}" != "${VERSION}" ]]; then
+            echo "::error::apps/desktop/package.json version (${pkg_version}) does not match the released version (${VERSION}). Bump the package version on main before tagging."
+            exit 1
+          fi
+          echo "apps/desktop/package.json version matches: ${pkg_version}"
+
+      - name: Verify tag is reachable from origin/main (production only)
+        if: ${{ !inputs.dry-run }}
+        env:
+          TAG_NAME: ${{ inputs.tag-name }}
+          TAG_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # GitHub tag-push events match on tag name only, so a tag pushed
+          # from a feature branch would still fire this workflow. Guard
+          # against that by requiring the tagged commit to be an ancestor of
+          # origin/main (we already check out main above).
+          if ! git merge-base --is-ancestor "${TAG_SHA}" origin/main; then
+            echo "::error::Tag ${TAG_NAME} points at ${TAG_SHA}, which is not reachable from origin/main. Refusing to release."
+            exit 1
+          fi
+          echo "Tag ${TAG_NAME} (${TAG_SHA}) is on main."
+
       - name: Stamp CHANGELOG.md
         uses: ./.github/actions/stamp-changelog
         with:
@@ -107,30 +136,16 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: Upload stamped CHANGELOG (dry-run only)
-        if: ${{ inputs.dry-run }}
+      - name: Upload stamped CHANGELOG
+        # Always uploaded so the commit-changelog job (production) or the
+        # operator (dry-run) can inspect/use the stamped file without
+        # re-running the stamp step.
         uses: actions/upload-artifact@v4
         with:
-          name: changelog-dryrun
+          name: changelog-stamped
           path: CHANGELOG.md
           if-no-files-found: error
           retention-days: 7
-
-      - name: Commit CHANGELOG bump back to main
-        if: ${{ !inputs.dry-run }}
-        env:
-          VERSION: ${{ steps.derive.outputs.version }}
-        run: |
-          set -euo pipefail
-          git config user.name  'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add CHANGELOG.md
-          if git diff --cached --quiet; then
-            echo "::warning::CHANGELOG.md unchanged after stamp step — skipping commit."
-            exit 0
-          fi
-          git commit -m "chore(release): @agent-profiler/desktop@${VERSION} [skip ci]"
-          git push origin HEAD:main
 
   build-macos:
     needs: prepare
@@ -215,19 +230,66 @@ jobs:
           name: installers-linux
           path: |
             apps/desktop/dist-release/*.AppImage
+            apps/desktop/dist-release/*.AppImage.blockmap
             apps/desktop/dist-release/*.deb
             apps/desktop/dist-release/latest-linux.yml
           if-no-files-found: error
 
-  publish:
+  commit-changelog:
+    # Production-only: commit the stamped CHANGELOG back to main *after* all
+    # platform builds have succeeded, so a failed build never leaves main
+    # half-stamped. This is the only job in the pipeline that holds
+    # `contents: write`; everything before it (prepare + build-*) runs with
+    # `contents: read` so PR-triggered dry-runs cannot exercise the writable
+    # token.
     needs: [prepare, build-macos, build-windows, build-linux]
-    # Run when prepare succeeded and all requested builds succeeded.
-    # `always()` lets us check the per-platform results explicitly so that
-    # skipped platforms (in dry-run with a reduced matrix) do not block.
+    if: |
+      !inputs.dry-run &&
+      needs.prepare.result == 'success' &&
+      (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
+      (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped') &&
+      (needs.build-linux.result == 'success' || needs.build-linux.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download stamped CHANGELOG
+        uses: actions/download-artifact@v4
+        with:
+          name: changelog-stamped
+          path: .
+      - name: Commit CHANGELOG bump back to main
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md
+          if git diff --cached --quiet; then
+            echo "::warning::CHANGELOG.md unchanged after stamp step — skipping commit."
+            exit 0
+          fi
+          git commit -m "chore(release): @agent-profiler/desktop@${VERSION} [skip ci]"
+          git push origin HEAD:main
+
+  publish:
+    needs: [prepare, build-macos, build-windows, build-linux, commit-changelog]
+    # Run when prepare, the commit-changelog step, and all requested builds
+    # succeeded. `always()` lets us check the per-platform results explicitly
+    # so that skipped platforms (in dry-run with a reduced matrix) do not
+    # block — though publish itself is also gated by `!inputs.dry-run`.
     if: |
       always() &&
       !inputs.dry-run &&
       needs.prepare.result == 'success' &&
+      needs.commit-changelog.result == 'success' &&
       (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
       (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped') &&
       (needs.build-linux.result == 'success' || needs.build-linux.result == 'skipped')
@@ -247,7 +309,8 @@ jobs:
           find artifacts -type f \
             \( -name '*.dmg' -o -name '*.dmg.blockmap' \
             -o -name '*.exe' -o -name '*.exe.blockmap' \
-            -o -name '*.AppImage' -o -name '*.deb' \
+            -o -name '*.AppImage' -o -name '*.AppImage.blockmap' \
+            -o -name '*.deb' \
             -o -name 'latest*.yml' \) \
             -exec cp -v {} release-assets/ \;
           cp artifacts/release-notes/release-notes.md .
@@ -268,6 +331,7 @@ jobs:
             release-assets/*.exe
             release-assets/*.exe.blockmap
             release-assets/*.AppImage
+            release-assets/*.AppImage.blockmap
             release-assets/*.deb
             release-assets/latest*.yml
 

@@ -255,7 +255,7 @@ For example:
 ### Cutting a release
 
 1. From an up-to-date `main`, edit `apps/desktop/package.json` and bump `version` to the target SemVer.
-2. Make sure `CHANGELOG.md` has a `## [Unreleased]` section listing the user-visible changes for this release (the workflow refuses to run if it is missing or empty).
+2. Make sure `CHANGELOG.md` has a `## [Unreleased]` section listing the user-visible changes for this release (the workflow refuses to run if it is missing; an empty section is allowed but produces empty release notes).
 3. Commit the version bump on `main` (PR is fine, just merge first).
 4. Tag and push:
 

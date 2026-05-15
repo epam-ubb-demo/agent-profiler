@@ -2,7 +2,7 @@ name: Stamp CHANGELOG
 description: >-
   Move the `## [Unreleased]` section of CHANGELOG.md into a versioned section
   and emit a release-notes file containing the released section body. Wraps
-  `tooling/release/stamp_changelog.py` so the same script is shared between
+  `tooling/release/stamp-changelog.mjs` so the same script is shared between
   CI workflows and local development / unit tests.
 
 inputs:

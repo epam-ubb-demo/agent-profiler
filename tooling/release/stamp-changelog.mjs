@@ -39,11 +39,16 @@ export function stamp(text, version, today) {
   if (typeof text !== "string" || text.length === 0) {
     throw new Error("CHANGELOG content is empty.");
   }
-  if (!/^\d/.test(version)) {
-    // The version must start with a digit; we never want to stamp something
-    // that still has the tag prefix (e.g. `@agent-profiler/desktop@1.2.3`).
+  // Full SemVer 2.0.0 shape: MAJOR.MINOR.PATCH with optional `-prerelease`
+  // and `+build` metadata. This catches both incomplete versions (`1`, `1.2`)
+  // and the case where the caller forgot to strip the tag prefix
+  // (`@agent-profiler/desktop@1.2.3`).
+  // See https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+  const SEMVER_RE =
+    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+  if (!SEMVER_RE.test(version)) {
     throw new Error(
-      `Refusing to stamp version '${version}': must start with a digit.`,
+      `Refusing to stamp version '${version}': not a valid SemVer 2.0.0 string.`,
     );
   }
 

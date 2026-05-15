@@ -70,8 +70,15 @@ test("stamp: rejects version that does not start with a digit", () => {
   const input = fixture("\n- x\n");
   assert.throws(
     () => stamp(input, "@agent-profiler/desktop@1.0.0", TODAY),
-    /must start with a digit/,
+    /not a valid SemVer/,
   );
+});
+
+test("stamp: rejects malformed SemVer (missing minor/patch)", () => {
+  const input = fixture("\n- x\n");
+  assert.throws(() => stamp(input, "1", TODAY), /not a valid SemVer/);
+  assert.throws(() => stamp(input, "1.2", TODAY), /not a valid SemVer/);
+  assert.throws(() => stamp(input, "1.2.3.4", TODAY), /not a valid SemVer/);
 });
 
 test("stamp: pre-release versions are accepted", () => {
