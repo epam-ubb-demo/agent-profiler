@@ -30,6 +30,7 @@ declare const styles: {
   readonly granularityBtn: string;
   readonly granularityBtnActive: string;
   readonly chartArea: string;
+  readonly secondaryRow: string;
   readonly cacheChartArea: string;
   readonly tableArea: string;
   readonly dayGroup: string;

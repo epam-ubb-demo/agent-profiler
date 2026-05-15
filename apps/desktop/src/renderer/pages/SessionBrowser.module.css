@@ -320,12 +320,22 @@
   height: clamp(200px, 28vh, 360px);
 }
 
+/* ─── Secondary row: cache chart + model table side-by-side ─── */
+.secondaryRow {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .cacheChartArea {
-  /* CacheHitRateChart manages its own fixed SVG height */
+  flex: 1 1 360px;
+  min-width: 0;
 }
 
 /* ─── Table area (inside analytics panel) ─── */
 .tableArea {
+  flex: 1 1 360px;
+  min-width: 0;
   padding: 0 0 4px;
 }
 

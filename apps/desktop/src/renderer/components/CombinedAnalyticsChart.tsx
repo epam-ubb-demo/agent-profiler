@@ -30,8 +30,11 @@ export interface DailyAnalytics {
   }>;
 }
 
+export type Granularity = 'day' | 'week' | 'month';
+
 export interface CombinedAnalyticsChartProps {
   readonly data: ReadonlyArray<DailyAnalytics>;
+  readonly granularity?: Granularity | undefined;
 }
 
 /* ─── Chart geometry ────────────────────────────────────────────────────────── */
@@ -72,6 +75,30 @@ function formatShortDate(dateKey: string): string {
     month: 'short',
     day: 'numeric',
   });
+}
+
+function formatBucketLabel(dateKey: string, granularity: Granularity): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const dt = new Date(y!, m! - 1, d!);
+  if (granularity === 'month') {
+    return dt.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  }
+  if (granularity === 'week') {
+    return `W/C ${dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+  }
+  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function formatBucketTooltip(dateKey: string, granularity: Granularity): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const dt = new Date(y!, m! - 1, d!);
+  if (granularity === 'month') {
+    return dt.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  }
+  if (granularity === 'week') {
+    return `Week commencing ${dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  }
+  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatUsd(value: number): string {
@@ -122,7 +149,7 @@ interface TooltipState {
 
 /* ─── Component ──────────────────────────────────────────────────────────────── */
 
-function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
+function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnalyticsChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
@@ -542,7 +569,7 @@ function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
               fontSize={10}
               fill="var(--uui-text-secondary)"
             >
-              {formatShortDate(data[idx]!.date)}
+              {formatBucketLabel(data[idx]!.date, granularity)}
             </text>
           );
         })}
@@ -570,7 +597,7 @@ function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
           }}
         >
           <div style={{ fontWeight: 600, marginBottom: 4 }}>
-            {formatShortDate(tooltip.item.date)}
+            {formatBucketTooltip(tooltip.item.date, granularity)}
           </div>
           <div>Cost: {tooltip.item.cost != null ? formatUsd(tooltip.item.cost) : '—'}</div>
           <div>

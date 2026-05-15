@@ -5,6 +5,7 @@
  * frequency table, and tool usage by category table.
  */
 
+import type { Turn } from '@agent-profiler/core';
 import { memo } from 'react';
 
 import { Section } from './Section';
@@ -15,6 +16,7 @@ import { toolKpiSeverity } from './tool-kpis';
 import type { ToolFrequencyRow, ToolStatsResult } from './tool-stats';
 import { ToolFrequencyTable } from './ToolFrequencyTable';
 import { ToolInventoryTable } from './ToolInventoryTable';
+import { ToolLatencyChart } from './ToolLatencyChart';
 import { ToolTokenTable } from './ToolTokenTable';
 
 /* ------------------------------------------------------------------ */
@@ -29,6 +31,7 @@ export interface TabToolsProps {
   readonly modelColours: Record<string, string>;
   /** Pre-computed KPI stats for the tool strip. */
   readonly toolKpis: readonly StatEntry[];
+  readonly turns: readonly Turn[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -41,11 +44,16 @@ function TabToolsInner({
   toolInventory,
   modelColours,
   toolKpis,
+  turns,
 }: TabToolsProps) {
   return (
     <div data-testid="tab-tools">
       {/* KPI strip */}
       <TabKpiStrip stats={toolKpis} severityFn={toolKpiSeverity} testIdPrefix="tool-kpi" />
+
+      <Section title="Slowest tool calls (top 10)">
+        <ToolLatencyChart turns={turns} />
+      </Section>
 
       <Section title="Token consumption per tool call">
         <ToolTokenTable result={toolStats} modelColours={modelColours} />

@@ -5,11 +5,13 @@
  * token consumption table, and (when present) the compactions table.
  */
 
-import type { Compaction, SubagentInvocation } from '@agent-profiler/core';
+import type { Compaction, SubagentInvocation, Turn } from '@agent-profiler/core';
 import { memo } from 'react';
 
 import { CompactionsTable } from './CompactionsTable';
+import { CostPerTurnChart } from './CostPerTurnChart';
 import { costKpiSeverity } from './cost-kpis';
+import { CumulativeCostChart } from './CumulativeCostChart';
 import type { HotConsumptionResult } from './hot-consumption';
 import { HotConsumptionTable } from './HotConsumptionTable';
 import type { ModelSpendResult } from './model-spend';
@@ -37,6 +39,7 @@ export interface TabCostModelsProps {
   readonly onSessionNavigate?: ((sessionId: string) => void) | undefined;
   /** Pre-computed KPI stats for the cost strip. */
   readonly costKpis: readonly StatEntry[];
+  readonly turns: readonly Turn[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -54,11 +57,22 @@ function TabCostModelsInner({
   compactions,
   onSessionNavigate,
   costKpis,
+  turns,
 }: TabCostModelsProps) {
   return (
     <div data-testid="tab-cost-models">
       {/* KPI strip */}
       <TabKpiStrip stats={costKpis} severityFn={costKpiSeverity} testIdPrefix="cost-kpi" />
+
+      {/* Cumulative cost curve */}
+      <Section title="Cumulative cost over turns">
+        <CumulativeCostChart turns={turns} />
+      </Section>
+
+      {/* Cost per turn (top 15) */}
+      <Section title="Cost per turn (top 15)">
+        <CostPerTurnChart turns={turns} />
+      </Section>
 
       {/* Per-model spend */}
       {modelSpend && (

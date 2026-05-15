@@ -1,7 +1,7 @@
 import { Text } from '@epam/uui';
 import { memo, useMemo, useRef, useState } from 'react';
 
-import type { DailyAnalytics } from './CombinedAnalyticsChart';
+import type { DailyAnalytics, Granularity } from './CombinedAnalyticsChart';
 import { smoothPath } from './svg-path-utils';
 
 /* ─── Chart geometry ────────────────────────────────────────────────────────── */
@@ -16,22 +16,28 @@ const TEXT_COLOUR = '#6b7280'; // gray-500
 
 /* ─── Helpers ────────────────────────────────────────────────────────────────── */
 
-function formatShortDate(dateKey: string): string {
+function formatShortDate(dateKey: string, granularity: Granularity = 'day'): string {
   const [y, m, d] = dateKey.split('-').map(Number);
-  return new Date(y!, m! - 1, d!).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  });
+  const dt = new Date(y!, m! - 1, d!);
+  if (granularity === 'month') {
+    return dt.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  }
+  if (granularity === 'week') {
+    return `W/C ${dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+  }
+  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 /* ─── Component ──────────────────────────────────────────────────────────────── */
 
 export interface CacheHitRateChartProps {
   readonly data: ReadonlyArray<DailyAnalytics>;
+  readonly granularity?: Granularity | undefined;
 }
 
 export const CacheHitRateChart = memo(function CacheHitRateChart({
   data,
+  granularity = 'day',
 }: CacheHitRateChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -107,7 +113,7 @@ export const CacheHitRateChart = memo(function CacheHitRateChart({
     for (let i = 0; i < n; i += step) {
       labels.push({
         x: MARGIN.left + xScale(i),
-        text: formatShortDate(points[i]!.date),
+        text: formatShortDate(points[i]!.date, granularity),
       });
     }
     return labels;
@@ -239,7 +245,7 @@ export const CacheHitRateChart = memo(function CacheHitRateChart({
                   fill="#fff"
                   fontWeight={500}
                 >
-                  {formatShortDate(tooltip.date)}: {tooltip.rate.toFixed(1)}%
+                  {formatShortDate(tooltip.date, granularity)}: {tooltip.rate.toFixed(1)}%
                 </text>
               </g>
             )}

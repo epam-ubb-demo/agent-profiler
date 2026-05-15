@@ -11,7 +11,7 @@ import styles from './SessionBrowser.module.css';
 
 import { CacheHitRateChart } from '@/components/CacheHitRateChart';
 import { CombinedAnalyticsChart } from '@/components/CombinedAnalyticsChart';
-import type { DailyAnalytics } from '@/components/CombinedAnalyticsChart';
+import type { DailyAnalytics, Granularity } from '@/components/CombinedAnalyticsChart';
 import { EmptyState } from '@/components/EmptyState';
 import { FolderOpenIcon, SearchIcon } from '@/components/icons';
 import { ModelBreakdownTable } from '@/components/ModelBreakdownTable';
@@ -218,8 +218,6 @@ function SessionCard({ session, onClick }: SessionCardProps) {
 
 // ── Granularity ───────────────────────────────────────────────────────────────
 
-type Granularity = 'day' | 'week' | 'month';
-
 /** Returns the Monday of the ISO week containing `dateStr` (YYYY-MM-DD). */
 function weekStart(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -227,7 +225,7 @@ function weekStart(dateStr: string): string {
   const dow = dt.getDay(); // 0=Sun
   const diff = dow === 0 ? -6 : 1 - dow;
   dt.setDate(dt.getDate() + diff);
-  return dt.toISOString().slice(0, 10);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 }
 
 /** Returns the first day of the month for `dateStr`. */
@@ -763,17 +761,17 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
               {/* Main chart: cost + model token areas */}
               <div className={styles.chartArea}>
-                <CombinedAnalyticsChart data={chartData} />
+                <CombinedAnalyticsChart data={chartData} granularity={granularity} />
               </div>
 
-              {/* Cache hit rate chart */}
-              <div className={styles.cacheChartArea}>
-                <CacheHitRateChart data={chartData} />
-              </div>
-
-              {/* Model breakdown table */}
-              <div className={styles.tableArea}>
-                <ModelBreakdownTable sessions={filteredSessions} />
+              {/* Cache hit rate + Model breakdown side-by-side */}
+              <div className={styles.secondaryRow}>
+                <div className={styles.cacheChartArea}>
+                  <CacheHitRateChart data={chartData} granularity={granularity} />
+                </div>
+                <div className={styles.tableArea}>
+                  <ModelBreakdownTable sessions={filteredSessions} />
+                </div>
               </div>
             </div>
           )}
