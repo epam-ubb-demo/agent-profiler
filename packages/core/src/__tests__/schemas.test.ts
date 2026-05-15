@@ -10,6 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import { ZodError } from 'zod';
 
+import { syncSettingsSchema, syncStatusSchema } from '../ipc-schemas';
 import {
   sessionSchema,
   toolCallSchema,
@@ -28,6 +29,8 @@ import {
   parseStatusSchema,
   modelChangeSchema,
   turnSchema,
+  syncMarkerSchema,
+  enrichmentRowSchema,
 } from '../schemas/index';
 
 import { loadGoldenSession } from './fixtures/loader';
@@ -426,5 +429,260 @@ describe('sessionSchema — rejection', () => {
     const session = loadGoldenSession();
     const { parseStatus: _, ...without } = session;
     expect(() => sessionSchema.parse(without)).toThrow(ZodError);
+  });
+});
+
+describe('syncMarkerSchema', () => {
+  it('accepts a valid sync marker', () => {
+    const valid = {
+      version: 1,
+      lastSyncedAt: '2025-01-15T10:00:00Z',
+      lastSyncedRowCount: 1024,
+      lastSyncedEventId: 'evt-001',
+      lastEventTimestamp: '2025-01-15T10:00:30Z',
+      categoriesPushed: ['metadata', 'utilisation'],
+      schemaVersion: 1,
+    };
+    expect(syncMarkerSchema.parse(valid)).toEqual(valid);
+  });
+
+  it('rejects missing required fields', () => {
+    expect(() => syncMarkerSchema.parse({})).toThrow(ZodError);
+  });
+
+  it('rejects invalid version (not 1)', () => {
+    expect(() =>
+      syncMarkerSchema.parse({
+        version: 2,
+        lastSyncedAt: '2025-01-15T10:00:00Z',
+        lastSyncedRowCount: 0,
+        lastSyncedEventId: 'evt-001',
+        lastEventTimestamp: '2025-01-15T10:00:00Z',
+        categoriesPushed: [],
+        schemaVersion: 1,
+      }),
+    ).toThrow(ZodError);
+  });
+
+  it('rejects negative row count', () => {
+    expect(() =>
+      syncMarkerSchema.parse({
+        version: 1,
+        lastSyncedAt: '2025-01-15T10:00:00Z',
+        lastSyncedRowCount: -1,
+        lastSyncedEventId: 'evt-001',
+        lastEventTimestamp: '2025-01-15T10:00:00Z',
+        categoriesPushed: [],
+        schemaVersion: 1,
+      }),
+    ).toThrow(ZodError);
+  });
+
+  it('accepts zero row count', () => {
+    const valid = {
+      version: 1,
+      lastSyncedAt: '2025-01-15T10:00:00Z',
+      lastSyncedRowCount: 0,
+      lastSyncedEventId: 'evt-001',
+      lastEventTimestamp: '2025-01-15T10:00:00Z',
+      categoriesPushed: [],
+      schemaVersion: 1,
+    };
+    expect(syncMarkerSchema.parse(valid)).toEqual(valid);
+  });
+
+  it('accepts all valid category enum values', () => {
+    const valid = {
+      version: 1,
+      lastSyncedAt: '2025-01-15T10:00:00Z',
+      lastSyncedRowCount: 0,
+      lastSyncedEventId: 'evt-001',
+      lastEventTimestamp: '2025-01-15T10:00:00Z',
+      categoriesPushed: ['metadata', 'utilisation', 'compactions', 'toolResults'],
+      schemaVersion: 1,
+    };
+    expect(syncMarkerSchema.parse(valid)).toEqual(valid);
+  });
+});
+
+describe('enrichmentRowSchema', () => {
+  it('accepts a valid enrichment row', () => {
+    const valid = {
+      TimeGenerated: '2025-01-15T10:00:00Z',
+      EventId: 'sess-001:metadata:0',
+      SessionId: 'sess-001',
+      Category: 'metadata',
+      Payload: { copilotVersion: '1.0.0', repository: 'test-repo' },
+      SchemaVersion: 1,
+      SourceUser: 'testuser',
+      SourceMachine: 'testmachine',
+      PushedAt: '2025-01-15T10:00:05Z',
+    };
+    expect(enrichmentRowSchema.parse(valid)).toEqual(valid);
+  });
+
+  it('rejects missing required fields', () => {
+    expect(() => enrichmentRowSchema.parse({})).toThrow(ZodError);
+  });
+
+  it('rejects invalid Category enum value', () => {
+    expect(() =>
+      enrichmentRowSchema.parse({
+        TimeGenerated: '2025-01-15T10:00:00Z',
+        EventId: 'sess-001:unknown:0',
+        SessionId: 'sess-001',
+        Category: 'invalid_category',
+        Payload: {},
+        SchemaVersion: 1,
+        SourceUser: 'testuser',
+        SourceMachine: 'testmachine',
+        PushedAt: '2025-01-15T10:00:05Z',
+      }),
+    ).toThrow(ZodError);
+  });
+
+  it('accepts all valid Category enum values', () => {
+    const categories = ['metadata', 'utilisation', 'compaction', 'tool_result'] as const;
+    for (const cat of categories) {
+      const valid = {
+        TimeGenerated: '2025-01-15T10:00:00Z',
+        EventId: `sess-001:${cat}:0`,
+        SessionId: 'sess-001',
+        Category: cat,
+        Payload: { test: 'data' },
+        SchemaVersion: 1,
+        SourceUser: 'testuser',
+        SourceMachine: 'testmachine',
+        PushedAt: '2025-01-15T10:00:05Z',
+      };
+      expect(enrichmentRowSchema.parse(valid)).toBeDefined();
+    }
+  });
+
+  it('accepts empty Payload object', () => {
+    const valid = {
+      TimeGenerated: '2025-01-15T10:00:00Z',
+      EventId: 'sess-001:metadata:0',
+      SessionId: 'sess-001',
+      Category: 'metadata',
+      Payload: {},
+      SchemaVersion: 1,
+      SourceUser: 'testuser',
+      SourceMachine: 'testmachine',
+      PushedAt: '2025-01-15T10:00:05Z',
+    };
+    expect(enrichmentRowSchema.parse(valid)).toEqual(valid);
+  });
+});
+
+describe('syncSettingsSchema', () => {
+  it('accepts valid sync settings', () => {
+    const valid = {
+      enabled: true,
+      categories: {
+        metadata: true,
+        utilisation: true,
+        compactions: true,
+        toolResults: false,
+      },
+      dceEndpoint: 'https://example.dcr.us.dcr.azure.com',
+      dcrImmutableId: 'immutable-id-123',
+      dcrStreamName: 'AgentProfilerEnrichment_CL',
+    };
+    expect(syncSettingsSchema.parse(valid)).toEqual(valid);
+  });
+
+  it('provides correct defaults', () => {
+    const defaults = syncSettingsSchema.parse({});
+    expect(defaults.enabled).toBe(false);
+    expect(defaults.categories.metadata).toBe(true);
+    expect(defaults.categories.utilisation).toBe(true);
+    expect(defaults.categories.compactions).toBe(true);
+    expect(defaults.categories.toolResults).toBe(false);
+    expect(defaults.dceEndpoint).toBe('');
+    expect(defaults.dcrImmutableId).toBe('');
+    expect(defaults.dcrStreamName).toBe('');
+  });
+
+  it('round-trip is stable', () => {
+    const defaults = syncSettingsSchema.parse({});
+    const roundTrip = syncSettingsSchema.parse(defaults);
+    expect(roundTrip).toEqual(defaults);
+  });
+
+  it('accepts partial overrides of defaults', () => {
+    const partial = {
+      enabled: true,
+      dceEndpoint: 'https://example.dcr.us.dcr.azure.com',
+    };
+    const result = syncSettingsSchema.parse(partial);
+    expect(result.enabled).toBe(true);
+    expect(result.dceEndpoint).toBe('https://example.dcr.us.dcr.azure.com');
+    expect(result.categories.metadata).toBe(true); // Should default
+    expect(result.dcrStreamName).toBe(''); // Should default
+  });
+});
+
+describe('syncStatusSchema', () => {
+  it('accepts a valid sync status', () => {
+    const valid = {
+      state: 'idle',
+      lastSyncedAt: '2025-01-15T10:00:00Z',
+      sessionsPending: 5,
+      sessionsTotal: 10,
+      lastError: null,
+    };
+    expect(syncStatusSchema.parse(valid)).toEqual(valid);
+  });
+
+  it('accepts all valid state enum values', () => {
+    const states = ['idle', 'scanning', 'pushing', 'error'] as const;
+    for (const state of states) {
+      const valid = {
+        state,
+        lastSyncedAt: null,
+        sessionsPending: 0,
+        sessionsTotal: 0,
+        lastError: null,
+      };
+      expect(syncStatusSchema.parse(valid)).toBeDefined();
+    }
+  });
+
+  it('accepts null lastSyncedAt', () => {
+    const valid = {
+      state: 'idle',
+      lastSyncedAt: null,
+      sessionsPending: 0,
+      sessionsTotal: 0,
+      lastError: null,
+    };
+    expect(syncStatusSchema.parse(valid)).toEqual(valid);
+  });
+
+  it('accepts null lastError', () => {
+    const valid = {
+      state: 'idle',
+      lastSyncedAt: '2025-01-15T10:00:00Z',
+      sessionsPending: 0,
+      sessionsTotal: 0,
+      lastError: null,
+    };
+    expect(syncStatusSchema.parse(valid)).toEqual(valid);
+  });
+
+  it('accepts error message in lastError', () => {
+    const valid = {
+      state: 'error',
+      lastSyncedAt: '2025-01-15T10:00:00Z',
+      sessionsPending: 0,
+      sessionsTotal: 0,
+      lastError: 'Failed to connect to DCE endpoint',
+    };
+    expect(syncStatusSchema.parse(valid)).toEqual(valid);
+  });
+
+  it('rejects missing required fields', () => {
+    expect(() => syncStatusSchema.parse({})).toThrow(ZodError);
   });
 });

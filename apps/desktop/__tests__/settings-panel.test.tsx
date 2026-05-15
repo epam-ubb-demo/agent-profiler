@@ -30,6 +30,13 @@ const mockElectronApi: ElectronApi = {
     testConnection: vi.fn<() => Promise<{ success: boolean; sessionCount?: number; error?: string }>>().mockResolvedValue({ success: true, sessionCount: 5 }),
     listWorkspaces: vi.fn().mockResolvedValue({ success: true, workspaces: [] }),
   },
+  sync: {
+    getSettings: vi.fn<ElectronApi['sync']['getSettings']>().mockResolvedValue({ enabled: false, categories: { metadata: true, utilisation: true, compactions: true, toolResults: false }, dceEndpoint: '', dcrImmutableId: '', dcrStreamName: '' }),
+    setSettings: vi.fn<ElectronApi['sync']['setSettings']>().mockResolvedValue(undefined),
+    getStatus: vi.fn<ElectronApi['sync']['getStatus']>().mockResolvedValue({ state: 'idle', lastSyncedAt: null, sessionsPending: 0, sessionsTotal: 0, lastError: null }),
+    trigger: vi.fn<ElectronApi['sync']['trigger']>().mockResolvedValue(undefined),
+    onStatusUpdated: vi.fn<ElectronApi['sync']['onStatusUpdated']>().mockReturnValue(() => {}),
+  },
 };
 
 beforeEach(() => {
@@ -45,7 +52,7 @@ afterEach(() => {
 
 /** Opens the settings dialog and waits for settings to load. */
 async function openSettingsDialog() {
-  const trigger = screen.getByRole('button', { name: /settings/i });
+  const trigger = screen.getByRole('button', { name: /open remote session/i });
   fireEvent.click(trigger);
 
   // Wait for the dialog to open and settings to load
@@ -60,7 +67,7 @@ describe('SettingsPanel', () => {
   it('renders settings trigger button', async () => {
     await render(<SettingsPanel />);
 
-    expect(screen.getByRole('button', { name: /settings/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open remote session/i })).toBeInTheDocument();
   });
 
   it('opens dialog when settings button is clicked', async () => {

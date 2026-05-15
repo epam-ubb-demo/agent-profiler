@@ -6,6 +6,12 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 ## [Unreleased]
 
+### Added
+
+- New local-to-remote enrichment sync for Copilot CLI sessions, pushing local-only data to a remote Azure Log Analytics workspace via Azure Logs Ingestion so remote viewers can see complete session context.
+- Desktop settings UI for sync controls, including manual sync, auto-sync, category toggles, and Azure endpoint configuration.
+- New `@azure/monitor-ingestion` dependency to support Logs Ingestion API uploads.
+
 ### Changed
 
 - Context window composition visualisation replaced from a stacked horizontal bar chart to an SVG donut chart. Each segment (System prompt, Conversation, Tool definitions) is shown as a proportional arc with the total token count centred in the ring and a colour-coded legend below. The same segment colours and the `ContextWindowBarProps` interface are preserved; the component name and export remain `ContextWindowBar`.

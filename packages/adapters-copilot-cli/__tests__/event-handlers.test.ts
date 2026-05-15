@@ -467,6 +467,39 @@ describe('processEvents', () => {
     expect(msg.model).toBe('claude-sonnet-4-20250514');
   });
 
+  it('reads cacheReadInputTokens / cacheCreationInputTokens aliases', () => {
+    const events: RawEvent[] = [
+      {
+        type: 'session.start',
+        timestamp: '2025-01-15T10:00:00.000Z',
+        data: { selectedModel: 'claude-sonnet-4-20250514' },
+      },
+      {
+        type: 'assistant.message',
+        timestamp: '2025-01-15T10:00:01.000Z',
+        id: 'evt-2',
+        data: {
+          interactionId: 'int-1',
+          requestId: 'req-1',
+          outputTokens: 100,
+          inputTokens: 500,
+          cacheReadInputTokens: 300,
+          cacheCreationInputTokens: 50,
+          content: 'Hi',
+          reasoningText: '',
+          turnId: '0',
+        },
+      },
+    ];
+
+    const sb = processEvents(events);
+
+    expect(sb.assistantMessages).toHaveLength(1);
+    const msg = sb.assistantMessages[0]!;
+    expect(msg.cacheReadTokens).toBe(300);
+    expect(msg.cacheWriteTokens).toBe(50);
+  });
+
   it('processes user.message', () => {
     const events: RawEvent[] = [
       {

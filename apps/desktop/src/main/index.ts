@@ -1,8 +1,10 @@
 import { join } from 'node:path';
 
+import { LogsIngestionWriter } from '@agent-profiler/adapters-application-insights';
 import {
   ipcChannels,
   appInsightsSettingsSchema,
+  syncSettingsSchema,
   testConnectionResultSchema,
   listWorkspacesResultSchema,
 } from '@agent-profiler/core';
@@ -20,7 +22,11 @@ import {
   setAppInsightsSettings,
   getSessionRootDir,
   setSessionRootDir,
+  getSyncSettings,
+  setSyncSettings,
 } from './settings-store';
+import { MarkerStore } from './sync-marker';
+import { SyncService } from './sync-service';
 
 // ─── Single-instance guard ────────────────────────────────────────────────
 // Must be the very first Electron API call.  If another instance is already
@@ -73,6 +79,37 @@ if (gotLock) {
   const manager = new DataSourceManager(getSessionRootDir() || DEFAULT_ROOT_DIR);
   const indexer = new SessionIndexer(manager);
   let isQuitting = false;
+
+  // ── SyncService setup ─────────────────────────────────────────────────────
+
+  /**
+   * Returns a configured LogsIngestionWriter only when all required fields are
+   * non-empty. Avoids constructing an SDK client with blank endpoint strings at
+   * startup (which may throw or waste credential-provider initialisation).
+   */
+  function buildWriterIfConfigured(
+    settings: ReturnType<typeof getSyncSettings>,
+  ): LogsIngestionWriter | null {
+    if (settings.dceEndpoint && settings.dcrImmutableId && settings.dcrStreamName) {
+      return new LogsIngestionWriter({
+        dceEndpoint: settings.dceEndpoint,
+        dcrImmutableId: settings.dcrImmutableId,
+        dcrStreamName: settings.dcrStreamName,
+      });
+    }
+    return null;
+  }
+
+  const markerStore = new MarkerStore();
+  const initialSyncSettings = getSyncSettings();
+  const syncService = new SyncService({
+    markerStore,
+    logsIngestionWriter: buildWriterIfConfigured(initialSyncSettings),
+    dataSourceManager: manager,
+    sessionIndexer: indexer,
+    settingsStore: { getSyncSettings },
+    mainWindow: null,
+  });
 
   /** Resolve a time range from the persisted preset. */
   function resolveTimeRange(
@@ -196,6 +233,8 @@ if (gotLock) {
       const settings = appInsightsSettingsSchema.parse(raw);
       setAppInsightsSettings(settings);
       applyAppInsightsSettings(settings);
+      // Re-scan so remote sessions appear in the session list immediately.
+      void indexer.refresh();
     },
   );
 
@@ -207,6 +246,28 @@ if (gotLock) {
   ipcMain.handle(ipcChannels.SETTINGS_LIST_WORKSPACES, async () => {
     const result = await listLogAnalyticsWorkspaces();
     return listWorkspacesResultSchema.parse(result);
+  });
+
+  // ── Sync IPC handlers ─────────────────────────────────────────────────────
+
+  ipcMain.handle(ipcChannels.SYNC_STATUS, () => {
+    return syncService.getStatus();
+  });
+
+  // The preload API exposes `trigger: () => Promise<void>` with no arguments,
+  // so a per-session branch here would be unreachable. Just run syncAll().
+  ipcMain.handle(ipcChannels.SYNC_TRIGGER, async () => {
+    await syncService.syncAll();
+  });
+
+  ipcMain.handle(ipcChannels.SYNC_SETTINGS_GET, () => {
+    return getSyncSettings();
+  });
+
+  ipcMain.handle(ipcChannels.SYNC_SETTINGS_SET, (_event, raw: unknown) => {
+    const settings = syncSettingsSchema.parse(raw);
+    setSyncSettings(settings);
+    syncService.updateWriter(buildWriterIfConfigured(settings));
   });
 
   app.whenReady().then(async () => {

@@ -255,8 +255,8 @@ describe('SessionBrowser', () => {
     const bar = screen.getByTestId('summary-bar');
     // Total cost = $0.30
     expect(bar.textContent).toContain('$0.30');
-    // 2 sessions
-    expect(bar.textContent).toContain('2 sessions');
+    // 2 sessions (shown in summary card)
+    expect(screen.getByTestId('summary-sessions')?.textContent).toContain('2');
   });
 
   it('displays token metrics on session cards', async () => {
@@ -541,7 +541,7 @@ describe('SessionBrowser', () => {
     expect(screen.getByTestId('combined-analytics-chart-stub')).toBeDefined();
   });
 
-  it('summary bar shows day count', async () => {
+  it('summary bar shows day count when analytics expanded', async () => {
     vi.mocked(mockElectronApi.session.list).mockResolvedValue([
       makeSession({ id: 's1', createdAt: '2024-12-01T10:00:00.000Z' }),
       makeSession({ id: 's2', createdAt: '2024-12-01T12:00:00.000Z' }),
@@ -554,8 +554,15 @@ describe('SessionBrowser', () => {
       expect(screen.getByTestId('summary-bar')).toBeDefined();
     });
 
-    const bar = screen.getByTestId('summary-bar');
-    expect(bar.textContent).toContain('2 days');
+    // Expand analytics panel to see day count
+    fireEvent.click(screen.getByTestId('analytics-toggle'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('analytics-panel')).toBeDefined();
+    });
+
+    const panel = screen.getByTestId('analytics-panel');
+    expect(panel.textContent).toContain('2 days');
   });
 
   it('collapses analytics panel when toggle is clicked again', async () => {

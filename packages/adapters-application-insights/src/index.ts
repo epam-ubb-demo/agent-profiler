@@ -1,4 +1,8 @@
 export { ApplicationInsightsDataSource } from './data-source';
+export { buildEnrichmentRows } from './enrichment-builder';
+export type { EnrichmentBuilderOptions } from './enrichment-builder';
+export { LogsIngestionWriter } from './logs-ingestion';
+export type { LogsIngestionConfig } from './logs-ingestion';
 export type { SessionCache } from './data-source';
 export { QueryClient } from './query-client';
 export { DEFAULT_MAX_SPAN_COUNT } from './query-client';

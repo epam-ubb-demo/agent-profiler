@@ -7,6 +7,8 @@
 import { Text } from '@epam/uui';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { smoothPath, smoothPathReverse } from './svg-path-utils';
+
 /* ─── Props ─────────────────────────────────────────────────────────────────── */
 
 export interface DailyAnalytics {
@@ -18,6 +20,7 @@ export interface DailyAnalytics {
   readonly inputTokens: number;
   readonly outputTokens: number;
   readonly cacheReadTokens: number;
+  readonly cacheWriteTokens: number;
   /** Per-model token breakdown for this day */
   readonly modelBreakdown: ReadonlyArray<{
     readonly model: string;
@@ -27,8 +30,11 @@ export interface DailyAnalytics {
   }>;
 }
 
+export type Granularity = 'day' | 'week' | 'month';
+
 export interface CombinedAnalyticsChartProps {
   readonly data: ReadonlyArray<DailyAnalytics>;
+  readonly granularity?: Granularity | undefined;
 }
 
 /* ─── Chart geometry ────────────────────────────────────────────────────────── */
@@ -63,12 +69,28 @@ function modelColour(model: string): string {
 
 /* ─── Helpers ────────────────────────────────────────────────────────────────── */
 
-function formatShortDate(dateKey: string): string {
+function formatBucketLabel(dateKey: string, granularity: Granularity): string {
   const [y, m, d] = dateKey.split('-').map(Number);
-  return new Date(y!, m! - 1, d!).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  });
+  const dt = new Date(y!, m! - 1, d!);
+  if (granularity === 'month') {
+    return dt.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  }
+  if (granularity === 'week') {
+    return `W/C ${dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+  }
+  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function formatBucketTooltip(dateKey: string, granularity: Granularity): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const dt = new Date(y!, m! - 1, d!);
+  if (granularity === 'month') {
+    return dt.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  }
+  if (granularity === 'week') {
+    return `Week commencing ${dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  }
+  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatUsd(value: number): string {
@@ -119,7 +141,7 @@ interface TooltipState {
 
 /* ─── Component ──────────────────────────────────────────────────────────────── */
 
-function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
+function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnalyticsChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
@@ -238,14 +260,11 @@ function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
     }
     if (currentSeg.length > 0) costSegments.push(currentSeg);
 
-    const costLinePaths = costSegments.map((seg) =>
-      seg.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' '),
-    );
+    const costLinePaths = costSegments.map((seg) => smoothPath(seg));
     const costAreaPaths = costSegments.map((seg) => {
       if (seg.length === 0) return '';
-      const line = seg.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
       return (
-        line +
+        smoothPath(seg) +
         ` L${seg[seg.length - 1]!.x},${CHART_Y + CHART_H}` +
         ` L${seg[0]!.x},${CHART_Y + CHART_H} Z`
       );
@@ -292,12 +311,9 @@ function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
         x: xPositions[dayIdx]!,
         y: tokenToY(cumulTokens[dayIdx]![mIdx]!),
       }));
-      const topPath = topEdge.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
-      const bottomPath = [...bottomEdge]
-        .reverse()
-        .map((p) => `L${p.x},${p.y}`)
-        .join(' ');
-      return `${topPath} ${bottomPath} Z`;
+      const topPath = smoothPath(topEdge);
+      const bottomPath = smoothPathReverse(bottomEdge);
+      return `${topPath}${bottomPath} Z`;
     });
 
     // ── X-axis labels ─────────────────────────────────────────────────────────
@@ -545,7 +561,7 @@ function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
               fontSize={10}
               fill="var(--uui-text-secondary)"
             >
-              {formatShortDate(data[idx]!.date)}
+              {formatBucketLabel(data[idx]!.date, granularity)}
             </text>
           );
         })}
@@ -573,7 +589,7 @@ function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
           }}
         >
           <div style={{ fontWeight: 600, marginBottom: 4 }}>
-            {formatShortDate(tooltip.item.date)}
+            {formatBucketTooltip(tooltip.item.date, granularity)}
           </div>
           <div>Cost: {tooltip.item.cost != null ? formatUsd(tooltip.item.cost) : '—'}</div>
           <div>

@@ -140,6 +140,26 @@ export class SessionIndexer extends EventEmitter {
   }
 
   /**
+   * Trigger a fresh background scan without changing the root directory.
+   *
+   * Called after Application Insights settings change so the indexer picks up
+   * remote sessions without requiring a restart.
+   */
+  async refresh(): Promise<void> {
+    try {
+      this.scanGeneration++;
+      if (this.scanPromise) {
+        this.stopRequested = true;
+        await this.scanPromise;
+        this.stopRequested = false;
+      }
+      void (this.scanPromise = this.runBackgroundScan());
+    } catch (err) {
+      console.error('[SessionIndexer] refresh() error:', err);
+    }
+  }
+
+  /**
    * Change the root directory: clears the in-memory index, tells the manager
    * to use the new directory, and restarts the background scan from scratch.
    */

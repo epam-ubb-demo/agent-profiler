@@ -90,6 +90,11 @@ export const ipcChannels = {
   SETTINGS_SET: 'settings:set',
   SETTINGS_TEST_CONNECTION: 'settings:testConnection',
   SETTINGS_LIST_WORKSPACES: 'settings:listWorkspaces',
+  SYNC_TRIGGER: 'sync:trigger',
+  SYNC_STATUS: 'sync:status',
+  SYNC_STATUS_UPDATED: 'sync:statusUpdated',
+  SYNC_SETTINGS_GET: 'sync:settingsGet',
+  SYNC_SETTINGS_SET: 'sync:settingsSet',
 } as const;
 
 /**
@@ -143,3 +148,37 @@ export const listWorkspacesResultSchema = z.discriminatedUnion('success', [
 ]);
 
 export type ListWorkspacesResultIpc = z.infer<typeof listWorkspacesResultSchema>;
+
+/**
+ * Schema for sync settings flowing across IPC.
+ * Controls which categories are pushed and the DCE/DCR endpoint details.
+ */
+export const syncSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  categories: z
+    .object({
+      metadata: z.boolean(),
+      utilisation: z.boolean(),
+      compactions: z.boolean(),
+      toolResults: z.boolean(),
+    })
+    .default({ metadata: true, utilisation: true, compactions: true, toolResults: false }),
+  dceEndpoint: z.string().default(''),
+  dcrImmutableId: z.string().default(''),
+  dcrStreamName: z.string().default(''),
+});
+
+export type SyncSettingsIpc = z.infer<typeof syncSettingsSchema>;
+
+/**
+ * Schema for the sync status broadcast from main → renderer.
+ */
+export const syncStatusSchema = z.object({
+  state: z.enum(['idle', 'scanning', 'pushing', 'error']),
+  lastSyncedAt: z.string().nullable(),
+  sessionsPending: z.number(),
+  sessionsTotal: z.number(),
+  lastError: z.string().nullable(),
+});
+
+export type SyncStatusIpc = z.infer<typeof syncStatusSchema>;

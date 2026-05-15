@@ -1,4 +1,5 @@
 import { ipcChannels } from '@agent-profiler/core';
+import type { SyncStatusIpc } from '@agent-profiler/core';
 import { contextBridge, ipcRenderer } from 'electron';
 
 import type { ElectronApi } from './api';
@@ -45,6 +46,22 @@ const api: ElectronApi = {
     set: (settings) => ipcRenderer.invoke('settings:set', settings),
     testConnection: () => ipcRenderer.invoke('settings:testConnection'),
     listWorkspaces: () => ipcRenderer.invoke('settings:listWorkspaces'),
+  },
+  sync: {
+    getSettings: () => ipcRenderer.invoke(ipcChannels.SYNC_SETTINGS_GET),
+    setSettings: (settings) => ipcRenderer.invoke(ipcChannels.SYNC_SETTINGS_SET, settings),
+    getStatus: () => ipcRenderer.invoke(ipcChannels.SYNC_STATUS),
+    trigger: () => ipcRenderer.invoke(ipcChannels.SYNC_TRIGGER),
+    onStatusUpdated: (callback) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const handler = (_event: any, status: SyncStatusIpc) => {
+        callback(status);
+      };
+      ipcRenderer.on(ipcChannels.SYNC_STATUS_UPDATED, handler);
+      return () => {
+        ipcRenderer.removeListener(ipcChannels.SYNC_STATUS_UPDATED, handler);
+      };
+    },
   },
 };
 

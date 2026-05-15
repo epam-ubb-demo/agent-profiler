@@ -8,7 +8,8 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-import type { AppInsightsSettingsIpc } from '@agent-profiler/core';
+import type { AppInsightsSettingsIpc, SyncSettingsIpc } from '@agent-profiler/core';
+import { syncSettingsSchema } from '@agent-profiler/core';
 import Store from 'electron-store';
 
 
@@ -24,6 +25,7 @@ interface SettingsSchema {
     customEndDate: string | undefined;
   };
   sessionRootDir: string;
+  sync: SyncSettingsIpc;
 }
 
 const store = new Store<SettingsSchema>({
@@ -36,6 +38,13 @@ const store = new Store<SettingsSchema>({
       customEndDate: undefined,
     },
     sessionRootDir: DEFAULT_ROOT_DIR,
+    sync: {
+      enabled: false,
+      categories: { metadata: true, utilisation: true, compactions: true, toolResults: false },
+      dceEndpoint: '',
+      dcrImmutableId: '',
+      dcrStreamName: '',
+    },
   },
 });
 
@@ -68,4 +77,19 @@ export function getSessionRootDir(): string {
 /** Persist the local session root directory. */
 export function setSessionRootDir(dir: string): void {
   store.set('sessionRootDir', dir);
+}
+
+/** Retrieve the current sync settings. */
+export function getSyncSettings(): SyncSettingsIpc {
+  try {
+    return syncSettingsSchema.parse(store.get('sync'));
+  } catch {
+    // Corrupted or migrated store — return schema defaults
+    return syncSettingsSchema.parse({});
+  }
+}
+
+/** Persist sync settings. */
+export function setSyncSettings(settings: SyncSettingsIpc): void {
+  store.set('sync', settings);
 }
