@@ -590,7 +590,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
     };
   }, [filteredSessions]);
 
-  if (loading) {
+  if (loading && sessions.length === 0) {
     return (
       <FlexRow justifyContent="center" padding="24" rawProps={{ 'data-testid': 'session-browser-loading' }}>
         <Spinner />

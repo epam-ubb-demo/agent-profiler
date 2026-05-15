@@ -489,6 +489,41 @@ describe('SessionBrowser', () => {
     expect(unsubscribe).toHaveBeenCalled();
   });
 
+  // ── Loading guard regression tests ────────────────────────────────────────
+
+  it('does not unmount to loading spinner when sessions already exist', async () => {
+    const sessions = [
+      makeSession({ id: 'session-1', name: 'session-1' }),
+    ];
+
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue(sessions);
+
+    let listUpdateCallback: ((sessions: SessionListItemIpc[]) => void) | null = null;
+    vi.mocked(mockElectronApi.session.onListUpdated).mockImplementation(
+      (callback) => {
+        listUpdateCallback = callback;
+        return () => {};
+      },
+    );
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    // Wait for the initial session list to be visible
+    await waitFor(() => {
+      expect(screen.getByTestId('session-list')).toBeDefined();
+    });
+
+    // Trigger a background refresh via the push channel (simulates Sync Now path)
+    act(() => {
+      listUpdateCallback!(sessions);
+    });
+
+    // The full-page loading spinner must NOT replace the page
+    expect(screen.queryByTestId('session-browser-loading')).toBeNull();
+    // The session list must still be visible
+    expect(screen.getByTestId('session-list')).toBeDefined();
+  });
+
   // ── Analytics panel tests ──────────────────────────────────────────────────
 
   it('analytics toggle is in the summary bar header', async () => {
