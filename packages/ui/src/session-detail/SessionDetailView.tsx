@@ -206,7 +206,6 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
             modelMetrics={session.shutdown?.modelMetrics ?? []}
             modelSpend={modelSpend}
             turns={session.turns}
-            utilisation={session.utilisation}
           />
         )}
 
@@ -222,7 +221,6 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
             compactions={session.compactions}
             onSessionNavigate={onSessionNavigate}
             costKpis={costKpis}
-            turns={session.turns}
           />
         )}
 
@@ -233,7 +231,6 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
             toolInventory={toolInventory}
             modelColours={modelColours}
             toolKpis={toolKpis}
-            turns={session.turns}
           />
         )}
 

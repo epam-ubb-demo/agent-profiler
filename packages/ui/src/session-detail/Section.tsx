@@ -12,13 +12,11 @@ import styles from './session-detail.module.css';
 export interface SectionProps {
   readonly title: string;
   readonly children: React.ReactNode;
-  /** When true the section spans two grid columns in the charts grid. */
-  readonly wide?: boolean;
 }
 
-function SectionInner({ title, children, wide }: SectionProps) {
+function SectionInner({ title, children }: SectionProps) {
   return (
-    <section {...(wide ? { className: styles['wideSection'] } : {})}>
+    <section>
       <Text cx={styles['sectionHeading']} size="24" fontWeight="600">
         {title}
       </Text>
