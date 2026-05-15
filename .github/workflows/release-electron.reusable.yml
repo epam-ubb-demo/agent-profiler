@@ -95,6 +95,12 @@ jobs:
           echo "Releasing version: ${version} (prerelease=${prerelease}, platforms=${PLATFORMS})"
 
       - name: Verify desktop package.json version matches the tag
+        # Production-only: the tagged version must match the source-of-truth
+        # version in apps/desktop/package.json so the installer's internal
+        # version matches the Release tag. Dry-runs use synthetic versions
+        # (e.g. `0.0.0-pr.<run_id>`) that intentionally never match the
+        # source, so this check would always fail there.
+        if: ${{ !inputs.dry-run }}
         env:
           VERSION: ${{ steps.derive.outputs.version }}
         run: |
@@ -347,6 +353,10 @@ jobs:
       - name: Summarise dry-run
         run: |
           set -euo pipefail
+          # Tolerate the case where upstream jobs failed and no artifacts
+          # were uploaded — the summary should still render so operators can
+          # see which jobs were skipped/failed.
+          mkdir -p artifacts
           {
             echo "## Dry-run summary"
             echo ""
