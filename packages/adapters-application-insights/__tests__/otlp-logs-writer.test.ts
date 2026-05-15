@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { EnrichmentRow } from '@agent-profiler/core';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { OtlpLogsWriter } from '../src/otlp-logs-writer';
 
@@ -244,7 +244,7 @@ describe('OtlpLogsWriter', () => {
       });
 
       // Verify pushed_at is present (we can't test exact value due to timing)
-      const pushedAtAttr = attributes.find((a: any) => a.key === 'agent_profiler.pushed_at');
+      const pushedAtAttr = attributes.find((a: { key: string }) => a.key === 'agent_profiler.pushed_at');
       expect(pushedAtAttr).toBeDefined();
       expect(pushedAtAttr.value.stringValue).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
