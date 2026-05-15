@@ -1,7 +1,7 @@
 import { Text } from '@epam/uui';
 import { memo, useMemo } from 'react';
 
-import type { SessionListMetricsIpc } from '../../../preload/api';
+import type { SessionListMetricsIpc } from '../../preload/api';
 
 /* ─── Helpers ────────────────────────────────────────────────────────────────── */
 
