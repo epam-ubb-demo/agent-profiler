@@ -112,11 +112,11 @@ const LIST_SESSIONS_KQL = `let copilotSessions = AppDependencies
     selectedModel = take_any(tostring(customDimensions.["gen_ai.request.model"]))
   by sessionId;
 let enrichmentSessions = AppTraces
-| where tobool(customDimensions.["agent_profiler.enrichment"]) == true
-| where tostring(customDimensions.["agent_profiler.category"]) == "metadata"
-| extend sessionId = tostring(customDimensions.["agent_profiler.session_id"])
+| where Properties has "agent_profiler.enrichment"
+| where tostring(Properties.["agent_profiler.category"]) == "metadata"
+| extend sessionId = tostring(Properties.["agent_profiler.session_id"])
 | where isnotempty(sessionId)
-| extend payload = parse_json(message)
+| extend payload = parse_json(Message)
 | summarize
     startTs = min(todatetime(payload.startTs)),
     endTs = max(todatetime(payload.endTs)),
@@ -155,12 +155,12 @@ function buildGetEnrichmentSessionKql(sessionId: string): string {
   // sessionId is already validated by validateSessionId
   return `let targetSession = "${sessionId}";
 AppTraces
-| where tobool(customDimensions.["agent_profiler.enrichment"]) == true
-| where tostring(customDimensions.["agent_profiler.session_id"]) == targetSession
+| where Properties has "agent_profiler.enrichment"
+| where tostring(Properties.["agent_profiler.session_id"]) == targetSession
 | project
     timestamp,
-    message,
-    category = tostring(customDimensions.["agent_profiler.category"])
+    message = Message,
+    category = tostring(Properties.["agent_profiler.category"])
 | order by timestamp asc`;
 }
 
