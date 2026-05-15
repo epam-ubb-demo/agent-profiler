@@ -28,6 +28,11 @@ const config: Configuration = {
     gatekeeperAssess: false,
     entitlements: 'build/entitlements.mac.plist',
     entitlementsInherit: 'build/entitlements.mac.plist',
+    // identity:null disables code-signing when no CSC_LINK is provided
+    // (dry-run / CI without certificates). electron-builder otherwise
+    // tries to find a system identity and aborts with a cryptic
+    // "not a file" error.
+    identity: process.env.CSC_LINK ? undefined : null,
     notarize: false, // Enable when Apple credentials are configured
   },
 
