@@ -628,4 +628,91 @@ describe('SessionBrowser', () => {
     expect(screen.queryByTestId('combined-analytics-chart-stub')).toBeNull();
   });
 
+  // ── Local / Remote data-source toggle tests ───────────────────────────────
+
+  it('data-source toggle is hidden when App Insights is not configured', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ id: 's1' }),
+    ]);
+    vi.mocked(mockElectronApi.settings.get).mockResolvedValue({
+      workspaceId: '',
+      timeRangePreset: '7d',
+    });
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-browser')).toBeDefined();
+    });
+
+    expect(screen.queryByTestId('data-source-toggle')).toBeNull();
+  });
+
+  it('data-source toggle is visible when App Insights is configured', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ id: 's1' }),
+    ]);
+    vi.mocked(mockElectronApi.settings.get).mockResolvedValue({
+      workspaceId: 'my-workspace-id',
+      timeRangePreset: '7d',
+    });
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('data-source-toggle')).toBeDefined();
+    });
+  });
+
+  it('Remote button shows only application-insights sessions', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ id: 'local-1', adapter: 'copilot-cli' }),
+      makeSession({ id: 'remote-1', adapter: 'application-insights' }),
+    ]);
+    vi.mocked(mockElectronApi.settings.get).mockResolvedValue({
+      workspaceId: 'my-workspace-id',
+      timeRangePreset: '7d',
+    });
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('data-source-remote')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTestId('data-source-remote'));
+
+    await waitFor(() => {
+      const cards = screen.getAllByTestId('session-card');
+      expect(cards).toHaveLength(1);
+    });
+
+    // The remote session card should be present
+    expect(screen.getAllByTestId('session-card')).toHaveLength(1);
+  });
+
+  it('Local button excludes application-insights sessions', async () => {
+    vi.mocked(mockElectronApi.session.list).mockResolvedValue([
+      makeSession({ id: 'local-1', adapter: 'copilot-cli' }),
+      makeSession({ id: 'local-2', adapter: 'copilot-cli' }),
+      makeSession({ id: 'remote-1', adapter: 'application-insights' }),
+    ]);
+    vi.mocked(mockElectronApi.settings.get).mockResolvedValue({
+      workspaceId: 'my-workspace-id',
+      timeRangePreset: '7d',
+    });
+
+    await render(<SessionBrowser onSelectSession={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('data-source-toggle')).toBeDefined();
+    });
+
+    // Local is the default — should show 2 local sessions only
+    await waitFor(() => {
+      const cards = screen.getAllByTestId('session-card');
+      expect(cards).toHaveLength(2);
+    });
+  });
+
 });

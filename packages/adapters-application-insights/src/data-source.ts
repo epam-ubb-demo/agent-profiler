@@ -5,7 +5,15 @@
  * Azure Log Analytics workspace through the {@link QueryClient}.
  */
 
-import type { Session } from '@agent-profiler/core';
+import type {
+  Compaction,
+  ModelChange,
+  ParseStatus,
+  Session,
+  ShutdownMetrics,
+  ToolCall,
+  UtilisationSample,
+} from '@agent-profiler/core';
 import type {
   AdapterType,
   SessionDataSource,
@@ -89,7 +97,7 @@ function defaultTimeRange(days: number = DEFAULT_DAYS): TimeRange {
 // KQL queries
 // ---------------------------------------------------------------------------
 
-const LIST_SESSIONS_KQL = `let sessionSpans = AppDependencies
+const LIST_SESSIONS_KQL = `let copilotSessions = AppDependencies
 | union AppRequests
 | where isnotempty(customDimensions)
 | extend sessionId = iif(
@@ -97,13 +105,29 @@ const LIST_SESSIONS_KQL = `let sessionSpans = AppDependencies
     tostring(customDimensions.["copilot_chat.session.id"]),
     operation_Id
   )
-| where isnotempty(sessionId);
-sessionSpans
+| where isnotempty(sessionId)
 | summarize
     startTs = min(timestamp),
     endTs = max(timestamp),
-    spanCount = count(),
     selectedModel = take_any(tostring(customDimensions.["gen_ai.request.model"]))
+  by sessionId;
+let enrichmentSessions = AppTraces
+| where tobool(customDimensions.["agent_profiler.enrichment"]) == true
+| where tostring(customDimensions.["agent_profiler.category"]) == "metadata"
+| extend sessionId = tostring(customDimensions.["agent_profiler.session_id"])
+| where isnotempty(sessionId)
+| extend payload = parse_json(message)
+| summarize
+    startTs = min(todatetime(payload.startTs)),
+    endTs = max(todatetime(payload.endTs)),
+    selectedModel = take_any(tostring(payload.selectedModel))
+  by sessionId;
+copilotSessions
+| union enrichmentSessions
+| summarize
+    startTs = min(startTs),
+    endTs = max(endTs),
+    selectedModel = take_any(selectedModel)
   by sessionId
 | order by startTs desc
 | take 200`;
@@ -124,6 +148,19 @@ AppDependencies
     duration,
     success,
     customDimensions
+| order by timestamp asc`;
+}
+
+function buildGetEnrichmentSessionKql(sessionId: string): string {
+  // sessionId is already validated by validateSessionId
+  return `let targetSession = "${sessionId}";
+AppTraces
+| where tobool(customDimensions.["agent_profiler.enrichment"]) == true
+| where tostring(customDimensions.["agent_profiler.session_id"]) == targetSession
+| project
+    timestamp,
+    message,
+    category = tostring(customDimensions.["agent_profiler.category"])
 | order by timestamp asc`;
 }
 
@@ -234,7 +271,26 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
       const result = await this.queryClient.queryWithTruncationCheck(kql, range);
 
       if (result.rows.length === 0) {
-        return null;
+        // Fallback: try assembling from synced enrichment data in AppTraces
+        const enrichmentKql = buildGetEnrichmentSessionKql(validId);
+        const enrichmentResult = await this.queryClient.query(enrichmentKql, range);
+
+        if (enrichmentResult.rows.length === 0) {
+          return null;
+        }
+
+        const enrichmentSession = this.assembleFromEnrichment(validId, enrichmentResult.rows);
+
+        // Cache the enrichment session — best-effort
+        if (this.cache) {
+          try {
+            this.cache.set(validId, enrichmentSession);
+          } catch {
+            // Silently ignore cache write errors
+          }
+        }
+
+        return enrichmentSession;
       }
 
       const { truncated } = result;
@@ -280,5 +336,204 @@ export class ApplicationInsightsDataSource implements SessionDataSource {
     } catch {
       return null;
     }
+  }
+
+  // -----------------------------------------------------------------------
+  // Private helpers
+  // -----------------------------------------------------------------------
+
+  /**
+   * Assemble a {@link Session} from enrichment rows stored in AppTraces.
+   *
+   * Used as a fallback when no native Copilot telemetry spans are found for
+   * a session. The resulting session is always marked `partial` (or preserves
+   * the status recorded in the metadata row) because full turn/message data
+   * is not available from enrichment alone.
+   */
+  private assembleFromEnrichment(
+    sessionId: string,
+    rows: ReadonlyArray<Record<string, unknown>>,
+  ): Session {
+    const parseJson = (raw: unknown): Record<string, unknown> => {
+      try {
+        return JSON.parse(String(raw ?? '{}')) as Record<string, unknown>;
+      } catch {
+        return {};
+      }
+    };
+
+    const metaRows = rows.filter((r) => r['category'] === 'metadata');
+    const utilisationRows = rows.filter((r) => r['category'] === 'utilisation');
+    const compactionRows = rows.filter((r) => r['category'] === 'compaction');
+    const toolResultRows = rows.filter((r) => r['category'] === 'tool_result');
+
+    // Use the last metadata row — if multiple, prefer the most recent
+    const metaPayload = metaRows.length > 0
+      ? parseJson(metaRows[metaRows.length - 1]?.['message'])
+      : {};
+
+    // --- utilisation ---
+    const utilisation: UtilisationSample[] = utilisationRows.flatMap((r) => {
+      try {
+        const p = parseJson(r['message']);
+        const b = p['buckets'] as Record<string, unknown> | null | undefined ?? {};
+        return [{
+          timestamp: String(p['timestamp'] ?? ''),
+          percentage: Number(p['percentage'] ?? 0),
+          used: Number(p['used'] ?? 0),
+          total: Number(p['total'] ?? 0),
+          buckets: {
+            system: Number(b['system'] ?? 0),
+            conversation: Number(b['conversation'] ?? 0),
+            toolDefinitions: Number(b['toolDefinitions'] ?? 0),
+          },
+        }];
+      } catch {
+        return [];
+      }
+    });
+
+    // --- compactions ---
+    const compactions: Compaction[] = compactionRows.flatMap((r) => {
+      try {
+        const p = parseJson(r['message']);
+        return [{
+          timestamp: p['timestamp'] != null ? String(p['timestamp']) : null,
+          inputTokens: Number(p['inputTokens'] ?? 0),
+          outputTokens: Number(p['outputTokens'] ?? 0),
+          cacheRead: Number(p['cacheRead'] ?? 0),
+          cacheWrite: Number(p['cacheWrite'] ?? 0),
+          model: p['model'] != null ? String(p['model']) : null,
+          turnId: p['turnId'] != null ? String(p['turnId']) : null,
+        }];
+      } catch {
+        return [];
+      }
+    });
+
+    // --- tool calls ---
+    const VALID_SKILL_OUTCOMES = new Set(['loaded', 'not_found', 'disabled', 'read_error']);
+    const toolCalls: ToolCall[] = toolResultRows.flatMap((r) => {
+      try {
+        const p = parseJson(r['message']);
+        const rawOutcome = p['skillOutcome'];
+        const skillOutcome =
+          rawOutcome != null && VALID_SKILL_OUTCOMES.has(String(rawOutcome))
+            ? (String(rawOutcome) as 'loaded' | 'not_found' | 'disabled' | 'read_error')
+            : null;
+        return [{
+          toolCallId: String(p['toolCallId'] ?? ''),
+          toolName: String(p['toolName'] ?? ''),
+          model: p['model'] != null ? String(p['model']) : null,
+          startTs: p['startTs'] != null ? String(p['startTs']) : null,
+          endTs: p['endTs'] != null ? String(p['endTs']) : null,
+          durationMs: p['durationMs'] != null ? Number(p['durationMs']) : null,
+          success: p['success'] != null ? Boolean(p['success']) : null,
+          parentId: p['parentId'] != null ? String(p['parentId']) : null,
+          turnId: p['turnId'] != null ? String(p['turnId']) : null,
+          eventId: p['eventId'] != null ? String(p['eventId']) : null,
+          argumentsPreview: String(p['argumentsPreview'] ?? ''),
+          ...(p['skillName'] != null ? { skillName: String(p['skillName']) } : {}),
+          ...(p['skillSource'] != null ? { skillSource: String(p['skillSource']) } : {}),
+          ...(p['skillContentLength'] != null
+            ? { skillContentLength: Number(p['skillContentLength']) }
+            : {}),
+          ...(skillOutcome != null ? { skillOutcome } : {}),
+          ...(p['skillErrorMessage'] != null
+            ? { skillErrorMessage: String(p['skillErrorMessage']) }
+            : {}),
+        }];
+      } catch {
+        return [];
+      }
+    });
+
+    // --- shutdown (from metadata payload) ---
+    let shutdown: ShutdownMetrics | null = null;
+    const rawShutdown = metaPayload['shutdown'];
+    if (rawShutdown != null && typeof rawShutdown === 'object') {
+      const s = rawShutdown as Record<string, unknown>;
+      const rawModelMetrics = s['modelMetrics'];
+      shutdown = {
+        totalPremiumRequests: Number(s['totalPremiumRequests'] ?? 0),
+        totalApiDurationMs: Number(s['totalApiDurationMs'] ?? 0),
+        modelMetrics: Array.isArray(rawModelMetrics)
+          ? (rawModelMetrics as Record<string, unknown>[]).map((m) => ({
+              model: String(m['model'] ?? ''),
+              inputTokens: Number(m['inputTokens'] ?? 0),
+              outputTokens: Number(m['outputTokens'] ?? 0),
+              cacheReadTokens: Number(m['cacheReadTokens'] ?? 0),
+              cacheWriteTokens: Number(m['cacheWriteTokens'] ?? 0),
+              reasoningTokens: Number(m['reasoningTokens'] ?? 0),
+              requestCount: Number(m['requestCount'] ?? 0),
+              premiumRequestCost: Number(m['premiumRequestCost'] ?? 0),
+              apiDurationMs: Number(m['apiDurationMs'] ?? 0),
+            }))
+          : [],
+        currentTokens: Number(s['currentTokens'] ?? 0),
+        systemTokens: Number(s['systemTokens'] ?? 0),
+        conversationTokens: Number(s['conversationTokens'] ?? 0),
+        toolDefinitionsTokens: Number(s['toolDefinitionsTokens'] ?? 0),
+        codeChanges:
+          s['codeChanges'] != null && typeof s['codeChanges'] === 'object'
+            ? (s['codeChanges'] as Record<string, unknown>)
+            : {},
+        timestamp: s['timestamp'] != null ? String(s['timestamp']) : null,
+      };
+    }
+
+    // --- model changes (from metadata payload) ---
+    const rawModelChanges = metaPayload['modelChanges'];
+    const modelChanges: ModelChange[] = Array.isArray(rawModelChanges)
+      ? (rawModelChanges as Record<string, unknown>[]).map((m) => ({
+          timestamp: String(m['timestamp'] ?? ''),
+          model: String(m['model'] ?? ''),
+        }))
+      : [];
+
+    // --- parseStatus ---
+    // Preserve the status from the metadata row if valid; otherwise mark partial.
+    const VALID_STATUSES = new Set<string>(['ok', 'partial', 'failed']);
+    const rawParseStatus = metaPayload['parseStatus'];
+    let parseStatus: ParseStatus;
+    if (rawParseStatus != null && typeof rawParseStatus === 'object') {
+      const ps = rawParseStatus as Record<string, unknown>;
+      const rawStatus = String(ps['status'] ?? '');
+      parseStatus = {
+        status: VALID_STATUSES.has(rawStatus)
+          ? (rawStatus as 'ok' | 'partial' | 'failed')
+          : 'partial',
+        error: ps['error'] != null ? String(ps['error']) : null,
+      };
+    } else {
+      parseStatus = {
+        status: 'partial',
+        error: 'Assembled from enrichment data — native Copilot telemetry not available',
+      };
+    }
+
+    return {
+      sessionId,
+      copilotVersion: String(metaPayload['copilotVersion'] ?? ''),
+      selectedModel: String(metaPayload['selectedModel'] ?? ''),
+      reasoningEffort: String(metaPayload['reasoningEffort'] ?? ''),
+      repository: String(metaPayload['repository'] ?? ''),
+      branch: String(metaPayload['branch'] ?? ''),
+      cwd: String(metaPayload['cwd'] ?? ''),
+      startTs: metaPayload['startTs'] != null ? String(metaPayload['startTs']) : null,
+      endTs: metaPayload['endTs'] != null ? String(metaPayload['endTs']) : null,
+      success: metaPayload['success'] != null ? Boolean(metaPayload['success']) : null,
+      modelChanges,
+      toolCalls,
+      assistantMessages: [],
+      userMessages: [],
+      compactions,
+      subagents: [],
+      shutdown,
+      fanoutTurns: [],
+      turns: [],
+      parseStatus,
+      utilisation,
+    };
   }
 }

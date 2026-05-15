@@ -227,10 +227,11 @@ describe('ApplicationInsightsDataSource', () => {
       expect(mockedAssembleSession).toHaveBeenCalledWith(mockSpanRows);
     });
 
-    it('returns null when query returns no rows', async () => {
+    it('returns null when copilot spans and enrichment both return no rows', async () => {
       const ds = createDataSource();
       const mock = getMockInstance();
       mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+      mock.query.mockResolvedValueOnce({ rows: [] });
 
       await expect(ds.getSession('session-abc-123')).resolves.toBeNull();
       expect(mockedAssembleSession).not.toHaveBeenCalled();
@@ -441,6 +442,158 @@ describe('ApplicationInsightsDataSource', () => {
 
       expect(session).not.toBeNull();
       expect(session!.parseStatus.status).toBe('ok');
+    });
+
+  });
+
+  // -----------------------------------------------------------------------
+  // getSession – enrichment fallback
+  // -----------------------------------------------------------------------
+  describe('getSession enrichment fallback', () => {
+    const ENRICHMENT_META = JSON.stringify({
+      copilotVersion: '1.0.0',
+      selectedModel: 'claude-opus-4',
+      reasoningEffort: 'medium',
+      repository: 'owner/repo',
+      branch: 'main',
+      cwd: '/home/user/project',
+      startTs: '2024-06-15T10:00:00Z',
+      endTs: '2024-06-15T10:30:00Z',
+      success: true,
+      parseStatus: null,
+      shutdown: null,
+      modelChanges: [],
+    });
+
+    const mockEnrichmentMetaRow = {
+      timestamp: new Date('2024-06-15T10:00:00Z'),
+      category: 'metadata',
+      message: ENRICHMENT_META,
+    };
+
+    it('falls back to enrichment query when no copilot spans found', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+      mock.query.mockResolvedValueOnce({ rows: [mockEnrichmentMetaRow] });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      // enrichment fallback should not use assembleSession
+      expect(mockedAssembleSession).not.toHaveBeenCalled();
+      expect(mock.query).toHaveBeenCalled();
+    });
+
+    it('enrichment session contains sessionId and selectedModel', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+      mock.query.mockResolvedValueOnce({ rows: [mockEnrichmentMetaRow] });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.sessionId).toBe('session-abc-123');
+      expect(session!.selectedModel).toBe('claude-opus-4');
+    });
+
+    it('enrichment session defaults parseStatus to partial when metadata has no parseStatus', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+      mock.query.mockResolvedValueOnce({ rows: [mockEnrichmentMetaRow] });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.parseStatus.status).toBe('partial');
+    });
+
+    it('enrichment session preserves ok parseStatus from metadata', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+      const metaWithOkStatus = JSON.stringify({
+        ...JSON.parse(ENRICHMENT_META) as Record<string, unknown>,
+        parseStatus: { status: 'ok', error: null },
+      });
+      mock.query.mockResolvedValueOnce({
+        rows: [{ ...mockEnrichmentMetaRow, message: metaWithOkStatus }],
+      });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.parseStatus.status).toBe('ok');
+    });
+
+    it('returns null when both copilot and enrichment queries return no rows', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+      mock.query.mockResolvedValueOnce({ rows: [] });
+
+      await expect(ds.getSession('session-abc-123')).resolves.toBeNull();
+    });
+
+    it('caches enrichment session after assembly', async () => {
+      const mockCache: SessionCache = {
+        get: vi.fn().mockReturnValue(undefined),
+        set: vi.fn(),
+        has: vi.fn(),
+        delete: vi.fn(),
+        clear: vi.fn(),
+      };
+      const ds = createDataSource(mockCache);
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+      mock.query.mockResolvedValueOnce({ rows: [mockEnrichmentMetaRow] });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(mockCache.set).toHaveBeenCalledWith('session-abc-123', session);
+    });
+
+    it('enrichment session includes empty turns arrays', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+      mock.query.mockResolvedValueOnce({ rows: [mockEnrichmentMetaRow] });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.turns).toEqual([]);
+      expect(session!.fanoutTurns).toEqual([]);
+    });
+
+    it('enrichment session includes utilisation rows from AppTraces', async () => {
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+      const utilisationPayload = JSON.stringify({
+        totalInputTokens: 100,
+        totalOutputTokens: 50,
+        totalCacheReadTokens: 10,
+        totalCacheWriteTokens: 5,
+        totalCostUsd: 0.01,
+        costConfidence: 'known',
+        wallTimeMs: 5000,
+        modelUsage: [],
+      });
+      mock.query.mockResolvedValueOnce({
+        rows: [
+          mockEnrichmentMetaRow,
+          { timestamp: new Date('2024-06-15T10:15:00Z'), category: 'utilisation', message: utilisationPayload },
+        ],
+      });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.utilisation).toHaveLength(1);
     });
 
   });
