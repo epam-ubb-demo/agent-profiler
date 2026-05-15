@@ -39,6 +39,7 @@ export const CacheHitPerTurnChart = memo(function CacheHitPerTurnChart({
     return turns.map((t, i) => {
       let totalInput = 0;
       let totalCacheRead = 0;
+      // Include top-level assistant messages
       for (const msg of t.assistantMessages) {
         totalInput += msg.inputTokens;
         totalCacheRead += msg.cacheReadTokens;
@@ -60,22 +61,28 @@ export const CacheHitPerTurnChart = memo(function CacheHitPerTurnChart({
     );
   }
 
+  // Find the actual Y range so we can zoom in when all values are clustered
+  const maxRate = Math.max(...points.map((p) => p.rate));
+  const yMax = maxRate <= 0 ? 100 : Math.min(100, Math.ceil(maxRate / 10) * 10 + 10);
+
   const xScale = (idx: number) => M.left + ((idx - 1) / Math.max(1, n - 1)) * CW;
-  const yScale = (rate: number) => M.top + CH - (rate / 100) * CH;
+  const yScale = (rate: number) => M.top + CH - (rate / yMax) * CH;
 
   const svgPoints = points.map((p) => ({ x: xScale(p.turnIndex), y: yScale(p.rate) }));
   const linePath = smoothPath(svgPoints);
 
   // Closed area path for fill
-  const areaPath = svgPoints.length > 0
+  const areaPath = svgPoints.length > 1
     ? `${linePath} L${svgPoints[svgPoints.length - 1]!.x},${yScale(0)} L${svgPoints[0]!.x},${yScale(0)} Z`
     : '';
 
-  // Y-axis gridlines: 0%, 25%, 50%, 75%, 100%
-  const yTicks = [0, 25, 50, 75, 100];
+  // Y-axis gridlines: distribute evenly across the visible range
+  const yTicks = yMax === 100
+    ? [0, 25, 50, 75, 100]
+    : Array.from({ length: 5 }, (_, i) => Math.round((yMax / 4) * i));
 
-  // X-axis labels (show at most ~10)
-  const maxLabels = Math.max(2, Math.floor(CW / 60));
+  // X-axis labels (show at most ~15 for the wider chart)
+  const maxLabels = Math.max(2, Math.floor(CW / 50));
   const step = Math.max(1, Math.ceil(n / maxLabels));
 
   return (

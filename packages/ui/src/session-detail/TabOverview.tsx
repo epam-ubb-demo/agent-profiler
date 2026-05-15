@@ -81,7 +81,7 @@ function TabOverviewInner({
           <TokensPerTurnChart turns={turns} />
         </Section>
 
-        <Section title="Cache hit rate per turn">
+        <Section title="Cache hit rate per turn" wide>
           <CacheHitPerTurnChart turns={turns} />
         </Section>
 
