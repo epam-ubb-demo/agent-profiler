@@ -1,0 +1,94 @@
+# {{BINARY_NAME}} installer for Windows.
+#
+# Usage:
+#   irm https://raw.githubusercontent.com/{{REPO}}/main/install.ps1 | iex
+#   $env:VERSION = 'v1.2.3'; irm .../install.ps1 | iex
+#   $env:INSTALL_DIR = "$env:USERPROFILE\bin"; irm .../install.ps1 | iex
+#
+# Environment variables:
+#   $env:VERSION       Release tag to install (default: latest stable release)
+#   $env:INSTALL_DIR   Target directory (default: {{DEFAULT_INSTALL_DIR}})
+#   $env:REPO          owner/repo (default: {{REPO}})
+#   $env:GITHUB_URL    GitHub API base (default: https://api.github.com)
+
+$ErrorActionPreference = 'Stop'
+
+$BinaryName = '{{BINARY_NAME}}'
+$Repo       = if ($env:REPO)        { $env:REPO }        else { '{{REPO}}' }
+$InstallDir = if ($env:INSTALL_DIR) { $env:INSTALL_DIR } else { '{{DEFAULT_INSTALL_DIR}}' }
+$GitHubUrl  = if ($env:GITHUB_URL)  { $env:GITHUB_URL }  else { 'https://api.github.com' }
+$Version    = $env:VERSION
+
+function Fail($msg) { Write-Error $msg; exit 1 }
+
+# ----------------------------------------------------------------------------
+# Detect architecture.
+# ----------------------------------------------------------------------------
+$arch = $env:PROCESSOR_ARCHITECTURE
+switch ($arch) {
+    'AMD64' { $platform = 'windows-x86_64' }
+    'ARM64' { $platform = 'windows-arm64' }
+    default { Fail "unsupported architecture: $arch" }
+}
+
+# ----------------------------------------------------------------------------
+# Resolve version.
+# ----------------------------------------------------------------------------
+if (-not $Version) {
+    try {
+        $latest  = Invoke-RestMethod -Uri "$GitHubUrl/repos/$Repo/releases/latest" -UseBasicParsing
+        $Version = $latest.tag_name
+    } catch {
+        Fail "could not resolve latest release: $_"
+    }
+}
+if (-not $Version) { Fail 'no version resolved' }
+
+$asset       = "$BinaryName-$platform.zip"
+$downloadUrl = "https://github.com/$Repo/releases/download/$Version/$asset"
+$shaUrl      = "$downloadUrl.sha256"
+
+$tmp = New-Item -ItemType Directory -Path (Join-Path $env:TEMP ([System.Guid]::NewGuid().ToString()))
+try {
+    $zipPath = Join-Path $tmp $asset
+    Write-Host "Downloading $asset ($Version)"
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -UseBasicParsing
+
+    # Checksum verification.
+    $shaPath = "$zipPath.sha256"
+    try {
+        Invoke-WebRequest -Uri $shaUrl -OutFile $shaPath -UseBasicParsing
+        Write-Host 'Verifying sha256'
+        $expected = (Get-Content $shaPath -Raw).Trim().Split(' ')[0].ToLower()
+        $actual   = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash.ToLower()
+        if ($expected -ne $actual) {
+            Fail "sha256 verification failed (expected $expected, got $actual)"
+        }
+    } catch {
+        Write-Warning "no sha256 sidecar at $shaUrl; skipping verification"
+    }
+
+    Write-Host 'Extracting'
+    $extractDir = Join-Path $tmp 'extracted'
+    Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
+
+    if (-not (Test-Path $InstallDir)) {
+        New-Item -ItemType Directory -Path $InstallDir | Out-Null
+    }
+
+    # Copy every .exe (and DLLs sitting next to them) into InstallDir.
+    Get-ChildItem -Path $extractDir -Recurse -File `
+        | Where-Object { $_.Extension -in '.exe', '.dll' } `
+        | ForEach-Object { Copy-Item $_.FullName -Destination $InstallDir -Force }
+
+    Write-Host ''
+    Write-Host "Installed $BinaryName $Version to $InstallDir"
+
+    $userPath = [Environment]::GetEnvironmentVariable('PATH', 'User')
+    if (-not ($userPath -split ';' | Where-Object { $_ -eq $InstallDir })) {
+        Write-Host "Add $InstallDir to your PATH, e.g.:"
+        Write-Host "  [Environment]::SetEnvironmentVariable('PATH', `"$InstallDir;`$env:PATH`", 'User')"
+    }
+} finally {
+    Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+}

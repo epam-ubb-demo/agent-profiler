@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-05-11T14:12:34.963765+00:00'
+generated_at: '2026-05-15T15:33:41.327932+00:00'
 apm_version: 0.12.4
 dependencies:
 - repo_url: epam-mbg-demo/agent-forge
@@ -29,8 +29,34 @@ dependencies:
     .github/prompts/docs-website.deploy.prompt.md: sha256:722d88d81808d645779eed104c68a46414676faaa25923b59a9d72feaa2ebc83
     .github/prompts/docs-website.setup.prompt.md: sha256:677cf5019ef792944064250b3d50a348115edd5f0ec1c726ff2fece708a310f1
   content_hash: sha256:9f0ac2a412f0d01fa361cae258cd07279fb874652d0db8a9529f2e90f945aeff
-  discovered_via: epam
-  marketplace_plugin_name: docs-website
+- repo_url: epam-mbg-demo/agent-forge
+  host: github.com
+  resolved_commit: d7b6c3ba2038723fadec1f9c5f0b558f9f5098ed
+  resolved_ref: github-multi-platform-binary-release/v1.0.0
+  virtual_path: devops/github-multi-platform-binary-release
+  is_virtual: true
+  package_type: apm_package
+  deployed_files:
+  - .agents/skills/github-multi-platform-binary-release
+  - .github/instructions/github-multi-platform-binary-release.awareness.instructions.md
+  deployed_file_hashes:
+    .github/instructions/github-multi-platform-binary-release.awareness.instructions.md: sha256:641f1bb97999841864238ccad7eabc8d36cc9475ba49ace62f151f1e26a5e8e6
+  content_hash: sha256:1e66f1ae0a22d0c6ac3d4ec32962855a4a4ce1a7b1ddf5605d702739ffe3626d
+- repo_url: epam-mbg-demo/agent-forge
+  host: github.com
+  resolved_commit: 77ac3f02fe0d05ea1ba9dc84f198e2ce0e307ce1
+  resolved_ref: devops-standards/v1.1.0
+  virtual_path: devops/standards
+  is_virtual: true
+  package_type: apm_package
+  deployed_files:
+  - .agents/skills/ds-mcp-integrated-pr-testing
+  - .agents/skills/ds-release-process
+  - .agents/skills/ds-version-sync
+  - .github/instructions/devops-standards.baseline.instructions.md
+  deployed_file_hashes:
+    .github/instructions/devops-standards.baseline.instructions.md: sha256:d22c7c42807e09bc6040935717e5b05a9e34ae8a54ca619b85129a96be082970
+  content_hash: sha256:80b4e7a2a4c8caa751393e2cd48850b2f3ef6df5f71aab8ddd0e3800ef8ec1ea
 local_deployed_files:
 - .github/agents/epam-uui-ux-designer.agent.md
 - .github/instructions/development.instructions.md
