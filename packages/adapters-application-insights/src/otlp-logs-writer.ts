@@ -1,41 +1,57 @@
 import type { EnrichmentRow } from '@agent-profiler/core';
 
+/** Default batch size: 100 rows per POST to stay well under typical collector limits */
+const DEFAULT_BATCH_SIZE = 100;
+
 export interface OtlpLogsWriterConfig {
   /** OTel Gateway URL, e.g. https://ca-otel-gw-demo.azurecontainerapps.io */
   otlpEndpoint: string;
+  /** Max rows per OTLP POST request. Defaults to 100. */
+  batchSize?: number;
 }
 
 export class OtlpLogsWriter {
   private readonly endpoint: string;
+  private readonly batchSize: number;
 
   constructor(config: OtlpLogsWriterConfig) {
     // Normalise: strip trailing slash, append /v1/logs
     const base = config.otlpEndpoint.replace(/\/+$/, '');
     this.endpoint = `${base}/v1/logs`;
+    this.batchSize = config.batchSize ?? DEFAULT_BATCH_SIZE;
   }
 
   /**
    * Push enrichment rows as OTLP log records to the OTel collector.
+   * Splits rows into batches of batchSize and POSTs them sequentially.
    * Stamps each row with the current ISO timestamp as PushedAt.
-   * Returns the number of rows successfully pushed.
+   * Returns the total number of rows successfully pushed.
+   * Throws immediately on first batch failure — remaining batches are not sent.
    */
   async push(rows: readonly EnrichmentRow[]): Promise<number> {
     if (rows.length === 0) return 0;
 
     const now = new Date().toISOString();
-    const body = this.buildOtlpPayload(rows, now);
+    const totalBatches = Math.ceil(rows.length / this.batchSize);
 
-    const response = await fetch(this.endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    for (let i = 0; i < totalBatches; i++) {
+      const chunk = rows.slice(i * this.batchSize, (i + 1) * this.batchSize);
+      console.log(`[OtlpLogsWriter] Pushing batch ${i + 1}/${totalBatches} (${chunk.length} rows)`);
 
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      throw new Error(
-        `OTLP push failed (${response.status} ${response.statusText}): ${text}`,
-      );
+      const body = this.buildOtlpPayload(chunk, now);
+
+      const response = await fetch(this.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(
+          `OTLP push failed (${response.status} ${response.statusText}): ${text}`,
+        );
+      }
     }
 
     return rows.length;

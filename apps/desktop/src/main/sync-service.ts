@@ -75,6 +75,30 @@ export class SyncService {
   }
 
   /**
+   * Remove all sync markers so sessions are re-synced on next syncAll().
+   * Used as a one-time recovery after data-loss incidents.
+   */
+  async clearAllMarkers(): Promise<number> {
+    const localSessions = this.deps.sessionIndexer
+      .getSessionList()
+      .filter((s) => s.adapter === 'copilot-cli');
+
+    let cleared = 0;
+    for (const sessionItem of localSessions) {
+      const sessionDir = sessionItem.path;
+      if (!sessionDir) continue;
+      try {
+        await this.deps.markerStore.delete(sessionDir);
+        cleared++;
+      } catch {
+        // Marker didn't exist or couldn't be deleted — that's fine
+      }
+    }
+    console.log(`[SyncService] Cleared ${cleared} sync markers`);
+    return cleared;
+  }
+
+  /**
    * Replace the OtlpLogsWriter used for future sync operations.
    * Accepts null when the new settings have an empty OTLP endpoint field.
    * Call this whenever the OTel Gateway URL changes so the next sync uses

@@ -255,6 +255,10 @@ if (gotLock) {
     await syncService.syncAll();
   });
 
+  ipcMain.handle(ipcChannels.SYNC_CLEAR_MARKERS, async () => {
+    return syncService.clearAllMarkers();
+  });
+
   ipcMain.handle(ipcChannels.SYNC_SETTINGS_GET, () => {
     return getSyncSettings();
   });

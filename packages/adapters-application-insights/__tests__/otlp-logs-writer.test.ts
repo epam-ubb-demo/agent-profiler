@@ -465,6 +465,132 @@ describe('OtlpLogsWriter', () => {
   });
 
   // ───────────────────────────────────────────────────────────────────────
+  // Batching behaviour
+  // ───────────────────────────────────────────────────────────────────────
+
+  describe('push() batching', () => {
+    it('sends single batch when rows <= batchSize', async () => {
+      const writer = new OtlpLogsWriter({
+        otlpEndpoint: 'https://otel.example.com',
+        batchSize: 100,
+      });
+
+      const rows = Array.from({ length: 50 }, (_, i) => ({ ...ROW, EventId: `sess-1:util:${i}` }));
+
+      mockFetch.mockResolvedValue({ ok: true, status: 200, statusText: 'OK' });
+
+      await writer.push(rows);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('splits into multiple batches when rows > batchSize', async () => {
+      const writer = new OtlpLogsWriter({
+        otlpEndpoint: 'https://otel.example.com',
+        batchSize: 100,
+      });
+
+      const rows = Array.from({ length: 250 }, (_, i) => ({ ...ROW, EventId: `sess-1:util:${i}` }));
+
+      mockFetch.mockResolvedValue({ ok: true, status: 200, statusText: 'OK' });
+
+      await writer.push(rows);
+
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+
+      // Verify batch sizes: 100, 100, 50
+      const batch1Body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const batch2Body = JSON.parse(mockFetch.mock.calls[1][1].body);
+      const batch3Body = JSON.parse(mockFetch.mock.calls[2][1].body);
+
+      expect(batch1Body.resourceLogs[0].scopeLogs[0].logRecords).toHaveLength(100);
+      expect(batch2Body.resourceLogs[0].scopeLogs[0].logRecords).toHaveLength(100);
+      expect(batch3Body.resourceLogs[0].scopeLogs[0].logRecords).toHaveLength(50);
+    });
+
+    it('stops on first batch failure and throws without sending remaining batches', async () => {
+      const writer = new OtlpLogsWriter({
+        otlpEndpoint: 'https://otel.example.com',
+        batchSize: 100,
+      });
+
+      const rows = Array.from({ length: 250 }, (_, i) => ({ ...ROW, EventId: `sess-1:util:${i}` }));
+
+      // First batch succeeds, second fails
+      mockFetch
+        .mockResolvedValueOnce({ ok: true, status: 200, statusText: 'OK' })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+          text: async () => 'Server error',
+        });
+
+      await expect(writer.push(rows)).rejects.toThrow('OTLP push failed (500 Internal Server Error)');
+
+      // Only 2 fetch calls made — third batch was never sent
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns total row count across all batches', async () => {
+      const writer = new OtlpLogsWriter({
+        otlpEndpoint: 'https://otel.example.com',
+        batchSize: 100,
+      });
+
+      const rows = Array.from({ length: 250 }, (_, i) => ({ ...ROW, EventId: `sess-1:util:${i}` }));
+
+      mockFetch.mockResolvedValue({ ok: true, status: 200, statusText: 'OK' });
+
+      const result = await writer.push(rows);
+
+      expect(result).toBe(250);
+    });
+
+    it('uses default batch size of 100', async () => {
+      const writer = new OtlpLogsWriter({
+        otlpEndpoint: 'https://otel.example.com',
+        // no batchSize — should default to 100
+      });
+
+      const rows = Array.from({ length: 150 }, (_, i) => ({ ...ROW, EventId: `sess-1:util:${i}` }));
+
+      mockFetch.mockResolvedValue({ ok: true, status: 200, statusText: 'OK' });
+
+      await writer.push(rows);
+
+      // 150 rows / 100 per batch = 2 batches
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('logs batch progress for each batch', async () => {
+      const writer = new OtlpLogsWriter({
+        otlpEndpoint: 'https://otel.example.com',
+        batchSize: 100,
+      });
+
+      const rows = Array.from({ length: 250 }, (_, i) => ({ ...ROW, EventId: `sess-1:util:${i}` }));
+
+      mockFetch.mockResolvedValue({ ok: true, status: 200, statusText: 'OK' });
+
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await writer.push(rows);
+
+      const progressLogs = consoleSpy.mock.calls.filter(
+        (call) => typeof call[0] === 'string' && call[0].includes('[OtlpLogsWriter]'),
+      );
+
+      expect(progressLogs).toHaveLength(3);
+      expect(progressLogs[0][0]).toContain('Pushing batch 1/3');
+      expect(progressLogs[1][0]).toContain('Pushing batch 2/3');
+      expect(progressLogs[2][0]).toContain('Pushing batch 3/3');
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────
   // Response status code handling
   // ───────────────────────────────────────────────────────────────────────
 
