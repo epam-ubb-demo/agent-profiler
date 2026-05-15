@@ -12,6 +12,8 @@ import type { DailyAnalytics } from '@/components/CombinedAnalyticsChart';
 import { EmptyState } from '@/components/EmptyState';
 import { FolderOpenIcon, SearchIcon } from '@/components/icons';
 import { SettingsPanel } from '@/components/SettingsPanel';
+import { calculateCost, loadPricingTable } from '@agent-profiler/pricing';
+import type { TokenUsage } from '@agent-profiler/pricing';
 
 // ── Adapter display config ────────────────────────────────────────────────────
 
@@ -353,13 +355,19 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
   // Daily analytics for analytics panel — enriched with metrics and per-model token breakdown
   const dailyAnalytics = useMemo((): DailyAnalytics[] => {
+    const pricingTable = loadPricingTable();
     const map = new Map<string, {
       cost: number | null;
       wallTimeMs: number | null;
       inputTokens: number;
       outputTokens: number;
       cacheReadTokens: number;
-      modelTokens: Map<string, number>;
+      modelTokens: Map<string, {
+        inputTokens: number;
+        outputTokens: number;
+        cacheReadTokens: number;
+        cacheWriteTokens: number;
+      }>;
     }>();
     for (const s of filteredSessions) {
       const m = s.metrics;
@@ -371,7 +379,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
           inputTokens: 0,
           outputTokens: 0,
           cacheReadTokens: 0,
-          modelTokens: new Map<string, number>(),
+          modelTokens: new Map(),
         };
         if (m.totalCostUsd != null) prev.cost = (prev.cost ?? 0) + m.totalCostUsd;
         if (m.wallTimeMs != null) prev.wallTimeMs = (prev.wallTimeMs ?? 0) + m.wallTimeMs;
@@ -379,26 +387,51 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
         prev.outputTokens += m.totalOutputTokens;
         prev.cacheReadTokens += m.totalCacheReadTokens;
         for (const mu of m.modelUsage ?? []) {
-          const tokens = mu.inputTokens + mu.outputTokens;
-          prev.modelTokens.set(mu.model, (prev.modelTokens.get(mu.model) ?? 0) + tokens);
+          const existing = prev.modelTokens.get(mu.model) ?? {
+            inputTokens: 0,
+            outputTokens: 0,
+            cacheReadTokens: 0,
+            cacheWriteTokens: 0,
+          };
+          existing.inputTokens += mu.inputTokens;
+          existing.outputTokens += mu.outputTokens;
+          existing.cacheReadTokens += mu.cacheReadTokens;
+          existing.cacheWriteTokens += mu.cacheWriteTokens;
+          prev.modelTokens.set(mu.model, existing);
         }
         map.set(key, prev);
       }
     }
     return Array.from(map.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, d]) => ({
-        date,
-        cost: d.cost,
-        wallTimeMs: d.wallTimeMs,
-        inputTokens: d.inputTokens,
-        outputTokens: d.outputTokens,
-        cacheReadTokens: d.cacheReadTokens,
-        modelBreakdown: Array.from(d.modelTokens.entries()).map(([model, totalTokens]) => ({
-          model,
-          totalTokens,
-        })),
-      }));
+      .map(([date, d]) => {
+        const tokenUsage: TokenUsage = {
+          modelMetrics: Array.from(d.modelTokens.entries()).map(([model, t]) => ({
+            model,
+            inputTokens: t.inputTokens,
+            outputTokens: t.outputTokens,
+            cacheReadTokens: t.cacheReadTokens,
+            cacheWriteTokens: t.cacheWriteTokens,
+          })),
+        };
+        const costBreakdown = d.modelTokens.size > 0 ? calculateCost(tokenUsage, pricingTable) : null;
+        return {
+          date,
+          cost: d.cost,
+          wallTimeMs: d.wallTimeMs,
+          inputTokens: d.inputTokens,
+          outputTokens: d.outputTokens,
+          cacheReadTokens: d.cacheReadTokens,
+          modelBreakdown: Array.from(d.modelTokens.entries()).map(([model, t]) => ({
+            model,
+            totalTokens: t.inputTokens + t.outputTokens,
+            // Use null for models not in the pricing table (cost unknown vs. zero).
+            costUsd: pricingTable[model] != null && costBreakdown != null
+              ? (costBreakdown.perModel[model]?.totalCostUsd ?? null)
+              : null,
+          })),
+        };
+      });
   }, [filteredSessions]);
 
   // Aggregated summary for filtered sessions

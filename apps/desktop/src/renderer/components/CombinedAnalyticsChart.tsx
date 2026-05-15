@@ -19,7 +19,12 @@ export interface DailyAnalytics {
   readonly outputTokens: number;
   readonly cacheReadTokens: number;
   /** Per-model token breakdown for this day */
-  readonly modelBreakdown: ReadonlyArray<{ readonly model: string; readonly totalTokens: number }>;
+  readonly modelBreakdown: ReadonlyArray<{
+    readonly model: string;
+    readonly totalTokens: number;
+    /** Null when the model is not in the pricing table (cost unknown). */
+    readonly costUsd: number | null;
+  }>;
 }
 
 export interface CombinedAnalyticsChartProps {
@@ -559,18 +564,43 @@ function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
           />
           {tooltip.stackOrder.map((modelKey) => {
             let tokens = 0;
+            let costUsd: number | null = null;
             if (modelKey === 'Other') {
               for (const mb of tooltip.item.modelBreakdown) {
-                if (!tooltip.topModelSet.has(mb.model)) tokens += mb.totalTokens;
+                if (!tooltip.topModelSet.has(mb.model)) {
+                  tokens += mb.totalTokens;
+                  if (mb.costUsd != null) costUsd = (costUsd ?? 0) + mb.costUsd;
+                }
               }
             } else {
               for (const mb of tooltip.item.modelBreakdown) {
-                if (mb.model === modelKey) tokens += mb.totalTokens;
+                if (mb.model === modelKey) {
+                  tokens += mb.totalTokens;
+                  if (mb.costUsd != null) costUsd = (costUsd ?? 0) + mb.costUsd;
+                }
               }
             }
             return (
-              <div key={modelKey}>
-                {modelKey}: {formatTk(tokens)} tokens
+              <div
+                key={modelKey}
+                style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: modelKey === 'Other' ? OTHER_COLOUR : modelColour(modelKey),
+                      flexShrink: 0,
+                    }}
+                  />
+                  {modelKey}
+                </span>
+                <span>
+                  {formatTk(tokens)} tk{costUsd != null ? ` · ${formatUsd(costUsd)}` : ''}
+                </span>
               </div>
             );
           })}

@@ -86,12 +86,12 @@ describe('CombinedAnalyticsChart', () => {
           makeDay({
             date: '2024-05-01',
             cost: null,
-            modelBreakdown: [{ model: 'gpt-4o', totalTokens: 1000 }],
+            modelBreakdown: [{ model: 'gpt-4o', totalTokens: 1000, costUsd: null }],
           }),
           makeDay({
             date: '2024-05-02',
             cost: null,
-            modelBreakdown: [{ model: 'gpt-4o', totalTokens: 2000 }],
+            modelBreakdown: [{ model: 'gpt-4o', totalTokens: 2000, costUsd: null }],
           }),
         ]}
       />,
@@ -111,8 +111,8 @@ describe('CombinedAnalyticsChart', () => {
             date: '2024-05-01',
             cost: 0.10,
             modelBreakdown: [
-              { model: 'gpt-4o', totalTokens: 1000 },
-              { model: 'claude-3-5', totalTokens: 500 },
+              { model: 'gpt-4o', totalTokens: 1000, costUsd: 0.025 },
+              { model: 'claude-3-5', totalTokens: 500, costUsd: null },
             ],
           }),
         ]}
@@ -158,8 +158,8 @@ describe('CombinedAnalyticsChart', () => {
             date: '2024-05-01',
             cost: 0.10,
             modelBreakdown: [
-              { model: 'gpt-4o', totalTokens: 1000 },
-              { model: 'claude-opus', totalTokens: 500 },
+              { model: 'gpt-4o', totalTokens: 1000, costUsd: 0.025 },
+              { model: 'claude-opus', totalTokens: 500, costUsd: null },
             ],
           }),
         ]}
@@ -208,7 +208,7 @@ describe('CombinedAnalyticsChart', () => {
           makeDay({
             date: '2024-05-01',
             cost: 0.10,
-            modelBreakdown: [{ model: 'gpt-4o', totalTokens: 1000 }],
+            modelBreakdown: [{ model: 'gpt-4o', totalTokens: 1000, costUsd: 0.025 }],
           }),
         ]}
       />,
@@ -292,5 +292,59 @@ describe('CombinedAnalyticsChart', () => {
     // Chart renders; first segment carries the testid
     expect(screen.getByTestId('combined-analytics-chart')).toBeDefined();
     expect(screen.getByTestId('cost-line')).toBeDefined();
+  });
+
+  // ── Test 16: tooltip shows per-model cost alongside token count ───────────
+  it('shows per-model cost in tooltip when costUsd is provided', async () => {
+    await render(
+      <CombinedAnalyticsChart
+        data={[
+          makeDay({
+            date: '2024-05-01',
+            cost: 0.10,
+            modelBreakdown: [
+              { model: 'gpt-4o', totalTokens: 5000, costUsd: 0.05 },
+              { model: 'unknown-model', totalTokens: 2000, costUsd: null },
+            ],
+          }),
+          makeDay({ date: '2024-05-02', cost: 0.20 }),
+        ]}
+      />,
+    );
+
+    fireEvent.mouseEnter(screen.getByTestId('hit-col-0'));
+
+    const tooltip = screen.getByTestId('chart-tooltip');
+    // Known-cost model: shows token count AND cost
+    expect(tooltip.textContent).toContain('5.0K tk');
+    expect(tooltip.textContent).toContain('$0.050');
+    // Unknown-cost model: shows token count only (no cost)
+    expect(tooltip.textContent).toContain('2.0K tk');
+  });
+
+  // ── Test 17: tooltip omits cost when costUsd is null ──────────────────────
+  it('omits cost suffix in tooltip when costUsd is null', async () => {
+    await render(
+      <CombinedAnalyticsChart
+        data={[
+          makeDay({
+            date: '2024-05-01',
+            cost: 0.10,
+            modelBreakdown: [
+              { model: 'unknown-model', totalTokens: 3000, costUsd: null },
+            ],
+          }),
+          makeDay({ date: '2024-05-02', cost: 0.20 }),
+        ]}
+      />,
+    );
+
+    fireEvent.mouseEnter(screen.getByTestId('hit-col-0'));
+
+    const tooltip = screen.getByTestId('chart-tooltip');
+    expect(tooltip.textContent).toContain('3.0K tk');
+    // Should not show a dollar sign for the model row (only the total cost row)
+    // The total-cost row shows '$0.100'; model row with null costUsd shows no '·'
+    expect(tooltip.textContent).not.toContain('·');
   });
 });
