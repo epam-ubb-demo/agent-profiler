@@ -112,8 +112,7 @@ export function buildEnrichmentRows(
   if (options.categories.toolResults) {
     for (const [index, toolCall] of session.toolCalls.entries()) {
       const timeGenerated = toolCall.startTs ?? session.startTs ?? now;
-      // Forward-compatible: skill fields arrive via PR #359 (feat/ui-enhancements)
-      const tc = toolCall as unknown as Record<string, unknown>;
+      // Skill telemetry fields (added in PR #359)
       rows.push(
         makeRow('tool_result', index, timeGenerated, {
           toolCallId: toolCall.toolCallId,
@@ -127,11 +126,11 @@ export function buildEnrichmentRows(
           turnId: toolCall.turnId,
           eventId: toolCall.eventId,
           argumentsPreview: toolCall.argumentsPreview,
-          ...(tc.skillName != null ? { skillName: tc.skillName } : {}),
-          ...(tc.skillSource != null ? { skillSource: tc.skillSource } : {}),
-          ...(tc.skillContentLength != null ? { skillContentLength: tc.skillContentLength } : {}),
-          ...(tc.skillOutcome != null ? { skillOutcome: tc.skillOutcome } : {}),
-          ...(tc.skillErrorMessage != null ? { skillErrorMessage: tc.skillErrorMessage } : {}),
+          ...(toolCall.skillName != null ? { skillName: toolCall.skillName } : {}),
+          ...(toolCall.skillSource != null ? { skillSource: toolCall.skillSource } : {}),
+          ...(toolCall.skillContentLength != null ? { skillContentLength: toolCall.skillContentLength } : {}),
+          ...(toolCall.skillOutcome != null ? { skillOutcome: toolCall.skillOutcome } : {}),
+          ...(toolCall.skillErrorMessage != null ? { skillErrorMessage: toolCall.skillErrorMessage } : {}),
         }),
       );
     }
