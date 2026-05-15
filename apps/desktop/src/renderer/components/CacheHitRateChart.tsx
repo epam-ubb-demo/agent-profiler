@@ -1,5 +1,5 @@
 import { Text } from '@epam/uui';
-import { memo, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 
 import type { DailyAnalytics, Granularity } from './CombinedAnalyticsChart';
 import { smoothPath } from './svg-path-utils';
@@ -79,11 +79,16 @@ export const CacheHitRateChart = memo(function CacheHitRateChart({
   const n = points.length;
 
   // X positions
-  const xScale = (i: number) =>
-    n === 1 ? chartW / 2 : (i / (n - 1)) * chartW;
+  const xScale = useCallback(
+    (i: number) => (n === 1 ? chartW / 2 : (i / (n - 1)) * chartW),
+    [n, chartW],
+  );
 
   // Y scale: always 0–100%
-  const yScale = (rate: number) => chartH - (rate / 100) * chartH;
+  const yScale = useCallback(
+    (rate: number) => chartH - (rate / 100) * chartH,
+    [chartH],
+  );
 
   // Build smooth path
   const svgPoints = useMemo(() => {
@@ -91,7 +96,7 @@ export const CacheHitRateChart = memo(function CacheHitRateChart({
       x: MARGIN.left + xScale(i),
       y: MARGIN.top + yScale(p.rate),
     }));
-  }, [points, chartW, chartH]);
+  }, [points, xScale, yScale]);
 
   const linePath = useMemo(() => smoothPath(svgPoints), [svgPoints]);
 
@@ -117,7 +122,7 @@ export const CacheHitRateChart = memo(function CacheHitRateChart({
       });
     }
     return labels;
-  }, [n, chartW, points]);
+  }, [n, chartW, points, granularity, xScale]);
 
   // Y-axis gridlines: 0%, 25%, 50%, 75%, 100%
   const yTicks = [0, 25, 50, 75, 100];

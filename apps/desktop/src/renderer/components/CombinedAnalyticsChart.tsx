@@ -69,14 +69,6 @@ function modelColour(model: string): string {
 
 /* ─── Helpers ────────────────────────────────────────────────────────────────── */
 
-function formatShortDate(dateKey: string): string {
-  const [y, m, d] = dateKey.split('-').map(Number);
-  return new Date(y!, m! - 1, d!).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
 function formatBucketLabel(dateKey: string, granularity: Granularity): string {
   const [y, m, d] = dateKey.split('-').map(Number);
   const dt = new Date(y!, m! - 1, d!);
