@@ -1451,5 +1451,58 @@ describe('SessionIndexer', () => {
         scanningStateEvents[scanningStateEvents.length - 1]![1],
       ).toBe(false);
     });
+
+    // Regression test: refresh() must not leave scanning=true forever.
+    //
+    // Before the fix, when refresh() interrupted an in-flight scan the old
+    // scan's finally block skipped resetting scanning=false (generation
+    // mismatch). The new scan then hit the `if (this.scanning) return` guard
+    // and exited immediately, leaving the UI spinner stuck permanently.
+    it('isScanning() returns false after refresh() interrupts an in-flight scan', async () => {
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+
+      // First invocation: block indefinitely so the scan is still in-flight
+      // when refresh() is called.
+      let resolveFirstScan!: (value: SessionListItem[]) => void;
+      vi.mocked(mockManager.listSessions)
+        .mockImplementationOnce(
+          () =>
+            new Promise<SessionListItem[]>((resolve) => {
+              resolveFirstScan = resolve;
+            }),
+        )
+        // Second invocation (triggered by refresh): resolve immediately.
+        .mockResolvedValueOnce([makeSessionListItem({ id: 'session-1' })]);
+
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      // Start the indexer — runBackgroundScan() runs synchronously up to the
+      // first await (listSessions), so scanning=true before start() returns.
+      await indexer.start('/root');
+
+      // Sanity-check: scan is in progress.
+      expect(indexer.isScanning()).toBe(true);
+
+      // Call refresh() while the first scan is still blocked. Do NOT await yet
+      // so we can unblock the first scan independently.
+      const refreshPromise = indexer.refresh();
+
+      // Yield once to let refresh() reach `await this.scanPromise`.
+      await Promise.resolve();
+
+      // Unblock the first scan — it detects stopRequested and exits without
+      // resetting scanning (generation mismatch in the finally block).
+      resolveFirstScan([]);
+
+      // Wait for refresh() to complete (it resets scanning then starts the
+      // new scan) and for the new scan to fully process its batches.
+      await refreshPromise;
+      await flushAllAsync();
+
+      // The key assertion: scanning must be false — not stuck at true.
+      expect(indexer.isScanning()).toBe(false);
+    });
   });
 });

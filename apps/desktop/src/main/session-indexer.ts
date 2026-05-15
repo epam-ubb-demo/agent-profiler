@@ -153,6 +153,12 @@ export class SessionIndexer extends EventEmitter {
         await this.scanPromise;
         this.stopRequested = false;
       }
+      // Reset scanning state that the old scan may not have cleared.
+      // When refresh() interrupts an in-flight scan, the scan's finally block
+      // skips the reset because scanGeneration no longer matches. Without this
+      // line, runBackgroundScan() exits immediately on the `if (this.scanning)`
+      // guard and the spinner stays stuck forever.
+      this.scanning = false;
       void (this.scanPromise = this.runBackgroundScan());
     } catch (err) {
       console.error('[SessionIndexer] refresh() error:', err);
