@@ -1,0 +1,58 @@
+name: Stamp CHANGELOG
+description: >-
+  Move the `## [Unreleased]` section of CHANGELOG.md into a versioned section
+  and emit a release-notes file containing the released section body. Wraps
+  `tooling/release/stamp_changelog.py` so the same script is shared between
+  CI workflows and local development / unit tests.
+
+inputs:
+  version:
+    description: 'Version to stamp (without any tag prefix)'
+    required: true
+  changelog-path:
+    description: 'Path to CHANGELOG.md'
+    required: false
+    default: 'CHANGELOG.md'
+  notes-out:
+    description: 'Path to write the release notes body'
+    required: false
+    default: 'release-notes.md'
+  today:
+    description: 'Override date (ISO 8601). Defaults to today in UTC.'
+    required: false
+    default: ''
+  dry-run:
+    description: 'When true: validate the stamp but do not write files'
+    required: false
+    default: 'false'
+
+outputs:
+  notes-path:
+    description: 'Path to the release notes file (matches `notes-out`)'
+    value: ${{ inputs.notes-out }}
+
+runs:
+  using: composite
+  steps:
+    - name: Stamp CHANGELOG.md
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        CHANGELOG_PATH: ${{ inputs.changelog-path }}
+        NOTES_OUT: ${{ inputs.notes-out }}
+        TODAY: ${{ inputs.today }}
+        DRY_RUN: ${{ inputs.dry-run }}
+      run: |
+        set -euo pipefail
+        args=(
+          --version "$VERSION"
+          --changelog "$CHANGELOG_PATH"
+          --notes-out "$NOTES_OUT"
+        )
+        if [[ -n "$TODAY" ]]; then
+          args+=(--today "$TODAY")
+        fi
+        if [[ "$DRY_RUN" == "true" ]]; then
+          args+=(--dry-run)
+        fi
+        node "${GITHUB_WORKSPACE}/tooling/release/stamp-changelog.mjs" "${args[@]}"

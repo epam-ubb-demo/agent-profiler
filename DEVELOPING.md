@@ -291,3 +291,49 @@ The workflow reads these repository secrets if present and skips signing when th
 - **`'## [<version>]' section already exists`** — The tag was published before; bump the version and tag again.
 - **`prepare` job fails on `git push origin HEAD:main`** — Likely branch protection requires a PR. Either grant the workflow's GH bot direct-push permission or switch the stamp strategy to open a PR.
 - **Missing installer in the Release** — `fail_on_unmatched_files: true` is set; check the corresponding platform job log for build errors.
+
+### Pipeline architecture
+
+The release pipeline is split into three layers so the high-risk parts can be tested without producing real releases:
+
+| Layer | File | Purpose |
+| --- | --- | --- |
+| Unit-tested logic | `tooling/release/stamp-changelog.mjs` (+ `.test.mjs`) | Pure Node ESM that rewrites `CHANGELOG.md`. Run locally with `node --test tooling/release/stamp-changelog.test.mjs`. |
+| Composite action | `.github/actions/stamp-changelog/action.yml` | Wraps the script so any workflow can stamp the CHANGELOG identically. |
+| Reusable workflow | `.github/workflows/release-electron.reusable.yml` | Owns the full build/publish job graph; gated on a `dry-run` input. |
+| Production wrapper | `.github/workflows/release-electron.yml` | Thin: triggers on `@agent-profiler/desktop@*` tags, calls the reusable workflow with `dry-run: false`. |
+| Dry-run wrapper | `.github/workflows/release-electron-dryrun.yml` | Triggers on `workflow_dispatch` and on PRs that touch any pipeline file. Runs the same reusable workflow with `dry-run: true`. |
+
+### Dry-running the pipeline
+
+You can validate the release flow without cutting a real release, on any branch:
+
+**Manual (any branch):**
+
+```bash
+gh workflow run release-electron-dryrun.yml \
+  -f version=0.0.0-dryrun.$(date +%s) \
+  -f platforms=linux
+```
+
+This runs the unit tests, the CHANGELOG stamp (uploaded as the `changelog-dryrun` artifact instead of committed to `main`), and the requested platform builds end-to-end — but skips the GitHub Release publication.
+
+**Automatic (on PRs):** The dry-run workflow auto-triggers when a PR touches any of:
+
+- `.github/workflows/release-electron*.yml`
+- `.github/actions/stamp-changelog/**`
+- `tooling/release/**`
+- `apps/desktop/electron-builder.config.ts` or `apps/desktop/package.json`
+
+PR dry-runs default to `platforms=linux` to keep runner-minute usage proportionate; trigger a manual dispatch when you need to validate macOS or Windows packaging on a branch.
+
+**Local sanity check:** the stamp script can be exercised offline against any CHANGELOG copy:
+
+```bash
+cp CHANGELOG.md /tmp/CHANGELOG.test.md
+node tooling/release/stamp-changelog.mjs \
+  --version 9.9.9 \
+  --changelog /tmp/CHANGELOG.test.md \
+  --notes-out /tmp/notes.md
+diff CHANGELOG.md /tmp/CHANGELOG.test.md
+```

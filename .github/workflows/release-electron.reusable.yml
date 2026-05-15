@@ -1,0 +1,300 @@
+name: Release Electron App (reusable)
+
+# Reusable workflow that does the real work of building and publishing the
+# desktop installers. Called from:
+#
+#   * release-electron.yml         (push tag → dry-run = false, full pipeline)
+#   * release-electron-dryrun.yml  (manual / PR-on-touch → dry-run = true)
+#
+# In dry-run mode:
+#   * the stamped CHANGELOG is uploaded as an artifact instead of being
+#     committed back to main;
+#   * platform builds still run end-to-end (including electron-builder
+#     packaging) so build/config regressions are caught;
+#   * no GitHub Release is created, no auto-update manifests are published;
+#   * the matrix is restricted via the `platforms` input so PR-on-touch
+#     validation can run on a single OS to keep runner minutes low.
+
+on:
+  workflow_call:
+    inputs:
+      tag-name:
+        description: >-
+          Full tag name. Production: `@agent-profiler/desktop@X.Y.Z`.
+          Dry-run: any string; only the suffix after the last `@` is treated
+          as the version, e.g. `dryrun@0.0.0-dryrun.123`.
+        required: true
+        type: string
+      dry-run:
+        description: 'When true: skip CHANGELOG commit and Release publish'
+        required: false
+        default: false
+        type: boolean
+      platforms:
+        description: 'Comma-separated subset of: macos,windows,linux'
+        required: false
+        default: 'macos,windows,linux'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.derive.outputs.version }}
+      prerelease: ${{ steps.derive.outputs.prerelease }}
+      run-macos: ${{ steps.derive.outputs.run-macos }}
+      run-windows: ${{ steps.derive.outputs.run-windows }}
+      run-linux: ${{ steps.derive.outputs.run-linux }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # For real releases we check out main so the CHANGELOG commit can be
+          # pushed there. For dry-runs the calling event's ref is fine because
+          # we never push anywhere.
+          ref: ${{ inputs.dry-run && github.ref || 'main' }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive version, prerelease flag and platform matrix
+        id: derive
+        env:
+          TAG_NAME: ${{ inputs.tag-name }}
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          set -euo pipefail
+          # Version is everything after the last `@`. Works for both the
+          # `@agent-profiler/desktop@X.Y.Z` production tag and arbitrary
+          # dry-run inputs like `dryrun@0.0.0-dryrun.123`.
+          version="${TAG_NAME##*@}"
+          if [[ -z "$version" ]]; then
+            echo "::error::Could not derive version from tag '${TAG_NAME}'"
+            exit 1
+          fi
+          if [[ "$version" == *-* ]]; then
+            prerelease=true
+          else
+            prerelease=false
+          fi
+          {
+            echo "version=${version}"
+            echo "prerelease=${prerelease}"
+            for plat in macos windows linux; do
+              if [[ ",${PLATFORMS}," == *",${plat},"* ]]; then
+                echo "run-${plat}=true"
+              else
+                echo "run-${plat}=false"
+              fi
+            done
+          } >> "$GITHUB_OUTPUT"
+          echo "Releasing version: ${version} (prerelease=${prerelease}, platforms=${PLATFORMS})"
+
+      - name: Stamp CHANGELOG.md
+        uses: ./.github/actions/stamp-changelog
+        with:
+          version: ${{ steps.derive.outputs.version }}
+
+      - name: Upload release notes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload stamped CHANGELOG (dry-run only)
+        if: ${{ inputs.dry-run }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog-dryrun
+          path: CHANGELOG.md
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Commit CHANGELOG bump back to main
+        if: ${{ !inputs.dry-run }}
+        env:
+          VERSION: ${{ steps.derive.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md
+          if git diff --cached --quiet; then
+            echo "::warning::CHANGELOG.md unchanged after stamp step — skipping commit."
+            exit 0
+          fi
+          git commit -m "chore(release): @agent-profiler/desktop@${VERSION} [skip ci]"
+          git push origin HEAD:main
+
+  build-macos:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.run-macos == 'true' }}
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agent-profiler/desktop run build
+      - name: Build macOS installers
+        run: pnpm --filter @agent-profiler/desktop run dist:mac
+        env:
+          # In dry-run we deliberately leave signing env empty so the build
+          # exercises the unsigned path and does not require secrets.
+          CSC_LINK: ${{ inputs.dry-run && '' || secrets.MAC_CERT_P12 }}
+          CSC_KEY_PASSWORD: ${{ inputs.dry-run && '' || secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ inputs.dry-run && '' || secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ inputs.dry-run && '' || secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ inputs.dry-run && '' || secrets.APPLE_TEAM_ID }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-macos
+          path: |
+            apps/desktop/dist-release/*.dmg
+            apps/desktop/dist-release/*.dmg.blockmap
+            apps/desktop/dist-release/latest-mac.yml
+          if-no-files-found: error
+
+  build-windows:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.run-windows == 'true' }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agent-profiler/desktop run build
+      - name: Build Windows installers
+        run: pnpm --filter @agent-profiler/desktop run dist:win
+        env:
+          CSC_LINK: ${{ inputs.dry-run && '' || secrets.WIN_CERT_P12 }}
+          CSC_KEY_PASSWORD: ${{ inputs.dry-run && '' || secrets.WIN_CERT_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-windows
+          path: |
+            apps/desktop/dist-release/*.exe
+            apps/desktop/dist-release/*.exe.blockmap
+            apps/desktop/dist-release/latest.yml
+          if-no-files-found: error
+
+  build-linux:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.run-linux == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agent-profiler/desktop run build
+      - name: Build Linux installers
+        run: pnpm --filter @agent-profiler/desktop run dist:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-linux
+          path: |
+            apps/desktop/dist-release/*.AppImage
+            apps/desktop/dist-release/*.deb
+            apps/desktop/dist-release/latest-linux.yml
+          if-no-files-found: error
+
+  publish:
+    needs: [prepare, build-macos, build-windows, build-linux]
+    # Run when prepare succeeded and all requested builds succeeded.
+    # `always()` lets us check the per-platform results explicitly so that
+    # skipped platforms (in dry-run with a reduced matrix) do not block.
+    if: |
+      always() &&
+      !inputs.dry-run &&
+      needs.prepare.result == 'success' &&
+      (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
+      (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped') &&
+      (needs.build-linux.result == 'success' || needs.build-linux.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all installer artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          find artifacts -type f \
+            \( -name '*.dmg' -o -name '*.dmg.blockmap' \
+            -o -name '*.exe' -o -name '*.exe.blockmap' \
+            -o -name '*.AppImage' -o -name '*.deb' \
+            -o -name 'latest*.yml' \) \
+            -exec cp -v {} release-assets/ \;
+          cp artifacts/release-notes/release-notes.md .
+          echo "--- Release assets ---"
+          ls -la release-assets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag-name }}
+          name: Agent Profiler v${{ needs.prepare.outputs.version }}
+          body_path: release-notes.md
+          prerelease: ${{ needs.prepare.outputs.prerelease == 'true' }}
+          fail_on_unmatched_files: true
+          files: |
+            release-assets/*.dmg
+            release-assets/*.dmg.blockmap
+            release-assets/*.exe
+            release-assets/*.exe.blockmap
+            release-assets/*.AppImage
+            release-assets/*.deb
+            release-assets/latest*.yml
+
+  dry-run-summary:
+    needs: [prepare, build-macos, build-windows, build-linux]
+    if: ${{ always() && inputs.dry-run }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Summarise dry-run
+        run: |
+          set -euo pipefail
+          {
+            echo "## Dry-run summary"
+            echo ""
+            echo "* Derived version: \`${{ needs.prepare.outputs.version }}\`"
+            echo "* Pre-release flag: \`${{ needs.prepare.outputs.prerelease }}\`"
+            echo "* Platforms requested: \`${{ inputs.platforms }}\`"
+            echo ""
+            echo "### Build job results"
+            echo "* macOS: \`${{ needs.build-macos.result }}\`"
+            echo "* Windows: \`${{ needs.build-windows.result }}\`"
+            echo "* Linux: \`${{ needs.build-linux.result }}\`"
+            echo ""
+            echo "### Artifacts collected"
+            find artifacts -type f | sort | sed 's|^|* `|; s|$|`|'
+          } >> "$GITHUB_STEP_SUMMARY"
