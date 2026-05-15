@@ -641,6 +641,7 @@ function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
       >
         {legendItems.map(({ key, label, colour }) => (
           <button
+            type="button"
             key={key}
             aria-pressed={!hiddenSeries.has(key)}
             onClick={() => toggleSeries(key)}

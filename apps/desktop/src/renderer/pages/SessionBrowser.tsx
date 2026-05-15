@@ -1,3 +1,5 @@
+import { calculateCost, DEFAULT_PRICING_TABLE } from '@agent-profiler/pricing';
+import type { TokenUsage } from '@agent-profiler/pricing';
 import { Badge, Button, FlexRow, FlexSpacer, Panel, PickerInput, RangeDatePicker, Spinner, Text, TextInput, Tooltip } from '@epam/uui';
 import { useArrayDataSource } from '@epam/uui-core';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, DollarSign, Recycle } from 'lucide-react';
@@ -12,8 +14,6 @@ import type { DailyAnalytics } from '@/components/CombinedAnalyticsChart';
 import { EmptyState } from '@/components/EmptyState';
 import { FolderOpenIcon, SearchIcon } from '@/components/icons';
 import { SettingsPanel } from '@/components/SettingsPanel';
-import { calculateCost, DEFAULT_PRICING_TABLE } from '@agent-profiler/pricing';
-import type { TokenUsage } from '@agent-profiler/pricing';
 
 // ── Adapter display config ────────────────────────────────────────────────────
 

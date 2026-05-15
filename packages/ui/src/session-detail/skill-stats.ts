@@ -84,8 +84,10 @@ export function computeSkillStats(session: Session): SkillStatsResult {
       callCount: number;
       sourceCounts: Map<string, number>;
       outcomeCounts: Map<string, number>;
-      contentLengths: number[];
-      durations: number[];
+      contentLengthSum: number;
+      contentLengthCount: number;
+      durationSum: number;
+      durationCount: number;
       lastErrorMessage: string | null;
     }
   >();
@@ -118,16 +120,18 @@ export function computeSkillStats(session: Session): SkillStatsResult {
         callCount: 1,
         sourceCounts: new Map(src ? [[src, 1]] : []),
         outcomeCounts: new Map([[outcome, 1]]),
-        contentLengths: tc.skillContentLength != null ? [tc.skillContentLength] : [],
-        durations: tc.durationMs != null ? [tc.durationMs] : [],
+        contentLengthSum: tc.skillContentLength ?? 0,
+        contentLengthCount: tc.skillContentLength != null ? 1 : 0,
+        durationSum: tc.durationMs ?? 0,
+        durationCount: tc.durationMs != null ? 1 : 0,
         lastErrorMessage: outcome === 'read_error' ? (tc.skillErrorMessage ?? null) : null,
       });
     } else {
       entry.callCount++;
       if (src) entry.sourceCounts.set(src, (entry.sourceCounts.get(src) ?? 0) + 1);
       entry.outcomeCounts.set(outcome, (entry.outcomeCounts.get(outcome) ?? 0) + 1);
-      if (tc.skillContentLength != null) entry.contentLengths.push(tc.skillContentLength);
-      if (tc.durationMs != null) entry.durations.push(tc.durationMs);
+      if (tc.skillContentLength != null) { entry.contentLengthSum += tc.skillContentLength; entry.contentLengthCount++; }
+      if (tc.durationMs != null) { entry.durationSum += tc.durationMs; entry.durationCount++; }
       if (outcome === 'read_error' && tc.skillErrorMessage) {
         entry.lastErrorMessage = tc.skillErrorMessage;
       }
@@ -154,12 +158,12 @@ export function computeSkillStats(session: Session): SkillStatsResult {
     }
 
     const avgContentLength =
-      entry.contentLengths.length > 0
-        ? Math.round(entry.contentLengths.reduce((s, v) => s + v, 0) / entry.contentLengths.length)
+      entry.contentLengthCount > 0
+        ? Math.round(entry.contentLengthSum / entry.contentLengthCount)
         : null;
-    const totalDurationMs = entry.durations.reduce((s, v) => s + v, 0);
+    const totalDurationMs = entry.durationSum;
     const avgDurationMs =
-      entry.durations.length > 0 ? Math.round(totalDurationMs / entry.durations.length) : null;
+      entry.durationCount > 0 ? Math.round(totalDurationMs / entry.durationCount) : null;
 
     const rowBase = {
       skillName,

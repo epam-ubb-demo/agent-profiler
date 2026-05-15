@@ -102,7 +102,7 @@ function TabSkillsInner({ skillStats }: TabSkillsProps) {
   const { state: tooltipState, handlers: tooltip, tooltipRef } = useTimelineTooltip();
   const { filteredData, filterText, setFilterText } = useFilterableData(
     skillStats.rows,
-    FILTER_KEYS as unknown as string[],
+    FILTER_KEYS,
   );
   const { sortedData, requestSort, getSortDirection } = useSortableData(filteredData, DEFAULT_SORT);
 
@@ -289,7 +289,7 @@ function TabSkillsInner({ skillStats }: TabSkillsProps) {
                   {row.outcome === 'read_error' ? (
                     <span
                       style={{ color: outcomeColour(row.outcome), cursor: 'help' }}
-                      onMouseEnter={(e) => tooltip.show({ header: 'Read Error', rows: [{ key: 'Error', value: row.skillErrorMessage ?? '' }] }, e)}
+                      onMouseEnter={(e) => tooltip.show({ header: 'Read Error', rows: [{ key: 'Error', value: row.skillErrorMessage ?? 'No details available' }] }, e)}
                       onMouseMove={tooltip.move}
                       onMouseLeave={tooltip.hide}
                     >
