@@ -12,7 +12,7 @@ import type { DailyAnalytics } from '@/components/CombinedAnalyticsChart';
 import { EmptyState } from '@/components/EmptyState';
 import { FolderOpenIcon, SearchIcon } from '@/components/icons';
 import { SettingsPanel } from '@/components/SettingsPanel';
-import { calculateCost, loadPricingTable } from '@agent-profiler/pricing';
+import { calculateCost, DEFAULT_PRICING_TABLE } from '@agent-profiler/pricing';
 import type { TokenUsage } from '@agent-profiler/pricing';
 
 // ── Adapter display config ────────────────────────────────────────────────────
@@ -355,7 +355,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
   // Daily analytics for analytics panel — enriched with metrics and per-model token breakdown
   const dailyAnalytics = useMemo((): DailyAnalytics[] => {
-    const pricingTable = loadPricingTable();
+    const pricingTable = DEFAULT_PRICING_TABLE;
     const map = new Map<string, {
       cost: number | null;
       wallTimeMs: number | null;
