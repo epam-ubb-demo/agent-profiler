@@ -11,6 +11,9 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 - New local-to-remote enrichment sync for Copilot CLI sessions, pushing local-only data to a remote Azure Log Analytics workspace via Azure Logs Ingestion so remote viewers can see complete session context.
 - Desktop settings UI for sync controls, including manual sync, auto-sync, category toggles, and Azure endpoint configuration.
 - New `@azure/monitor-ingestion` dependency to support Logs Ingestion API uploads.
+- **Turn enrichment category** — sessions synced to Azure now include turn-level data (user messages, tool call references, timestamps), enabling the Interactions timeline and per-turn context window views for remote sessions.
+- **Assistant message enrichment category** — per-message token data (input/output tokens, cache read/write, model) is now synced, enabling cache metrics and token attribution in remote sessions.
+- **Tool stats fallback** — the Tools view now shows call frequency and tool inventory for remote sessions even when per-turn token attribution data is unavailable.
 
 ### Changed
 
@@ -54,5 +57,7 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 - During initial session indexing, the app now shows a "Scanning sessions…" indicator instead of incorrectly displaying "No sessions found".
 - Event parser now handles the current Copilot CLI shutdown format where `modelMetrics` uses nested `usage` and `requests` sub-objects. Both the legacy flat format and the current nested format are supported transparently. Premium request cost units are now extracted from `requests.cost`.
 - **Desktop**: Prevented duplicate Electron instances via single-instance lock and added EIO/EPIPE pipe error guard to avoid crash dialogs from orphaned processes.
+- **OTLP batch data loss** — fixed silent data loss where 95% of synced data was dropped by the OTel collector due to oversized payloads; data is now batched into 100-row chunks.
+- **KQL column name mismatches** — fixed all KQL queries to use Log Analytics API column names (PascalCase) instead of Application Insights portal aliases.
 
 See individual package changelogs for details.
