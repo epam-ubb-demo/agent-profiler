@@ -49,7 +49,7 @@ interface DiskCache {
 
 export class SessionIndexer extends EventEmitter {
   private readonly manager: DataSourceManager;
-  /** In-memory index keyed by session ID. */
+  /** In-memory index keyed by composite key `"${id}:${adapter}"`. */
   private index = new Map<string, SessionListItemIpc>();
   private currentRootDir = '';
   private scanning = false;
@@ -67,6 +67,17 @@ export class SessionIndexer extends EventEmitter {
   constructor(manager: DataSourceManager) {
     super();
     this.manager = manager;
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Returns the composite Map key for an index entry.
+   * Using `"${id}:${adapter}"` ensures local and remote versions of the same
+   * session coexist in the index (they share an ID but differ by adapter).
+   */
+  private static indexKey(id: string, adapter: string): string {
+    return `${id}:${adapter}`;
   }
 
   // ── Public API ─────────────────────────────────────────────────────────────
@@ -88,7 +99,7 @@ export class SessionIndexer extends EventEmitter {
       const cached = await this.loadDiskCache(rootDir);
       if (cached.length > 0) {
         for (const item of cached) {
-          this.index.set(item.id, item);
+          this.index.set(SessionIndexer.indexKey(item.id, item.adapter), item);
         }
         this.emitUpdated();
       }
@@ -299,9 +310,10 @@ export class SessionIndexer extends EventEmitter {
       const sessionItem = items.find((item) => item.id === sessionId);
 
       if (!sessionItem) {
-        // Session folder was removed
-        this.index.delete(sessionId);
-      } else if (!this.index.has(sessionId)) {
+        // Session folder was removed — only remove the local (copilot-cli) entry;
+        // the fs watcher only observes local files.
+        this.index.delete(SessionIndexer.indexKey(sessionId, 'copilot-cli'));
+      } else if (!this.index.has(SessionIndexer.indexKey(sessionId, 'copilot-cli'))) {
         // New session folder appeared — index it
         try {
           let metrics: SessionListItemIpc['metrics'] = null;
@@ -318,7 +330,7 @@ export class SessionIndexer extends EventEmitter {
             adapter: sessionItem.adapter,
             metrics,
           });
-          this.index.set(ipcItem.id, ipcItem);
+          this.index.set(SessionIndexer.indexKey(ipcItem.id, ipcItem.adapter), ipcItem);
         } catch (itemErr) {
           console.warn(
             `[SessionIndexer] handleRenameEvent: failed to index session "${sessionId}":`,
@@ -345,9 +357,10 @@ export class SessionIndexer extends EventEmitter {
       if (this.scanGeneration !== myGeneration || this.stopRequested) return;
 
       if (!session) {
-        this.index.delete(sessionId);
+        // Session file was removed — only remove the local (copilot-cli) entry.
+        this.index.delete(SessionIndexer.indexKey(sessionId, 'copilot-cli'));
       } else {
-        const existing = this.index.get(sessionId);
+        const existing = this.index.get(SessionIndexer.indexKey(sessionId, 'copilot-cli'));
         if (existing) {
           // Session is already indexed — update its metrics in place
           try {
@@ -360,7 +373,7 @@ export class SessionIndexer extends EventEmitter {
               adapter: existing.adapter,
               metrics,
             });
-            this.index.set(ipcItem.id, ipcItem);
+            this.index.set(SessionIndexer.indexKey(ipcItem.id, ipcItem.adapter), ipcItem);
           } catch (itemErr) {
             console.warn(
               `[SessionIndexer] handleChangeEvent: failed to re-index session "${sessionId}":`,
@@ -384,7 +397,7 @@ export class SessionIndexer extends EventEmitter {
                 adapter: sessionItem.adapter,
                 metrics,
               });
-              this.index.set(ipcItem.id, ipcItem);
+              this.index.set(SessionIndexer.indexKey(ipcItem.id, ipcItem.adapter), ipcItem);
             }
             // If not found in listSessions(), skip — background scan will catch it
           } catch (itemErr) {
@@ -455,7 +468,7 @@ export class SessionIndexer extends EventEmitter {
                       adapter: item.adapter,
                       metrics,
                     });
-                    this.index.set(ipcItem.id, ipcItem);
+                    this.index.set(SessionIndexer.indexKey(ipcItem.id, ipcItem.adapter), ipcItem);
                   } catch (itemErr) {
                     console.warn(
                       `[SessionIndexer] Failed to index session "${item.id}":`,

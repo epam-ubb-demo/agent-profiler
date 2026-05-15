@@ -266,9 +266,47 @@ describe('SessionIndexer', () => {
       expect(list[0]?.id).toBe('session-1');
       expect(list[0]?.createdAt).toBe('2024-12-01T10:00:00.000Z');
     });
-  });
 
-  // ── Test 4: setRootDir clears and rescans ───────────────────────────────────
+    it('indexes both local and remote versions of the same session ID', async () => {
+      // Simulates the real scenario: 175 sessions exist in both sources with
+      // the same UUID.  Before the composite-key fix the remote item (processed
+      // second) overwrote the local one because both used the same Map key.
+      const sharedId = 'shared-session-uuid';
+      const localItem = makeSessionListItem({
+        id: sharedId,
+        name: 'Shared Session (local)',
+        path: `/local/${sharedId}`,
+        createdAt: new Date('2024-12-01T10:00:00Z'),
+        adapter: 'copilot-cli',
+      });
+      const remoteItem = makeSessionListItem({
+        id: sharedId,
+        name: 'Shared Session (remote)',
+        path: `ai://insights/${sharedId}`,
+        createdAt: new Date('2024-12-01T10:00:00Z'),
+        adapter: 'application-insights',
+      });
+
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      // Return local first, then remote — matches the real DataSourceManager order
+      vi.mocked(mockManager.listSessions).mockResolvedValue([localItem, remoteItem]);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      await indexer.start('/root');
+      await flushAllAsync();
+
+      const list = indexer.getSessionList();
+      // Both entries must survive — composite key prevents overwrite
+      expect(list).toHaveLength(2);
+      const adapters = list.map((item) => item.adapter);
+      expect(adapters).toContain('copilot-cli');
+      expect(adapters).toContain('application-insights');
+      // Both share the same logical session ID
+      expect(list.every((item) => item.id === sharedId)).toBe(true);
+    });
+  });
 
   describe('setRootDir', () => {
     it('clears old index when changing directory', async () => {
@@ -881,7 +919,7 @@ describe('SessionIndexer', () => {
 
       // Manually seed the index with an existing item
       // (simulate it was already indexed by the background scan)
-      indexer['index'].set('session-abc', existingItem);
+      indexer['index'].set('session-abc:copilot-cli', existingItem);
 
       // Capture the watch callback
       const watchCallback = mockNodeFs.watch.mock.calls[0]?.[2] as (
@@ -919,7 +957,7 @@ describe('SessionIndexer', () => {
 
       // Seed the index
       indexer['index'].set(
-        'session-abc',
+        'session-abc:copilot-cli',
         makeSessionListItemIpc({ id: 'session-abc', metrics: null }),
       );
 
@@ -956,7 +994,7 @@ describe('SessionIndexer', () => {
 
       // Seed the index
       indexer['index'].set(
-        'session-gone',
+        'session-gone:copilot-cli',
         makeSessionListItemIpc({ id: 'session-gone', metrics: null }),
       );
       expect(indexer.getSessionList()).toHaveLength(1);
@@ -986,7 +1024,7 @@ describe('SessionIndexer', () => {
 
       // Seed the index with the session that will be "deleted"
       indexer['index'].set(
-        'session-deleted',
+        'session-deleted:copilot-cli',
         makeSessionListItemIpc({ id: 'session-deleted', metrics: null }),
       );
       expect(indexer.getSessionList()).toHaveLength(1);
@@ -1057,7 +1095,7 @@ describe('SessionIndexer', () => {
 
       // Seed the index directly (skip background scan)
       indexer['index'].set(
-        'session-existing',
+        'session-existing:copilot-cli',
         makeSessionListItemIpc({ id: 'session-existing', metrics: null }),
       );
 
@@ -1148,7 +1186,7 @@ describe('SessionIndexer', () => {
       await indexer.start('/root');
 
       indexer['index'].set(
-        'session-win',
+        'session-win:copilot-cli',
         makeSessionListItemIpc({ id: 'session-win', metrics: null }),
       );
 
