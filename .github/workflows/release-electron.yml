@@ -1,0 +1,257 @@
+name: Release Electron App
+
+# Triggered when a release tag for the desktop app is pushed to main.
+# Tag format: @agent-profiler/desktop@X.Y.Z  (matches the npm workspace name).
+on:
+  push:
+    tags:
+      - '@agent-profiler/desktop@*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-electron-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # prepare: stamp CHANGELOG, push back to main, extract release-notes body.
+  # Single source of truth for version + release-notes used by downstream jobs.
+  # ─────────────────────────────────────────────────────────────────────────
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.derive.outputs.version }}
+      prerelease: ${{ steps.derive.outputs.prerelease }}
+    steps:
+      - name: Checkout main (full history)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive version and prerelease flag from tag
+        id: derive
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#@agent-profiler/desktop@}"
+          if [[ -z "$version" || "$version" == "$tag" ]]; then
+            echo "::error::Tag '${tag}' does not match @agent-profiler/desktop@X.Y.Z"
+            exit 1
+          fi
+          # SemVer pre-release detection: a '-' after the version core means prerelease.
+          if [[ "$version" == *-* ]]; then
+            prerelease=true
+          else
+            prerelease=false
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${prerelease}" >> "$GITHUB_OUTPUT"
+          echo "Releasing version: ${version} (prerelease=${prerelease})"
+
+      - name: Stamp CHANGELOG.md and extract release notes
+        id: stamp
+        env:
+          VERSION: ${{ steps.derive.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re, sys, pathlib, datetime
+
+          version = os.environ["VERSION"]
+          today   = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+          path    = pathlib.Path("CHANGELOG.md")
+          text    = path.read_text(encoding="utf-8")
+
+          unreleased_re = re.compile(r"^## \[Unreleased\]\s*$", re.M)
+          version_re    = re.compile(rf"^## \[{re.escape(version)}\]", re.M)
+
+          if not unreleased_re.search(text):
+              sys.exit("ERROR: '## [Unreleased]' heading not found in CHANGELOG.md")
+          if version_re.search(text):
+              sys.exit(f"ERROR: '## [{version}]' section already exists in CHANGELOG.md")
+
+          # Locate the [Unreleased] heading and the next '## [' heading (or EOF).
+          unreleased_match = unreleased_re.search(text)
+          start = unreleased_match.end()
+          next_heading = re.search(r"^## \[", text[start:], re.M)
+          end = start + next_heading.start() if next_heading else len(text)
+
+          unreleased_body = text[start:end].strip("\n")
+
+          empty_scaffold = (
+              "## [Unreleased]\n\n"
+              "### Added\n\n"
+              "### Changed\n\n"
+              "### Fixed\n\n"
+          )
+          released_block = f"## [{version}] - {today}\n\n{unreleased_body}\n\n"
+
+          new_text = text[:unreleased_match.start()] + empty_scaffold + released_block + text[end:]
+          # Tidy: collapse 3+ blank lines into 2.
+          new_text = re.sub(r"\n{3,}", "\n\n", new_text)
+          path.write_text(new_text, encoding="utf-8")
+
+          # Emit release notes (just the released section's body) for the publish job.
+          pathlib.Path("release-notes.md").write_text(unreleased_body + "\n", encoding="utf-8")
+          print(f"Stamped CHANGELOG.md with [{version}] - {today}")
+          PY
+
+      - name: Upload release notes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Commit CHANGELOG bump back to main
+        env:
+          VERSION: ${{ steps.derive.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md
+          if git diff --cached --quiet; then
+            echo "::warning::CHANGELOG.md unchanged after stamp step — skipping commit."
+            exit 0
+          fi
+          git commit -m "chore(release): @agent-profiler/desktop@${VERSION} [skip ci]"
+          git push origin HEAD:main
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Platform builds (run from the tag, not from the bumped main, so the
+  # source tree exactly matches what was tagged).
+  # ─────────────────────────────────────────────────────────────────────────
+  build-macos:
+    needs: prepare
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agent-profiler/desktop run build
+      - name: Build macOS installers
+        run: pnpm --filter @agent-profiler/desktop run dist:mac
+        env:
+          CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-macos
+          path: |
+            apps/desktop/dist-release/*.dmg
+            apps/desktop/dist-release/*.dmg.blockmap
+            apps/desktop/dist-release/latest-mac.yml
+          if-no-files-found: error
+
+  build-windows:
+    needs: prepare
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agent-profiler/desktop run build
+      - name: Build Windows installers
+        run: pnpm --filter @agent-profiler/desktop run dist:win
+        env:
+          CSC_LINK: ${{ secrets.WIN_CERT_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-windows
+          path: |
+            apps/desktop/dist-release/*.exe
+            apps/desktop/dist-release/*.exe.blockmap
+            apps/desktop/dist-release/latest.yml
+          if-no-files-found: error
+
+  build-linux:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agent-profiler/desktop run build
+      - name: Build Linux installers
+        run: pnpm --filter @agent-profiler/desktop run dist:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-linux
+          path: |
+            apps/desktop/dist-release/*.AppImage
+            apps/desktop/dist-release/*.deb
+            apps/desktop/dist-release/latest-linux.yml
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # publish: gather all installers + release notes, create GitHub Release.
+  # ─────────────────────────────────────────────────────────────────────────
+  publish:
+    needs: [prepare, build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all installer artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          find artifacts -type f \
+            \( -name '*.dmg' -o -name '*.dmg.blockmap' \
+            -o -name '*.exe' -o -name '*.exe.blockmap' \
+            -o -name '*.AppImage' -o -name '*.deb' \
+            -o -name 'latest*.yml' \) \
+            -exec cp -v {} release-assets/ \;
+          cp artifacts/release-notes/release-notes.md .
+          echo "--- Release assets ---"
+          ls -la release-assets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Agent Profiler v${{ needs.prepare.outputs.version }}
+          body_path: release-notes.md
+          prerelease: ${{ needs.prepare.outputs.prerelease == 'true' }}
+          fail_on_unmatched_files: true
+          files: |
+            release-assets/*.dmg
+            release-assets/*.dmg.blockmap
+            release-assets/*.exe
+            release-assets/*.exe.blockmap
+            release-assets/*.AppImage
+            release-assets/*.deb
+            release-assets/latest*.yml

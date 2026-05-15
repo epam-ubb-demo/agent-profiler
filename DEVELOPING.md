@@ -234,3 +234,60 @@ When the Copilot CLI changes its event format again:
    ```bash
    pnpm --filter @agent-profiler/adapters-copilot-cli test
    ```
+
+## Release Pipeline (Electron Desktop)
+
+The `.github/workflows/release-electron.yml` workflow builds signed (when secrets are configured) Electron installers for macOS, Windows and Linux, then publishes them to a GitHub Release.
+
+### Trigger
+
+The workflow runs on any tag pushed to `main` matching the pattern:
+
+```
+@agent-profiler/desktop@<version>
+```
+
+For example:
+
+- `@agent-profiler/desktop@0.1.0` — stable release.
+- `@agent-profiler/desktop@0.1.0-rc.1` — pre-release (detected from the SemVer dash, marked as such on GitHub Releases).
+
+### Cutting a release
+
+1. From an up-to-date `main`, edit `apps/desktop/package.json` and bump `version` to the target SemVer.
+2. Make sure `CHANGELOG.md` has a `## [Unreleased]` section listing the user-visible changes for this release (the workflow refuses to run if it is missing or empty).
+3. Commit the version bump on `main` (PR is fine, just merge first).
+4. Tag and push:
+
+   ```bash
+   git checkout main && git pull
+   git tag '@agent-profiler/desktop@0.1.0'
+   git push origin '@agent-profiler/desktop@0.1.0'
+   ```
+
+5. Watch the workflow under **Actions → Release Electron App**. The `prepare` job stamps the CHANGELOG (renaming `[Unreleased]` → `[<version>] - <UTC date>`, scaffolding a new empty `[Unreleased]`) and commits the result back to `main` with `[skip ci]`.
+
+### What gets published
+
+- macOS: `.dmg` (x64 + arm64) and `latest-mac.yml` for auto-update.
+- Windows: NSIS `.exe` (x64) and `latest.yml`.
+- Linux: `.AppImage` and `.deb` (x64) and `latest-linux.yml`.
+- All `.blockmap` side-cars so electron-updater can do delta updates.
+- Release notes body is the content of the `[Unreleased]` section captured at stamp time.
+
+### Code signing (optional)
+
+The workflow reads these repository secrets if present and skips signing when they are not:
+
+| Secret | Used by |
+| --- | --- |
+| `MAC_CERT_P12`, `MAC_CERT_PASSWORD` | macOS code signing (`CSC_LINK` / `CSC_KEY_PASSWORD`) |
+| `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID` | macOS notarisation (only used once `notarize: true` is flipped in `electron-builder.config.ts`) |
+| `WIN_CERT_P12`, `WIN_CERT_PASSWORD` | Windows code signing |
+
+### Troubleshooting
+
+- **`'## [Unreleased]' heading not found`** — Restore the heading at the top of `CHANGELOG.md` and re-tag.
+- **`'## [<version>]' section already exists`** — The tag was published before; bump the version and tag again.
+- **`prepare` job fails on `git push origin HEAD:main`** — Likely branch protection requires a PR. Either grant the workflow's GH bot direct-push permission or switch the stamp strategy to open a PR.
+- **Missing installer in the Release** — `fail_on_unmatched_files: true` is set; check the corresponding platform job log for build errors.
