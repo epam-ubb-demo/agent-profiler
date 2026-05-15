@@ -15,6 +15,11 @@ const config: Configuration = {
   },
   files: ['out/**/*', 'package.json'],
 
+  // Use productName, not the scoped package name (`@agent-profiler/desktop`),
+  // for output filenames — otherwise fpm/deb tries to create an
+  // `@agent-profiler/` directory and fails.
+  artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
+
   // ─── macOS ───────────────────────────────────────────────
   mac: {
     category: 'public.app-category.developer-tools',
