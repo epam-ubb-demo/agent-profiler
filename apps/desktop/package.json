@@ -2,6 +2,17 @@
   "name": "@agent-profiler/desktop",
   "version": "0.0.0",
   "private": true,
+  "description": "Agent Profiler desktop application for visualising AI agent session logs",
+  "author": {
+    "name": "EPAM Systems",
+    "email": "agent-profiler@epam.com"
+  },
+  "homepage": "https://github.com/epam-ubb-demo/agent-profiler",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/epam-ubb-demo/agent-profiler.git"
+  },
+  "license": "Apache-2.0",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
