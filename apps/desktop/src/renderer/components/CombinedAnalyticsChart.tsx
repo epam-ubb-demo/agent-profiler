@@ -349,7 +349,7 @@ function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
         ref={svgRef}
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
         width="100%"
-        style={{ display: 'block' }}
+        style={{ display: 'block', maxHeight: 240 }}
         role="img"
         aria-label="Combined analytics chart: daily cost and model token usage"
         data-testid="combined-analytics-chart"
