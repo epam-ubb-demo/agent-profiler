@@ -59,16 +59,12 @@ jobs:
     needs: unit-tests
     uses: ./.github/workflows/release-electron.reusable.yml
     permissions:
-      # NOTE: This must mirror the maximum permission requested by any job in
-      # the reusable workflow, even jobs gated off in dry-run mode. GitHub
-      # validates `permissions:` at workflow-load time (before `if:`
-      # evaluation), so granting only `contents: read` here makes the call
-      # fail with a startup error because `commit-changelog` and `publish`
-      # declare `contents: write` at the job level — even though both are
-      # gated by `if: !inputs.dry-run` and never execute in dry-run runs.
-      # The writable token is therefore granted but unused: no job that runs
-      # in dry-run mode invokes any step that touches it.
-      contents: write
+      # The reusable workflow runs every job at `contents: read`; the
+      # writable steps (commit CHANGELOG, create GitHub Release) live in
+      # the production caller (`release-electron.yml`). Granting only read
+      # here means a same-repo PR that modifies the reusable cannot obtain
+      # a writable token through this dry-run path.
+      contents: read
     with:
       # On manual dispatch the user supplies the version; on PR-on-touch we
       # synthesise one from the run id so each invocation is unique and never

@@ -316,7 +316,7 @@ gh workflow run release-electron-dryrun.yml \
   -f platforms=linux
 ```
 
-This runs the unit tests, the CHANGELOG stamp (uploaded as the `changelog-dryrun` artifact instead of committed to `main`), and the requested platform builds end-to-end — but skips the GitHub Release publication.
+This runs the unit tests, the CHANGELOG stamp (uploaded as the `changelog-stamped` artifact instead of committed to `main`), and the requested platform builds end-to-end — but skips the GitHub Release publication.
 
 **Automatic (on PRs):** The dry-run workflow auto-triggers when a PR touches any of:
 

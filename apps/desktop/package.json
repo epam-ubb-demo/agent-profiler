@@ -24,10 +24,10 @@
     "regression": "vitest run __tests__/regression/",
     "test:e2e": "playwright test",
     "pack": "electron-builder --dir --config electron-builder.config.ts",
-    "dist": "electron-builder --config electron-builder.config.ts",
-    "dist:mac": "electron-builder --mac --config electron-builder.config.ts",
-    "dist:win": "electron-builder --win --config electron-builder.config.ts",
-    "dist:linux": "electron-builder --linux --config electron-builder.config.ts"
+    "dist": "electron-builder --config electron-builder.config.ts --publish never",
+    "dist:mac": "electron-builder --mac --config electron-builder.config.ts --publish never",
+    "dist:win": "electron-builder --win --config electron-builder.config.ts --publish never",
+    "dist:linux": "electron-builder --linux --config electron-builder.config.ts --publish never"
   },
   "dependencies": {
     "@agent-profiler/adapters-application-insights": "workspace:*",

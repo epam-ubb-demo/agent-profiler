@@ -1,19 +1,19 @@
 name: Release Electron App (reusable)
 
-# Reusable workflow that does the real work of building and publishing the
-# desktop installers. Called from:
+# Reusable workflow that does the *read-only* work of validating, stamping
+# (in-memory + artifact), and building the desktop installers across the
+# requested platforms. Called from:
 #
-#   * release-electron.yml         (push tag → dry-run = false, full pipeline)
+#   * release-electron.yml         (push tag → dry-run = false, full pipeline;
+#                                   the caller owns commit + publish)
 #   * release-electron-dryrun.yml  (manual / PR-on-touch → dry-run = true)
 #
-# In dry-run mode:
-#   * the stamped CHANGELOG is uploaded as an artifact instead of being
-#     committed back to main;
-#   * platform builds still run end-to-end (including electron-builder
-#     packaging) so build/config regressions are caught;
-#   * no GitHub Release is created, no auto-update manifests are published;
-#   * the matrix is restricted via the `platforms` input so PR-on-touch
-#     validation can run on a single OS to keep runner minutes low.
+# Permissions: every job in this workflow runs with `contents: read`. The
+# writable steps (committing the stamped CHANGELOG back to main, creating the
+# GitHub Release) live in the production caller workflow, so PR-triggered
+# dry-run runs can never obtain a writable token through this reusable. The
+# reusable exposes the derived version and prerelease flag as workflow
+# outputs so the caller can use them in its commit + publish jobs.
 
 on:
   workflow_call:
@@ -26,7 +26,7 @@ on:
         required: true
         type: string
       dry-run:
-        description: 'When true: skip CHANGELOG commit and Release publish'
+        description: 'When true: builds run unsigned, no commit/publish.'
         required: false
         default: false
         type: boolean
@@ -35,6 +35,22 @@ on:
         required: false
         default: 'macos,windows,linux'
         type: string
+    outputs:
+      version:
+        description: 'Semantic version derived from the tag name'
+        value: ${{ jobs.prepare.outputs.version }}
+      prerelease:
+        description: 'true when the version contains a pre-release suffix'
+        value: ${{ jobs.prepare.outputs.prerelease }}
+      run-macos:
+        description: 'true when the macOS build was requested'
+        value: ${{ jobs.prepare.outputs.run-macos }}
+      run-windows:
+        description: 'true when the Windows build was requested'
+        value: ${{ jobs.prepare.outputs.run-windows }}
+      run-linux:
+        description: 'true when the Linux build was requested'
+        value: ${{ jobs.prepare.outputs.run-linux }}
 
 permissions:
   contents: read
@@ -54,12 +70,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # For real releases we check out main so the CHANGELOG commit can be
-          # pushed there. For dry-runs the calling event's ref is fine because
-          # we never push anywhere.
+          # For real releases we want to validate against main (where the
+          # CHANGELOG commit will eventually land). For dry-runs the calling
+          # event's ref is fine because we never push anywhere.
           ref: ${{ inputs.dry-run && github.ref || 'main' }}
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Derive version, prerelease flag and platform matrix
         id: derive
@@ -129,23 +144,21 @@ jobs:
           fi
           echo "Tag ${TAG_NAME} (${TAG_SHA}) is on main."
 
-      - name: Stamp CHANGELOG.md
+      - name: Stamp CHANGELOG.md (in-memory for this run only)
+        # In dry-run this is the only validation of the stamp. In production
+        # the caller's commit-changelog job will re-stamp against a fresh
+        # checkout of main at commit time, so this artifact is preview-only
+        # and is not used as the canonical input for the commit.
         uses: ./.github/actions/stamp-changelog
         with:
           version: ${{ steps.derive.outputs.version }}
 
-      - name: Upload release notes artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-notes
-          path: release-notes.md
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Upload stamped CHANGELOG
-        # Always uploaded so the commit-changelog job (production) or the
-        # operator (dry-run) can inspect/use the stamped file without
-        # re-running the stamp step.
+      - name: Upload stamped CHANGELOG (preview)
+        # Always uploaded so operators (dry-run) or reviewers can inspect the
+        # stamped file. Production publishing does NOT consume this artifact:
+        # the publish job re-derives release notes from the freshly-committed
+        # CHANGELOG to avoid a race where main moves between prepare and
+        # commit-changelog.
         uses: actions/upload-artifact@v4
         with:
           name: changelog-stamped
@@ -157,6 +170,8 @@ jobs:
     needs: prepare
     if: ${{ needs.prepare.outputs.run-macos == 'true' }}
     runs-on: macos-14
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -169,14 +184,18 @@ jobs:
       - name: Build macOS installers
         run: pnpm --filter @agent-profiler/desktop run dist:mac
         env:
-          # In dry-run we deliberately leave signing env empty so the build
-          # exercises the unsigned path and does not require secrets.
-          CSC_LINK: ${{ inputs.dry-run && '' || secrets.MAC_CERT_P12 }}
-          CSC_KEY_PASSWORD: ${{ inputs.dry-run && '' || secrets.MAC_CERT_PASSWORD }}
-          APPLE_ID: ${{ inputs.dry-run && '' || secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ inputs.dry-run && '' || secrets.APPLE_APP_PASSWORD }}
-          APPLE_TEAM_ID: ${{ inputs.dry-run && '' || secrets.APPLE_TEAM_ID }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # `!inputs.dry-run && secrets.X || ''` correctly resolves to `''`
+          # in dry-run mode. The naive `inputs.dry-run && '' || secrets.X`
+          # leaks the secret because `''` is falsy in GHA expressions and
+          # `'' || secrets.X` evaluates to `secrets.X`.
+          CSC_LINK: ${{ !inputs.dry-run && secrets.MAC_CERT_P12 || '' }}
+          CSC_KEY_PASSWORD: ${{ !inputs.dry-run && secrets.MAC_CERT_PASSWORD || '' }}
+          APPLE_ID: ${{ !inputs.dry-run && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ !inputs.dry-run && secrets.APPLE_APP_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ !inputs.dry-run && secrets.APPLE_TEAM_ID || '' }}
+          # No GH_TOKEN here — the dist:* scripts pass `--publish never` so
+          # electron-builder's own publisher is disabled; publication is the
+          # exclusive responsibility of the caller's publish job.
       - uses: actions/upload-artifact@v4
         with:
           name: installers-macos
@@ -190,6 +209,8 @@ jobs:
     needs: prepare
     if: ${{ needs.prepare.outputs.run-windows == 'true' }}
     runs-on: windows-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -202,9 +223,8 @@ jobs:
       - name: Build Windows installers
         run: pnpm --filter @agent-profiler/desktop run dist:win
         env:
-          CSC_LINK: ${{ inputs.dry-run && '' || secrets.WIN_CERT_P12 }}
-          CSC_KEY_PASSWORD: ${{ inputs.dry-run && '' || secrets.WIN_CERT_PASSWORD }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ !inputs.dry-run && secrets.WIN_CERT_P12 || '' }}
+          CSC_KEY_PASSWORD: ${{ !inputs.dry-run && secrets.WIN_CERT_PASSWORD || '' }}
       - uses: actions/upload-artifact@v4
         with:
           name: installers-windows
@@ -218,6 +238,8 @@ jobs:
     needs: prepare
     if: ${{ needs.prepare.outputs.run-linux == 'true' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -229,8 +251,6 @@ jobs:
       - run: pnpm --filter @agent-profiler/desktop run build
       - name: Build Linux installers
         run: pnpm --filter @agent-profiler/desktop run dist:linux
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: installers-linux
@@ -241,110 +261,12 @@ jobs:
             apps/desktop/dist-release/latest-linux.yml
           if-no-files-found: error
 
-  commit-changelog:
-    # Production-only: commit the stamped CHANGELOG back to main *after* all
-    # platform builds have succeeded, so a failed build never leaves main
-    # half-stamped. This is the only job in the pipeline that holds
-    # `contents: write`; everything before it (prepare + build-*) runs with
-    # `contents: read` so PR-triggered dry-runs cannot exercise the writable
-    # token.
-    needs: [prepare, build-macos, build-windows, build-linux]
-    if: |
-      !inputs.dry-run &&
-      needs.prepare.result == 'success' &&
-      (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
-      (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped') &&
-      (needs.build-linux.result == 'success' || needs.build-linux.result == 'skipped')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout main
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Download stamped CHANGELOG
-        uses: actions/download-artifact@v4
-        with:
-          name: changelog-stamped
-          path: .
-      - name: Commit CHANGELOG bump back to main
-        env:
-          VERSION: ${{ needs.prepare.outputs.version }}
-        run: |
-          set -euo pipefail
-          git config user.name  'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add CHANGELOG.md
-          if git diff --cached --quiet; then
-            echo "::warning::CHANGELOG.md unchanged after stamp step — skipping commit."
-            exit 0
-          fi
-          git commit -m "chore(release): @agent-profiler/desktop@${VERSION} [skip ci]"
-          git push origin HEAD:main
-
-  publish:
-    needs: [prepare, build-macos, build-windows, build-linux, commit-changelog]
-    # Run when prepare, the commit-changelog step, and all requested builds
-    # succeeded. `always()` lets us check the per-platform results explicitly
-    # so that skipped platforms (in dry-run with a reduced matrix) do not
-    # block — though publish itself is also gated by `!inputs.dry-run`.
-    if: |
-      always() &&
-      !inputs.dry-run &&
-      needs.prepare.result == 'success' &&
-      needs.commit-changelog.result == 'success' &&
-      (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
-      (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped') &&
-      (needs.build-linux.result == 'success' || needs.build-linux.result == 'skipped')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download all installer artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Flatten artifacts
-        run: |
-          set -euo pipefail
-          mkdir -p release-assets
-          find artifacts -type f \
-            \( -name '*.dmg' -o -name '*.dmg.blockmap' \
-            -o -name '*.exe' -o -name '*.exe.blockmap' \
-            -o -name '*.AppImage' -o -name '*.AppImage.blockmap' \
-            -o -name '*.deb' \
-            -o -name 'latest*.yml' \) \
-            -exec cp -v {} release-assets/ \;
-          cp artifacts/release-notes/release-notes.md .
-          echo "--- Release assets ---"
-          ls -la release-assets
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ inputs.tag-name }}
-          name: Agent Profiler v${{ needs.prepare.outputs.version }}
-          body_path: release-notes.md
-          prerelease: ${{ needs.prepare.outputs.prerelease == 'true' }}
-          fail_on_unmatched_files: true
-          files: |
-            release-assets/*.dmg
-            release-assets/*.dmg.blockmap
-            release-assets/*.exe
-            release-assets/*.exe.blockmap
-            release-assets/*.AppImage
-            release-assets/*.AppImage.blockmap
-            release-assets/*.deb
-            release-assets/latest*.yml
-
   dry-run-summary:
     needs: [prepare, build-macos, build-windows, build-linux]
     if: ${{ always() && inputs.dry-run }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
