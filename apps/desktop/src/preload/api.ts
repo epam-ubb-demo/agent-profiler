@@ -59,6 +59,8 @@ export interface ElectronApi {
     getStatus: () => Promise<SyncStatusIpc>;
     /** Trigger a sync run (syncs all pending local sessions). */
     trigger: () => Promise<void>;
+    /** Clear all sync markers so every session is treated as un-synced on the next run. */
+    clearMarkers: () => Promise<void>;
     /** Register a callback for push-based sync status updates from main process. */
     onStatusUpdated: (callback: (status: SyncStatusIpc) => void) => () => void;
   };

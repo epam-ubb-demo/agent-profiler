@@ -42,6 +42,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
   const [syncCategories, setSyncCategories] = useState(DEFAULT_SYNC_SETTINGS.categories);
   const [otlpEndpoint, setOtlpEndpoint] = useState('');
   const [syncTriggering, setSyncTriggering] = useState(false);
+  const [resyncTriggering, setResyncTriggering] = useState(false);
 
   // Load settings when the dialog opens
   useEffect(() => {
@@ -149,6 +150,26 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setSyncTriggering(false);
+    }
+  }, [buildSettings, onSettingsSaved, syncEnabled, syncCategories, otlpEndpoint]);
+
+  const handleResyncAll = useCallback(async () => {
+    setResyncTriggering(true);
+    setSaveError(null);
+    try {
+      await window.electronApi.settings.set(buildSettings());
+      await window.electronApi.sync.setSettings({
+        enabled: syncEnabled,
+        categories: syncCategories,
+        otlpEndpoint: otlpEndpoint.trim(),
+      });
+      onSettingsSaved?.();
+      await window.electronApi.sync.clearMarkers();
+      await window.electronApi.sync.trigger();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to re-sync');
+    } finally {
+      setResyncTriggering(false);
     }
   }, [buildSettings, onSettingsSaved, syncEnabled, syncCategories, otlpEndpoint]);
 
@@ -406,15 +427,31 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
                   </>
                 )}
 
-                <Button
-                  caption={syncTriggering ? 'Syncing…' : 'Sync now'}
-                  {...(syncTriggering ? { icon: Loader2 } : {})}
-                  fill="outline"
-                  color="secondary"
-                  size="30"
-                  isDisabled={syncTriggering}
-                  onClick={() => void handleSyncNow()}
-                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Button
+                      caption={syncTriggering ? 'Syncing…' : 'Sync now'}
+                      {...(syncTriggering ? { icon: Loader2 } : {})}
+                      fill="outline"
+                      color="secondary"
+                      size="30"
+                      isDisabled={syncTriggering || resyncTriggering}
+                      onClick={() => void handleSyncNow()}
+                    />
+                    <Button
+                      caption={resyncTriggering ? 'Re-syncing…' : 'Re-sync All'}
+                      {...(resyncTriggering ? { icon: Loader2 } : {})}
+                      fill="outline"
+                      color="secondary"
+                      size="30"
+                      isDisabled={syncTriggering || resyncTriggering}
+                      onClick={() => void handleResyncAll()}
+                    />
+                  </div>
+                  <Text color="secondary" fontSize="12">
+                    Re-sync All clears sync history and re-pushes all sessions from scratch.
+                  </Text>
+                </div>
               </div>
             </div>
 

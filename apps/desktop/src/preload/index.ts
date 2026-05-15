@@ -52,6 +52,7 @@ const api: ElectronApi = {
     setSettings: (settings) => ipcRenderer.invoke(ipcChannels.SYNC_SETTINGS_SET, settings),
     getStatus: () => ipcRenderer.invoke(ipcChannels.SYNC_STATUS),
     trigger: () => ipcRenderer.invoke(ipcChannels.SYNC_TRIGGER),
+    clearMarkers: () => ipcRenderer.invoke(ipcChannels.SYNC_CLEAR_MARKERS),
     onStatusUpdated: (callback) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const handler = (_event: any, status: SyncStatusIpc) => {

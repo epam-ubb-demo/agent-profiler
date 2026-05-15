@@ -35,6 +35,7 @@ const mockElectronApi: ElectronApi = {
     setSettings: vi.fn<ElectronApi['sync']['setSettings']>().mockResolvedValue(undefined),
     getStatus: vi.fn<ElectronApi['sync']['getStatus']>().mockResolvedValue({ state: 'idle', lastSyncedAt: null, sessionsPending: 0, sessionsTotal: 0, lastError: null }),
     trigger: vi.fn<ElectronApi['sync']['trigger']>().mockResolvedValue(undefined),
+    clearMarkers: vi.fn<ElectronApi['sync']['clearMarkers']>().mockResolvedValue(undefined),
     onStatusUpdated: vi.fn<ElectronApi['sync']['onStatusUpdated']>().mockReturnValue(() => {}),
   },
 };
@@ -230,5 +231,100 @@ describe('SettingsPanel', () => {
 
     // Dialog must remain open
     expect(screen.getByText('Application Insights Settings')).toBeInTheDocument();
+  });
+
+  it('Re-sync All button is visible in the settings dialog', async () => {
+    await render(<SettingsPanel />);
+
+    await openSettingsDialog();
+
+    expect(screen.getByRole('button', { name: /re-sync all/i })).toBeInTheDocument();
+  });
+
+  it('Re-sync All saves settings, clears markers then triggers sync', async () => {
+    await render(<SettingsPanel />);
+
+    await openSettingsDialog();
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Workspace ID') as HTMLInputElement).value).toBe('test-ws');
+    });
+
+    const resyncBtn = screen.getByRole('button', { name: /re-sync all/i });
+    fireEvent.click(resyncBtn);
+
+    await waitFor(() => {
+      expect(mockElectronApi.settings.set).toHaveBeenCalledWith(
+        expect.objectContaining({ workspaceId: 'test-ws' }),
+      );
+      expect(mockElectronApi.sync.setSettings).toHaveBeenCalled();
+      expect(mockElectronApi.sync.clearMarkers).toHaveBeenCalled();
+      expect(mockElectronApi.sync.trigger).toHaveBeenCalled();
+    });
+
+    // clearMarkers must be called before trigger
+    const clearOrder = vi.mocked(mockElectronApi.sync.clearMarkers).mock.invocationCallOrder[0]!;
+    const triggerOrder = vi.mocked(mockElectronApi.sync.trigger).mock.invocationCallOrder[0]!;
+    expect(clearOrder).toBeLessThan(triggerOrder);
+  });
+
+  it('Re-sync All calls onSettingsSaved after saving', async () => {
+    const onSaved = vi.fn();
+    await render(<SettingsPanel onSettingsSaved={onSaved} />);
+
+    await openSettingsDialog();
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Workspace ID') as HTMLInputElement).value).toBe('test-ws');
+    });
+
+    const resyncBtn = screen.getByRole('button', { name: /re-sync all/i });
+    fireEvent.click(resyncBtn);
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalled();
+    });
+  });
+
+  it('Re-sync All does not close the dialog', async () => {
+    await render(<SettingsPanel />);
+
+    await openSettingsDialog();
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Workspace ID') as HTMLInputElement).value).toBe('test-ws');
+    });
+
+    const resyncBtn = screen.getByRole('button', { name: /re-sync all/i });
+    fireEvent.click(resyncBtn);
+
+    await waitFor(() => {
+      expect(mockElectronApi.sync.trigger).toHaveBeenCalled();
+    });
+
+    // Dialog must remain open
+    expect(screen.getByText('Application Insights Settings')).toBeInTheDocument();
+  });
+
+  it('Re-sync All shows error when clearMarkers fails', async () => {
+    vi.mocked(mockElectronApi.sync.clearMarkers).mockRejectedValueOnce(new Error('Clear failed'));
+
+    await render(<SettingsPanel />);
+
+    await openSettingsDialog();
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Workspace ID') as HTMLInputElement).value).toBe('test-ws');
+    });
+
+    const resyncBtn = screen.getByRole('button', { name: /re-sync all/i });
+    fireEvent.click(resyncBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Clear failed')).toBeInTheDocument();
+    });
+
+    // trigger must NOT have been called after clearMarkers failed
+    expect(mockElectronApi.sync.trigger).not.toHaveBeenCalled();
   });
 });

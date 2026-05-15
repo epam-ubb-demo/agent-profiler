@@ -79,6 +79,7 @@ const mockElectronApi = {
     setSettings: vi.fn<ElectronApi['sync']['setSettings']>().mockResolvedValue(undefined),
     getStatus: vi.fn<ElectronApi['sync']['getStatus']>().mockResolvedValue({ state: 'idle', lastSyncedAt: null, sessionsPending: 0, sessionsTotal: 0, lastError: null }),
     trigger: vi.fn<ElectronApi['sync']['trigger']>().mockResolvedValue(undefined),
+    clearMarkers: vi.fn<ElectronApi['sync']['clearMarkers']>().mockResolvedValue(undefined),
     onStatusUpdated: vi.fn<ElectronApi['sync']['onStatusUpdated']>().mockReturnValue(() => {}),
   },
 } satisfies ElectronApi;
