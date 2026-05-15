@@ -10,9 +10,9 @@ vi.mock('../src/renderer/pages/SessionBrowser.module.css', () => ({
   default: new Proxy({}, { get: (_target, prop) => String(prop) }),
 }));
 
-// Stub DailySpendChart to avoid SVG rendering complexity in SessionBrowser tests
-vi.mock('../src/renderer/components/DailySpendChart', () => ({
-  DailySpendChart: () => <div data-testid="daily-spend-chart-stub" />,
+// Stub CombinedAnalyticsChart to avoid SVG rendering complexity in SessionBrowser tests
+vi.mock('../src/renderer/components/CombinedAnalyticsChart', () => ({
+  CombinedAnalyticsChart: () => <div data-testid="combined-analytics-chart-stub" />,
 }));
 
 // ── Fixture factories ─────────────────────────────────────────────────────────
@@ -27,6 +27,7 @@ function makeMetrics(overrides: Partial<SessionListMetricsIpc> = {}): SessionLis
     costConfidence: 'known' as const,
     wallTimeMs: 120_000,
     repository: 'owner/repo',
+    modelUsage: [],
     ...overrides,
   };
 }
@@ -234,8 +235,9 @@ describe('SessionBrowser', () => {
 
     const headings = screen.getAllByTestId('day-heading');
     const headingTexts = headings.map((h) => h.textContent ?? '');
-    expect(headingTexts).toContain('Today');
-    expect(headingTexts).toContain('Yesterday');
+    // textContent now includes day summary metrics after the label; check for substring
+    expect(headingTexts.some((t) => t.startsWith('Today'))).toBe(true);
+    expect(headingTexts.some((t) => t.startsWith('Yesterday'))).toBe(true);
   });
 
   it('summary bar shows aggregate metrics for filtered sessions', async () => {
@@ -515,7 +517,7 @@ describe('SessionBrowser', () => {
     const toggle = screen.getByTestId('analytics-toggle');
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     // Chart should not be visible when collapsed
-    expect(screen.queryByTestId('daily-spend-chart-stub')).toBeNull();
+    expect(screen.queryByTestId('combined-analytics-chart-stub')).toBeNull();
   });
 
   it('analytics panel expands when toggle is clicked', async () => {
@@ -536,7 +538,7 @@ describe('SessionBrowser', () => {
       expect(toggle.getAttribute('aria-expanded')).toBe('true');
     });
 
-    expect(screen.getByTestId('daily-spend-chart-stub')).toBeDefined();
+    expect(screen.getByTestId('combined-analytics-chart-stub')).toBeDefined();
   });
 
   it('summary bar shows day count', async () => {
@@ -581,6 +583,6 @@ describe('SessionBrowser', () => {
       expect(toggle.getAttribute('aria-expanded')).toBe('false');
     });
 
-    expect(screen.queryByTestId('daily-spend-chart-stub')).toBeNull();
+    expect(screen.queryByTestId('combined-analytics-chart-stub')).toBeNull();
   });
 });

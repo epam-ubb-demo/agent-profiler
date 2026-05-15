@@ -49,6 +49,13 @@ export const sessionListMetricsSchema = z.object({
   costConfidence: costConfidenceSchema,
   wallTimeMs: z.number().nullable(),
   repository: z.string(),
+  modelUsage: z.array(z.object({
+    model: z.string(),
+    inputTokens: z.number(),
+    outputTokens: z.number(),
+    cacheReadTokens: z.number(),
+    cacheWriteTokens: z.number(),
+  })),
 });
 export type SessionListMetrics = z.infer<typeof sessionListMetricsSchema>;
 

@@ -96,6 +96,49 @@ function summariseArguments(args: unknown): string {
   return flat.length > limit ? flat.slice(0, limit) + '…' : flat;
 }
 
+interface SkillTelemetry {
+  readonly skillName: string | null;
+  readonly skillSource: string | null;
+  readonly skillContentLength: number | null;
+  readonly skillOutcome: 'loaded' | 'not_found' | 'disabled' | 'read_error';
+  readonly skillErrorMessage: string | null;
+}
+
+function extractSkillTelemetry(data: Record<string, unknown>): SkillTelemetry | null {
+  const telemetry = data['toolTelemetry'];
+  if (telemetry == null || typeof telemetry !== 'object') return null;
+
+  const t = telemetry as Record<string, unknown>;
+  const props = t['properties'] as Record<string, unknown> | undefined;
+  const restricted = t['restrictedProperties'] as Record<string, unknown> | undefined;
+  const metrics = t['metrics'] as Record<string, unknown> | undefined;
+
+  const skillName = typeof restricted?.['skillName'] === 'string' ? restricted['skillName'] : null;
+  const skillSource = typeof props?.['skillSource'] === 'string' ? props['skillSource'] : null;
+  const rawLen = metrics?.['skillContentLength'];
+  const skillContentLength =
+    typeof rawLen === 'number' && Number.isFinite(rawLen) ? Math.trunc(rawLen) : null;
+
+  // Derive outcome from property flags (see delegation contract for precedence rules)
+  // Flags may arrive as strings ('true'/'false') or actual booleans depending on the
+  // OpenTelemetry exporter, so both forms are accepted.
+  let skillOutcome: 'loaded' | 'not_found' | 'disabled' | 'read_error';
+  if (props?.['disabled'] === 'true' || props?.['disabled'] === true) {
+    skillOutcome = 'disabled';
+  } else if (props?.['found'] === 'false' || props?.['found'] === false) {
+    skillOutcome = 'not_found';
+  } else if (props?.['readError'] === 'true' || props?.['readError'] === true) {
+    skillOutcome = 'read_error';
+  } else {
+    skillOutcome = 'loaded';
+  }
+
+  const skillErrorMessage =
+    typeof restricted?.['errorMessage'] === 'string' ? restricted['errorMessage'] : null;
+
+  return { skillName, skillSource, skillContentLength, skillOutcome, skillErrorMessage };
+}
+
 // ---------------------------------------------------------------------------
 // Handler type
 // ---------------------------------------------------------------------------
@@ -187,6 +230,7 @@ function onToolComplete(
 
   if (existing == null) {
     // No matching start — create a complete record with start=end
+    const st = safeStr(data['toolName']) === 'skill' ? extractSkillTelemetry(data) : null;
     const tc: ToolCall = {
       toolCallId: tcid,
       toolName: safeStr(data['toolName'], '<unknown>'),
@@ -199,6 +243,13 @@ function onToolComplete(
       turnId: turnIdOf(event),
       eventId: event.id ?? null,
       argumentsPreview: '',
+      ...(st !== null ? {
+        skillName: st.skillName,
+        skillSource: st.skillSource,
+        skillContentLength: st.skillContentLength,
+        skillOutcome: st.skillOutcome,
+        ...(st.skillErrorMessage !== null ? { skillErrorMessage: st.skillErrorMessage } : {}),
+      } : {}),
     };
     sb.toolCalls.push(tc);
   } else {
@@ -207,12 +258,20 @@ function onToolComplete(
       existing.startTs && ts
         ? new Date(ts).getTime() - new Date(existing.startTs).getTime()
         : null;
+    const st = safeStr(data['toolName']) === 'skill' ? extractSkillTelemetry(data) : null;
     const tc: ToolCall = {
       ...existing,
       endTs: ts,
       durationMs: durationMs != null && Number.isFinite(durationMs) ? durationMs : null,
       success: data['success'] != null ? Boolean(data['success']) : null,
       model: existing.model || safeStr(data['model']) || currentModel,
+      ...(st !== null ? {
+        skillName: st.skillName,
+        skillSource: st.skillSource,
+        skillContentLength: st.skillContentLength,
+        skillOutcome: st.skillOutcome,
+        ...(st.skillErrorMessage !== null ? { skillErrorMessage: st.skillErrorMessage } : {}),
+      } : {}),
     };
     sb.toolCalls.push(tc);
   }

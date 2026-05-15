@@ -45,6 +45,7 @@ vi.mock('../session-list-metrics', () => ({
     costConfidence: 'known' as const,
     wallTimeMs: 1000,
     repository: 'https://example.com/repo.git',
+    modelUsage: [],
   })),
 }));
 
@@ -159,7 +160,7 @@ describe('SessionIndexer', () => {
       });
 
       const cacheContent = JSON.stringify({
-        version: 1,
+        version: 2,
         rootDir: '/root',
         updatedAt: '2024-12-15T00:00:00Z',
         sessions: [cachedItem],
@@ -429,7 +430,7 @@ describe('SessionIndexer', () => {
       expect(writeCall![0]).toContain('session-index-cache.json');
 
       const cacheContent = JSON.parse(writeCall![1] as string);
-      expect(cacheContent.version).toBe(1);
+      expect(cacheContent.version).toBe(2);
       expect(cacheContent.rootDir).toBe('/root');
       expect(cacheContent.sessions).toHaveLength(1);
       expect(cacheContent.sessions[0]?.id).toBe('session-1');
@@ -505,7 +506,7 @@ describe('SessionIndexer', () => {
       const invalidItem = { id: 'invalid' };
 
       const cacheContent = JSON.stringify({
-        version: 1,
+        version: 2,
         rootDir: '/root',
         updatedAt: '2024-12-15T00:00:00Z',
         sessions: [validItem, invalidItem],

@@ -23,6 +23,16 @@ export interface ToolCall {
   readonly turnId: string | null;
   readonly eventId: string | null;
   readonly argumentsPreview: string;
+  /** Resolved skill name from telemetry (only present for toolName === 'skill'). */
+  readonly skillName?: string | null | undefined;
+  /** Skill source category from telemetry (e.g. 'personal-copilot', 'project'). */
+  readonly skillSource?: string | null | undefined;
+  /** Number of characters of skill content loaded into context. */
+  readonly skillContentLength?: number | null | undefined;
+  /** Skill resolution outcome: loaded, not_found, disabled, or read_error. */
+  readonly skillOutcome?: 'loaded' | 'not_found' | 'disabled' | 'read_error' | null | undefined;
+  /** Error message when skillOutcome is 'read_error'. */
+  readonly skillErrorMessage?: string | null | undefined;
 }
 
 /**

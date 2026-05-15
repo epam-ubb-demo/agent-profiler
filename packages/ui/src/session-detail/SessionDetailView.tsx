@@ -25,8 +25,10 @@ import { SessionAlerts } from './SessionAlerts';
 import { SessionHeader } from './SessionHeader';
 import type { TabId } from './SessionTabs';
 import { SessionTabs } from './SessionTabs';
+import { computeSkillStats } from './skill-stats';
 import { TabCostModels } from './TabCostModels';
 import { TabOverview } from './TabOverview';
+import { TabSkills } from './TabSkills';
 import { TabTimeline } from './TabTimeline';
 import { TabTools } from './TabTools';
 import { computeTimelineKpis } from './timeline-kpis';
@@ -109,6 +111,7 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
   const toolStats = useMemo(() => computeToolStats(session), [session]);
   const toolInventory = useMemo(() => computeToolInventory(session), [session]);
   const eventTypes = useMemo(() => computeEventTypeStats(session), [session]);
+  const skillStats = useMemo(() => computeSkillStats(session), [session]);
 
   /* --- per-tab KPI strips ------------------------------------------ */
   const costKpis = useMemo(
@@ -199,11 +202,10 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
           <TabOverview
             stats={stats}
             contextWindow={contextWindow}
-            utilisationSamples={session.utilisation}
-            compactions={session.compactions}
-            eventTypes={eventTypes}
             modelColours={modelColours}
             modelMetrics={session.shutdown?.modelMetrics ?? []}
+            modelSpend={modelSpend}
+            turns={session.turns}
           />
         )}
 
@@ -216,6 +218,7 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
             hotConsumption={hotConsumption}
             includeCompactions={includeCompactions}
             onToggleCompactions={toggleCompactions}
+            compactions={session.compactions}
             onSessionNavigate={onSessionNavigate}
             costKpis={costKpis}
           />
@@ -231,10 +234,15 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
           />
         )}
 
+        {activeTab === 'skills' && (
+          <TabSkills skillStats={skillStats} />
+        )}
+
         {activeTab === 'timeline' && (
           <TabTimeline
             session={session}
             modelColours={modelColours}
+            eventTypes={eventTypes}
             onSessionNavigate={onSessionNavigate}
             timelineKpis={timelineKpis}
           />

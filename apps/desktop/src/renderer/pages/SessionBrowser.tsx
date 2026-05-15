@@ -1,3 +1,5 @@
+import { calculateCost, DEFAULT_PRICING_TABLE } from '@agent-profiler/pricing';
+import type { TokenUsage } from '@agent-profiler/pricing';
 import { Badge, Button, FlexRow, FlexSpacer, Panel, PickerInput, RangeDatePicker, Spinner, Text, TextInput, Tooltip } from '@epam/uui';
 import { useArrayDataSource } from '@epam/uui-core';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, DollarSign, Recycle } from 'lucide-react';
@@ -7,7 +9,8 @@ import type { SessionListItemIpc, SessionListMetricsIpc } from '../../preload/ap
 
 import styles from './SessionBrowser.module.css';
 
-import { DailySpendChart } from '@/components/DailySpendChart';
+import { CombinedAnalyticsChart } from '@/components/CombinedAnalyticsChart';
+import type { DailyAnalytics } from '@/components/CombinedAnalyticsChart';
 import { EmptyState } from '@/components/EmptyState';
 import { FolderOpenIcon, SearchIcon } from '@/components/icons';
 import { SettingsPanel } from '@/components/SettingsPanel';
@@ -350,25 +353,85 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
   // Sessions grouped by day
   const groupedSessions = useMemo(() => groupByDay(filteredSessions), [filteredSessions]);
 
-  // Daily spend for analytics panel — enriched with all metrics
-  const dailySpend = useMemo(() => {
-    const map = new Map<string, { cost: number | null; wallTimeMs: number | null; inputTokens: number; outputTokens: number; cacheReadTokens: number }>();
+  // Daily analytics for analytics panel — enriched with metrics and per-model token breakdown
+  const dailyAnalytics = useMemo((): DailyAnalytics[] => {
+    const pricingTable = DEFAULT_PRICING_TABLE;
+    const map = new Map<string, {
+      cost: number | null;
+      wallTimeMs: number | null;
+      inputTokens: number;
+      outputTokens: number;
+      cacheReadTokens: number;
+      modelTokens: Map<string, {
+        inputTokens: number;
+        outputTokens: number;
+        cacheReadTokens: number;
+        cacheWriteTokens: number;
+      }>;
+    }>();
     for (const s of filteredSessions) {
       const m = s.metrics;
       if (m) {
         const key = toLocalDateKey(s.createdAt);
-        const prev = map.get(key) ?? { cost: null, wallTimeMs: null, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 };
+        const prev = map.get(key) ?? {
+          cost: null,
+          wallTimeMs: null,
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          modelTokens: new Map(),
+        };
         if (m.totalCostUsd != null) prev.cost = (prev.cost ?? 0) + m.totalCostUsd;
         if (m.wallTimeMs != null) prev.wallTimeMs = (prev.wallTimeMs ?? 0) + m.wallTimeMs;
         prev.inputTokens += m.totalInputTokens;
         prev.outputTokens += m.totalOutputTokens;
         prev.cacheReadTokens += m.totalCacheReadTokens;
+        for (const mu of m.modelUsage ?? []) {
+          const existing = prev.modelTokens.get(mu.model) ?? {
+            inputTokens: 0,
+            outputTokens: 0,
+            cacheReadTokens: 0,
+            cacheWriteTokens: 0,
+          };
+          existing.inputTokens += mu.inputTokens;
+          existing.outputTokens += mu.outputTokens;
+          existing.cacheReadTokens += mu.cacheReadTokens;
+          existing.cacheWriteTokens += mu.cacheWriteTokens;
+          prev.modelTokens.set(mu.model, existing);
+        }
         map.set(key, prev);
       }
     }
     return Array.from(map.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, d]) => ({ date, ...d }));
+      .map(([date, d]) => {
+        const tokenUsage: TokenUsage = {
+          modelMetrics: Array.from(d.modelTokens.entries()).map(([model, t]) => ({
+            model,
+            inputTokens: t.inputTokens,
+            outputTokens: t.outputTokens,
+            cacheReadTokens: t.cacheReadTokens,
+            cacheWriteTokens: t.cacheWriteTokens,
+          })),
+        };
+        const costBreakdown = d.modelTokens.size > 0 ? calculateCost(tokenUsage, pricingTable) : null;
+        return {
+          date,
+          cost: d.cost,
+          wallTimeMs: d.wallTimeMs,
+          inputTokens: d.inputTokens,
+          outputTokens: d.outputTokens,
+          cacheReadTokens: d.cacheReadTokens,
+          modelBreakdown: Array.from(d.modelTokens.entries()).map(([model, t]) => ({
+            model,
+            totalTokens: t.inputTokens + t.outputTokens,
+            // Use null for models not in the pricing table (cost unknown vs. zero).
+            costUsd: pricingTable[model] != null && costBreakdown != null
+              ? (costBreakdown.perModel[model]?.totalCostUsd ?? null)
+              : null,
+          })),
+        };
+      });
   }, [filteredSessions]);
 
   // Aggregated summary for filtered sessions
@@ -554,12 +617,12 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
             </Text>
             <FlexSpacer />
             <Text fontSize="14" color="secondary">
-              {dailySpend.length} day{dailySpend.length !== 1 ? 's' : ''}
+              {dailyAnalytics.length} day{dailyAnalytics.length !== 1 ? 's' : ''}
             </Text>
           </FlexRow>
           {analyticsExpanded && (
             <div className={styles.chartArea} data-testid="analytics-panel">
-              <DailySpendChart data={dailySpend} />
+              <CombinedAnalyticsChart data={dailyAnalytics} />
             </div>
           )}
         </Panel>
@@ -575,10 +638,33 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
           </div>
         ) : (
           <div data-testid="session-list">
-            {groupedSessions.map(({ dateKey, items }) => (
+            {groupedSessions.map(({ dateKey, items }) => {
+              let dayCost: number | null = null;
+              let dayIn = 0;
+              let dayOut = 0;
+              let dayCached = 0;
+              let dayTime: number | null = null;
+              for (const s of items) {
+                const m = s.metrics;
+                if (m) {
+                  if (m.totalCostUsd != null) dayCost = (dayCost ?? 0) + m.totalCostUsd;
+                  dayIn += m.totalInputTokens;
+                  dayOut += m.totalOutputTokens;
+                  dayCached += m.totalCacheReadTokens;
+                  if (m.wallTimeMs != null) dayTime = (dayTime ?? 0) + m.wallTimeMs;
+                }
+              }
+              return (
               <div key={dateKey} className={styles.dayGroup}>
                 <div className={styles.dayHeading} data-testid="day-heading">
-                  {formatDayLabel(dateKey)}
+                  <span>{formatDayLabel(dateKey)}</span>
+                  <span className={styles.daySummary}>
+                    {dayCost !== null && <span>{`$${dayCost.toFixed(2)}`}</span>}
+                    <span>{`In: ${formatTokenCount(dayIn)}`}</span>
+                    <span>{`Out: ${formatTokenCount(dayOut)}`}</span>
+                    <span>{`Cached: ${formatTokenCount(dayCached)}`}</span>
+                    {dayTime !== null && <span>{`Time: ${formatDuration(dayTime)}`}</span>}
+                  </span>
                 </div>
                 <div className={styles.cardGrid}>
                   {items.map((session) => (
@@ -590,7 +676,8 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

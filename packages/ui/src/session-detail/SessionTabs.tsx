@@ -13,8 +13,8 @@ import styles from './session-detail.module.css';
 /*  Public types                                                       */
 /* ------------------------------------------------------------------ */
 
-/** Ordered identifiers for the four content tabs. */
-export const TAB_IDS = ['overview', 'cost-models', 'tools', 'timeline'] as const;
+/** Ordered identifiers for the content tabs. */
+export const TAB_IDS = ['overview', 'cost-models', 'tools', 'skills', 'timeline'] as const;
 
 /** Union type of valid tab identifiers. */
 export type TabId = (typeof TAB_IDS)[number];
@@ -24,6 +24,7 @@ const TAB_CAPTIONS: Record<TabId, string> = {
   'overview': 'Overview',
   'cost-models': 'Cost & Models',
   'tools': 'Tools',
+  'skills': 'Skills',
   'timeline': 'Timeline',
 };
 

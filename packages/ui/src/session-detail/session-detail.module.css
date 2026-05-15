@@ -6,7 +6,7 @@
 /* --- Page Layout -------------------------------------------------------- */
 
 .pageContainer {
-  padding: 24px 32px;
+  padding: 0 32px 24px;
   background: var(--uui-surface-main);
   height: 100%;
   overflow-y: auto;
@@ -218,7 +218,7 @@
 .contextDonutSvg {
   display: block;
   width: 100%;
-  max-width: 280px;
+  max-width: 340px;
   height: auto;
   /* Centre within the column on wider screens. */
   margin: 0 auto;
@@ -573,6 +573,7 @@
   top: 0;
   z-index: 10;
   background: var(--uui-surface-main);
+  padding-top: 8px;
   padding-bottom: 0;
   border-bottom: 1px solid var(--uui-divider);
 }
@@ -633,18 +634,27 @@
   padding-top: 16px;
 }
 
-/* --- Two-Column Layout ------------------------------------------------- */
+/* --- Charts Grid (responsive: 4-col → 2-col → 1-col) ------------------- */
 
-.twoColumnGrid {
+.chartsGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 24px;
   margin-top: 16px;
+  max-width: 1400px;
+}
+
+@media (max-width: 1300px) {
+  .chartsGrid {
+    grid-template-columns: 1fr 1fr;
+    max-width: 1100px;
+  }
 }
 
 @media (max-width: 900px) {
-  .twoColumnGrid {
+  .chartsGrid {
     grid-template-columns: 1fr;
+    max-width: none;
   }
 }
 
@@ -657,4 +667,46 @@
 .tokenTimelineSvg {
   width: 100%;
   height: auto;
+}
+
+/* --- Tokens Per Turn Bar Chart ------------------------------------------ */
+
+.turnsBarChart {
+  margin-top: 8px;
+}
+
+.turnsBarRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.turnsBarLabel {
+  flex: 0 0 52px;
+  text-align: right;
+  color: var(--uui-text-secondary);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.turnsBarTrack {
+  flex: 1;
+  height: 14px;
+  background: var(--uui-neutral-20);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.turnsBarFill {
+  height: 100%;
+  background: var(--uui-primary-50);
+  border-radius: 3px;
+}
+
+.turnsBarValue {
+  flex: 0 0 68px;
+  color: var(--uui-text-secondary);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
 }

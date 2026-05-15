@@ -13,13 +13,17 @@ import type { ModelMetrics } from '@agent-profiler/core';
 import { Text } from '@epam/uui';
 import { memo, useMemo } from 'react';
 
-import { formatTokenCount } from '../comparative/format';
+import { formatTokenCost, formatTokenCount } from '../comparative/format';
+import { TimelineTooltip } from '../timeline/TimelineTooltip';
+import type { TooltipContent } from '../timeline/types';
+import { useTimelineTooltip } from '../timeline/useTimelineTooltip';
 
 import styles from './session-detail.module.css';
 
 export interface ModelTokenDistributionProps {
   readonly modelColours: Record<string, string>;
   readonly modelMetrics: readonly ModelMetrics[];
+  readonly costByModel?: Record<string, number>;
 }
 
 /* --- SVG layout constants (match ContextWindowBar) ---------------------- */
@@ -50,7 +54,7 @@ function truncateName(name: string, max: number): string {
 
 /* --- Component ----------------------------------------------------------- */
 
-function ModelTokenDistributionInner({ modelColours, modelMetrics }: ModelTokenDistributionProps) {
+function ModelTokenDistributionInner({ modelColours, modelMetrics, costByModel }: ModelTokenDistributionProps) {
   const segments = useMemo((): readonly Segment[] => {
     if (modelMetrics.length === 0) return [];
 
@@ -87,6 +91,8 @@ function ModelTokenDistributionInner({ modelColours, modelMetrics }: ModelTokenD
     }));
   }, [modelMetrics, modelColours]);
 
+  const { state: tooltipState, handlers: tooltip, tooltipRef } = useTimelineTooltip();
+
   /* --- Edge cases -------------------------------------------------------- */
 
   if (modelMetrics.length === 0) {
@@ -114,7 +120,17 @@ function ModelTokenDistributionInner({ modelColours, modelMetrics }: ModelTokenD
     const dashLength = seg.proportion * CIRCUMFERENCE;
     const dashOffset = CIRCUMFERENCE * (1 - cumulativeProportion);
     cumulativeProportion += seg.proportion;
-    return { ...seg, dashLength, dashOffset };
+    const cost = costByModel?.[seg.model] ?? 0;
+    const costSuffix = cost > 0 ? ` — ${formatTokenCost(cost)}` : '';
+    const pct = Math.round(seg.proportion * 100);
+    const rows: { key: string; value: string }[] = [
+      { key: 'Tokens', value: `${formatTokenCount(seg.tokens)} (${pct}%)` },
+    ];
+    if (cost > 0) {
+      rows.push({ key: 'Est. cost', value: formatTokenCost(cost) });
+    }
+    const tooltipContent: TooltipContent = { header: seg.model, rows };
+    return { ...seg, dashLength, dashOffset, costSuffix, tooltipContent };
   });
 
   /* --- Layout ----------------------------------------------------------- */
@@ -168,8 +184,12 @@ function ModelTokenDistributionInner({ modelColours, modelMetrics }: ModelTokenD
               strokeWidth={STROKE_WIDTH}
               strokeDasharray={`${arc.dashLength} ${CIRCUMFERENCE - arc.dashLength}`}
               strokeDashoffset={arc.dashOffset}
+              style={{ cursor: 'pointer' }}
+              onMouseEnter={(e) => { tooltip.show(arc.tooltipContent, e); }}
+              onMouseMove={tooltip.move}
+              onMouseLeave={tooltip.hide}
             >
-              <title>{`${arc.model}: ${formatTokenCount(arc.tokens)} (${Math.round(arc.proportion * 100)}%)`}</title>
+              <title>{`${arc.model}: ${formatTokenCount(arc.tokens)} (${Math.round(arc.proportion * 100)}%)${arc.costSuffix}`}</title>
             </circle>
           ))}
         </g>
@@ -225,6 +245,7 @@ function ModelTokenDistributionInner({ modelColours, modelMetrics }: ModelTokenD
           );
         })}
       </svg>
+      <TimelineTooltip state={tooltipState} tooltipRef={tooltipRef} />
     </div>
   );
 }

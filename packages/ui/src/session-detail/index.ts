@@ -56,6 +56,12 @@ export type { ContextTokenTimelineProps } from './ContextTokenTimeline';
 export { ModelTokenDistribution } from './ModelTokenDistribution';
 export type { ModelTokenDistributionProps } from './ModelTokenDistribution';
 
+export { TokenCompositionChart } from './TokenCompositionChart';
+export type { TokenCompositionChartProps } from './TokenCompositionChart';
+
+export { TokensPerTurnChart } from './TokensPerTurnChart';
+export type { TokensPerTurnChartProps } from './TokensPerTurnChart';
+
 export { ToolTokenTable } from './ToolTokenTable';
 export type { ToolTokenTableProps } from './ToolTokenTable';
 

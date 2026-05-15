@@ -78,6 +78,15 @@ describe('extractSessionListMetrics', () => {
     expect(result?.totalCacheReadTokens).toBe(300);
     expect(result?.totalCacheWriteTokens).toBe(150);
     expect(result?.totalCostUsd).toBeTypeOf('number');
+    expect(result?.modelUsage).toEqual([
+      {
+        model: 'claude-sonnet-4-20250514',
+        inputTokens: 2000,
+        outputTokens: 800,
+        cacheReadTokens: 300,
+        cacheWriteTokens: 150,
+      },
+    ]);
   });
 
   it('falls back to model-attributed assistant messages and skips null-model messages', () => {
@@ -126,6 +135,15 @@ describe('extractSessionListMetrics', () => {
     expect(result?.totalCacheWriteTokens).toBe(10);
     expect(result?.totalCostUsd).toBeTypeOf('number');
     expect(['known', 'estimated', 'unknown']).toContain(result?.costConfidence);
+    expect(result?.modelUsage).toEqual([
+      {
+        model: 'claude-sonnet-4-20250514',
+        inputTokens: 500,
+        outputTokens: 100,
+        cacheReadTokens: 50,
+        cacheWriteTokens: 10,
+      },
+    ]);
   });
 
   it('returns null for failed sessions', () => {
@@ -136,5 +154,105 @@ describe('extractSessionListMetrics', () => {
     const result = extractSessionListMetrics(session);
 
     expect(result).toBeNull();
+  });
+
+  it('returns all models when shutdown contains multiple model entries', () => {
+    const session = makeSession({
+      shutdown: makeShutdown({
+        modelMetrics: [
+          makeModelMetrics({ model: 'claude-sonnet-4-20250514', inputTokens: 1000, outputTokens: 400, cacheReadTokens: 100, cacheWriteTokens: 20 }),
+          makeModelMetrics({ model: 'claude-haiku-4-5', inputTokens: 500, outputTokens: 200, cacheReadTokens: 50, cacheWriteTokens: 10 }),
+        ],
+      }),
+    });
+
+    const result = extractSessionListMetrics(session);
+
+    expect(result).not.toBeNull();
+    expect(result?.totalInputTokens).toBe(1500);
+    expect(result?.totalOutputTokens).toBe(600);
+    expect(result?.modelUsage).toHaveLength(2);
+    expect(result?.modelUsage).toEqual(
+      expect.arrayContaining([
+        { model: 'claude-sonnet-4-20250514', inputTokens: 1000, outputTokens: 400, cacheReadTokens: 100, cacheWriteTokens: 20 },
+        { model: 'claude-haiku-4-5', inputTokens: 500, outputTokens: 200, cacheReadTokens: 50, cacheWriteTokens: 10 },
+      ]),
+    );
+  });
+
+  it('aggregates modelUsage from assistant messages when shutdown is null', () => {
+    const session = makeSession({
+      shutdown: null,
+      assistantMessages: [
+        {
+          interactionId: null,
+          requestId: null,
+          outputTokens: 100,
+          inputTokens: 300,
+          cacheReadTokens: 30,
+          cacheWriteTokens: 5,
+          model: 'claude-sonnet-4-20250514',
+          timestamp: '2025-01-15T10:01:00Z',
+          turnId: null,
+          eventId: null,
+          parentId: null,
+          content: '',
+          reasoningText: '',
+        },
+        {
+          interactionId: null,
+          requestId: null,
+          outputTokens: 200,
+          inputTokens: 400,
+          cacheReadTokens: 40,
+          cacheWriteTokens: 8,
+          model: 'claude-sonnet-4-20250514',
+          timestamp: '2025-01-15T10:02:00Z',
+          turnId: null,
+          eventId: null,
+          parentId: null,
+          content: '',
+          reasoningText: '',
+        },
+        {
+          interactionId: null,
+          requestId: null,
+          outputTokens: 50,
+          inputTokens: 150,
+          cacheReadTokens: 10,
+          cacheWriteTokens: 2,
+          model: 'claude-haiku-4-5',
+          timestamp: '2025-01-15T10:03:00Z',
+          turnId: null,
+          eventId: null,
+          parentId: null,
+          content: '',
+          reasoningText: '',
+        },
+      ],
+    });
+
+    const result = extractSessionListMetrics(session);
+
+    expect(result).not.toBeNull();
+    expect(result?.modelUsage).toHaveLength(2);
+    expect(result?.modelUsage).toEqual(
+      expect.arrayContaining([
+        { model: 'claude-sonnet-4-20250514', inputTokens: 700, outputTokens: 300, cacheReadTokens: 70, cacheWriteTokens: 13 },
+        { model: 'claude-haiku-4-5', inputTokens: 150, outputTokens: 50, cacheReadTokens: 10, cacheWriteTokens: 2 },
+      ]),
+    );
+  });
+
+  it('returns empty modelUsage when session has no usage data', () => {
+    const session = makeSession({
+      shutdown: null,
+      assistantMessages: [],
+    });
+
+    const result = extractSessionListMetrics(session);
+
+    expect(result).not.toBeNull();
+    expect(result?.modelUsage).toEqual([]);
   });
 });

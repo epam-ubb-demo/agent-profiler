@@ -42,6 +42,14 @@ export interface ModelSpendRow {
   readonly cacheWriteTokens: number;
   /** Estimated cost in USD from the token-based pricing calculator. */
   readonly estimatedUsd: number;
+  /** Cost of fresh (non-cached) input tokens in USD. */
+  readonly inputCostUsd: number;
+  /** Cost of cache-read tokens in USD. */
+  readonly cacheReadCostUsd: number;
+  /** Cost of cache-write tokens in USD. */
+  readonly cacheWriteCostUsd: number;
+  /** Cost of output tokens in USD. */
+  readonly outputCostUsd: number;
 }
 
 /** Aggregated totals for the table footer row. */
@@ -62,6 +70,14 @@ export interface ModelSpendTotals {
   readonly cacheWriteTokens: number;
   /** Sum of token-based estimated USD across all models. */
   readonly estimatedUsd: number;
+  /** Total cost of fresh (non-cached) input tokens in USD. */
+  readonly inputCostUsd: number;
+  /** Total cost of cache-read tokens in USD. */
+  readonly cacheReadCostUsd: number;
+  /** Total cost of cache-write tokens in USD. */
+  readonly cacheWriteCostUsd: number;
+  /** Total cost of output tokens in USD. */
+  readonly outputCostUsd: number;
 }
 
 /** Result returned by {@link computeModelSpend}. */
@@ -160,7 +176,7 @@ export function computeModelSpend(
     const costBreakdown = calculateCost(shutdown, DEFAULT_PRICING_TABLE);
 
     const rows: ModelSpendRow[] = shutdown.modelMetrics.map((m) => {
-      const cost = costBreakdown.perModel[m.model]?.totalCostUsd ?? 0;
+      const modelCost = costBreakdown.perModel[m.model];
 
       return {
         model: m.model,
@@ -171,7 +187,11 @@ export function computeModelSpend(
         outputTokens: m.outputTokens,
         cacheReadTokens: m.cacheReadTokens,
         cacheWriteTokens: m.cacheWriteTokens,
-        estimatedUsd: cost,
+        estimatedUsd: modelCost?.totalCostUsd ?? 0,
+        inputCostUsd: modelCost?.inputCostUsd ?? 0,
+        cacheReadCostUsd: modelCost?.cacheReadCostUsd ?? 0,
+        cacheWriteCostUsd: modelCost?.cacheWriteCostUsd ?? 0,
+        outputCostUsd: modelCost?.outputCostUsd ?? 0,
       };
     });
 
@@ -191,7 +211,7 @@ export function computeModelSpend(
   const costBreakdown = calculateCost(aggregated.usage, DEFAULT_PRICING_TABLE);
 
   const rows: ModelSpendRow[] = aggregated.usage.modelMetrics.map((m) => {
-    const cost = costBreakdown.perModel[m.model]?.totalCostUsd ?? 0;
+    const modelCost = costBreakdown.perModel[m.model];
 
     return {
       model: m.model,
@@ -202,7 +222,11 @@ export function computeModelSpend(
       outputTokens: m.outputTokens,
       cacheReadTokens: m.cacheReadTokens,
       cacheWriteTokens: m.cacheWriteTokens,
-      estimatedUsd: cost,
+      estimatedUsd: modelCost?.totalCostUsd ?? 0,
+      inputCostUsd: modelCost?.inputCostUsd ?? 0,
+      cacheReadCostUsd: modelCost?.cacheReadCostUsd ?? 0,
+      cacheWriteCostUsd: modelCost?.cacheWriteCostUsd ?? 0,
+      outputCostUsd: modelCost?.outputCostUsd ?? 0,
     };
   });
 
@@ -228,6 +252,10 @@ function buildTotals(rows: readonly ModelSpendRow[], totalPremiumRequests: numbe
   let cacheReadTokens = 0;
   let cacheWriteTokens = 0;
   let estimatedUsd = 0;
+  let inputCostUsd = 0;
+  let cacheReadCostUsd = 0;
+  let cacheWriteCostUsd = 0;
+  let outputCostUsd = 0;
 
   for (const row of rows) {
     requestCount += row.requestCount;
@@ -236,6 +264,10 @@ function buildTotals(rows: readonly ModelSpendRow[], totalPremiumRequests: numbe
     cacheReadTokens += row.cacheReadTokens;
     cacheWriteTokens += row.cacheWriteTokens;
     estimatedUsd += row.estimatedUsd;
+    inputCostUsd += row.inputCostUsd;
+    cacheReadCostUsd += row.cacheReadCostUsd;
+    cacheWriteCostUsd += row.cacheWriteCostUsd;
+    outputCostUsd += row.outputCostUsd;
   }
 
   return {
@@ -249,6 +281,10 @@ function buildTotals(rows: readonly ModelSpendRow[], totalPremiumRequests: numbe
       cacheReadTokens,
       cacheWriteTokens,
       estimatedUsd,
+      inputCostUsd,
+      cacheReadCostUsd,
+      cacheWriteCostUsd,
+      outputCostUsd,
     },
   };
 }

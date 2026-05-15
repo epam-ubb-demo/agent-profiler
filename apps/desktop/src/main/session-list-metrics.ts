@@ -78,6 +78,25 @@ export function extractSessionListMetrics(session: Session) {
     if (diff > 0) wallTimeMs = diff;
   }
 
+  const modelUsage: Array<{
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+  }> = [];
+  if (usage !== null) {
+    for (const m of usage.modelMetrics) {
+      modelUsage.push({
+        model: m.model,
+        inputTokens: m.inputTokens,
+        outputTokens: m.outputTokens,
+        cacheReadTokens: m.cacheReadTokens,
+        cacheWriteTokens: m.cacheWriteTokens,
+      });
+    }
+  }
+
   return {
     totalInputTokens: totalInput,
     totalOutputTokens: totalOutput,
@@ -87,5 +106,6 @@ export function extractSessionListMetrics(session: Session) {
     costConfidence,
     wallTimeMs,
     repository: session.repository ?? '',
+    modelUsage,
   };
 }
