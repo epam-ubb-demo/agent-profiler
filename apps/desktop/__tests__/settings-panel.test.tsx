@@ -52,7 +52,7 @@ afterEach(() => {
 
 /** Opens the settings dialog and waits for settings to load. */
 async function openSettingsDialog() {
-  const trigger = screen.getByRole('button', { name: /open remote session/i });
+  const trigger = screen.getByRole('button', { name: /^settings$/i });
   fireEvent.click(trigger);
 
   // Wait for the dialog to open and settings to load
@@ -67,7 +67,7 @@ describe('SettingsPanel', () => {
   it('renders settings trigger button', async () => {
     await render(<SettingsPanel />);
 
-    expect(screen.getByRole('button', { name: /open remote session/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^settings$/i })).toBeInTheDocument();
   });
 
   it('opens dialog when settings button is clicked', async () => {
@@ -167,5 +167,69 @@ describe('SettingsPanel', () => {
     await waitFor(() => {
       expect(onSaved).toHaveBeenCalled();
     });
+  });
+
+  it('Sync Now saves settings before triggering sync', async () => {
+    await render(<SettingsPanel />);
+
+    await openSettingsDialog();
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Workspace ID') as HTMLInputElement).value).toBe('test-ws');
+    });
+
+    const syncBtn = screen.getByRole('button', { name: /sync now/i });
+    fireEvent.click(syncBtn);
+
+    await waitFor(() => {
+      expect(mockElectronApi.settings.set).toHaveBeenCalledWith(
+        expect.objectContaining({ workspaceId: 'test-ws' }),
+      );
+      expect(mockElectronApi.sync.setSettings).toHaveBeenCalled();
+      expect(mockElectronApi.sync.trigger).toHaveBeenCalled();
+    });
+
+    // settings.set must be called before trigger
+    const setOrder = vi.mocked(mockElectronApi.settings.set).mock.invocationCallOrder[0]!;
+    const triggerOrder = vi.mocked(mockElectronApi.sync.trigger).mock.invocationCallOrder[0]!;
+    expect(setOrder).toBeLessThan(triggerOrder);
+  });
+
+  it('Sync Now calls onSettingsSaved after saving', async () => {
+    const onSaved = vi.fn();
+    await render(<SettingsPanel onSettingsSaved={onSaved} />);
+
+    await openSettingsDialog();
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Workspace ID') as HTMLInputElement).value).toBe('test-ws');
+    });
+
+    const syncBtn = screen.getByRole('button', { name: /sync now/i });
+    fireEvent.click(syncBtn);
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalled();
+    });
+  });
+
+  it('Sync Now does not close the dialog', async () => {
+    await render(<SettingsPanel />);
+
+    await openSettingsDialog();
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Workspace ID') as HTMLInputElement).value).toBe('test-ws');
+    });
+
+    const syncBtn = screen.getByRole('button', { name: /sync now/i });
+    fireEvent.click(syncBtn);
+
+    await waitFor(() => {
+      expect(mockElectronApi.sync.trigger).toHaveBeenCalled();
+    });
+
+    // Dialog must remain open
+    expect(screen.getByText('Application Insights Settings')).toBeInTheDocument();
   });
 });

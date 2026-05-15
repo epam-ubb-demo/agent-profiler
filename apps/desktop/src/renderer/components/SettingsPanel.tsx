@@ -135,12 +135,22 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
 
   const handleSyncNow = useCallback(async () => {
     setSyncTriggering(true);
+    setSaveError(null);
     try {
+      await window.electronApi.settings.set(buildSettings());
+      await window.electronApi.sync.setSettings({
+        enabled: syncEnabled,
+        categories: syncCategories,
+        otlpEndpoint: otlpEndpoint.trim(),
+      });
+      onSettingsSaved?.();
       await window.electronApi.sync.trigger();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setSyncTriggering(false);
     }
-  }, []);
+  }, [buildSettings, onSettingsSaved, syncEnabled, syncCategories, otlpEndpoint]);
 
   const handleClose = useCallback(() => setOpen(false), []);
 
@@ -177,12 +187,12 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
   return (
     <>
       <Button
-        caption="Open remote session"
+        caption="Settings"
         icon={Settings}
         fill="none"
         color="secondary"
         size="36"
-        aria-label="Open remote session"
+        aria-label="Settings"
         onClick={() => setOpen(true)}
       />
 

@@ -37,6 +37,9 @@ const ADAPTER_COLOURS: Record<string, 'info' | 'success' | 'warning' | 'critical
 
 const ADAPTER_OPTIONS = Object.entries(ADAPTER_LABELS).map(([id, name]) => ({ id, name }));
 
+const LOCAL_ADAPTERS = new Set(['copilot-cli', 'vscode-chat', 'vscode-agent', 'ctb']);
+const REMOTE_ADAPTERS = new Set(['application-insights']);
+
 // ── Formatting helpers ────────────────────────────────────────────────────────
 
 function formatTokenCount(n: number): string {
@@ -307,6 +310,10 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
 
+  // Data source toggle state
+  const [dataSource, setDataSource] = useState<'local' | 'remote'>('local');
+  const [appInsightsConfigured, setAppInsightsConfigured] = useState(false);
+
   // Filter state
   const [searchText, setSearchText] = useState('');
   const [dateRange, setDateRange] = useState<{ from: string | null; to: string | null }>({ from: null, to: null });
@@ -317,9 +324,15 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
   const adapterDataSource = useArrayDataSource({ items: ADAPTER_OPTIONS }, []);
 
+  // Sessions pre-filtered by selected data source
+  const sourceSessions = useMemo(() => {
+    const allowed = dataSource === 'local' ? LOCAL_ADAPTERS : REMOTE_ADAPTERS;
+    return sessions.filter((s) => allowed.has(s.adapter));
+  }, [sessions, dataSource]);
+
   const repoOptions = useMemo(() => {
     const repos = new Set<string>();
-    for (const s of sessions) {
+    for (const s of sourceSessions) {
       if (s.metrics?.repository) {
         repos.add(s.metrics.repository);
       }
@@ -327,7 +340,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
     return Array.from(repos)
       .sort()
       .map((r) => ({ id: r, name: r }));
-  }, [sessions]);
+  }, [sourceSessions]);
 
   const repoDataSource = useArrayDataSource({ items: repoOptions }, [repoOptions]);
 
@@ -348,9 +361,22 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
     }
   }, []);
 
+  const checkAppInsightsConfigured = useCallback(async () => {
+    try {
+      const s = await window.electronApi.settings.get();
+      setAppInsightsConfigured(s.workspaceId.trim() !== '');
+    } catch {
+      setAppInsightsConfigured(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadSessions();
   }, [loadSessions]);
+
+  useEffect(() => {
+    void checkAppInsightsConfigured();
+  }, [checkAppInsightsConfigured]);
 
   // Subscribe to push-based session list updates
   useEffect(() => {
@@ -378,7 +404,8 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
   const handleSettingsSaved = useCallback(() => {
     void loadSessions();
-  }, [loadSessions]);
+    void checkAppInsightsConfigured();
+  }, [loadSessions, checkAppInsightsConfigured]);
 
   const hasActiveFilters =
     searchText.trim() !== '' ||
@@ -396,7 +423,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
   // Filtered sessions
   const filteredSessions = useMemo(() => {
-    let result = sessions;
+    let result = sourceSessions;
 
     if (searchText.trim()) {
       const q = searchText.trim().toLowerCase();
@@ -430,7 +457,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
     }
 
     return result;
-  }, [sessions, searchText, dateRange, adapterFilter, repoFilter]);
+  }, [sourceSessions, searchText, dateRange, adapterFilter, repoFilter]);
 
   // Sessions grouped by day
   const groupedSessions = useMemo(() => groupByDay(filteredSessions), [filteredSessions]);
@@ -601,6 +628,26 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
               already displayed so it doesn't replace the full-page scanning spinner. */}
           {scanning && sessions.length > 0 && (
             <Spinner rawProps={{ 'data-testid': 'session-browser-refreshing' }} />
+          )}
+          {appInsightsConfigured && (
+            <FlexRow spacing="6" rawProps={{ 'data-testid': 'data-source-toggle' }}>
+              <Button
+                caption="Local"
+                fill={dataSource === 'local' ? 'solid' : 'outline'}
+                color={dataSource === 'local' ? 'primary' : 'secondary'}
+                size="30"
+                onClick={() => setDataSource('local')}
+                rawProps={{ 'data-testid': 'data-source-local' }}
+              />
+              <Button
+                caption="Remote"
+                fill={dataSource === 'remote' ? 'solid' : 'outline'}
+                color={dataSource === 'remote' ? 'primary' : 'secondary'}
+                size="30"
+                onClick={() => setDataSource('remote')}
+                rawProps={{ 'data-testid': 'data-source-remote' }}
+              />
+            </FlexRow>
           )}
           <FlexSpacer />
           <Button
