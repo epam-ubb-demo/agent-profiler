@@ -579,6 +579,9 @@ function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
           <div>
             Time: {tooltip.item.wallTimeMs != null ? formatMs(tooltip.item.wallTimeMs) : '—'}
           </div>
+          <div>In: {formatTk(tooltip.item.inputTokens)} tk</div>
+          <div>Out: {formatTk(tooltip.item.outputTokens)} tk</div>
+          <div>Cached: {formatTk(tooltip.item.cacheReadTokens)} tk</div>
           <hr
             style={{
               border: 'none',
