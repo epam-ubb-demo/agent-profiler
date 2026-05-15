@@ -99,17 +99,17 @@ function defaultTimeRange(days: number = DEFAULT_DAYS): TimeRange {
 
 const LIST_SESSIONS_KQL = `let copilotSessions = AppDependencies
 | union AppRequests
-| where isnotempty(customDimensions)
+| where isnotempty(Properties)
 | extend sessionId = iif(
-    isnotempty(tostring(customDimensions.["copilot_chat.session.id"])),
-    tostring(customDimensions.["copilot_chat.session.id"]),
-    operation_Id
+    isnotempty(tostring(Properties.["copilot_chat.session.id"])),
+    tostring(Properties.["copilot_chat.session.id"]),
+    OperationId
   )
 | where isnotempty(sessionId)
 | summarize
-    startTs = min(timestamp),
-    endTs = max(timestamp),
-    selectedModel = take_any(tostring(customDimensions.["gen_ai.request.model"]))
+    startTs = min(TimeGenerated),
+    endTs = max(TimeGenerated),
+    selectedModel = take_any(tostring(Properties.["gen_ai.request.model"]))
   by sessionId;
 let enrichmentSessions = AppTraces
 | where Properties has "agent_profiler.enrichment"
@@ -137,17 +137,17 @@ function buildGetSessionKql(sessionId: string): string {
   return `let targetSession = "${sessionId}";
 AppDependencies
 | union AppRequests
-| where operation_Id == targetSession
-    or tostring(customDimensions.["copilot_chat.session.id"]) == targetSession
+| where OperationId == targetSession
+    or tostring(Properties.["copilot_chat.session.id"]) == targetSession
 | project
-    id,
-    operation_Id,
-    operation_ParentId,
-    name,
-    timestamp,
-    duration,
-    success,
-    customDimensions
+    id = Id,
+    operation_Id = OperationId,
+    operation_ParentId = ParentId,
+    name = Name,
+    timestamp = TimeGenerated,
+    duration = DurationMs,
+    success = Success,
+    customDimensions = Properties
 | order by timestamp asc`;
 }
 
@@ -158,7 +158,7 @@ AppTraces
 | where Properties has "agent_profiler.enrichment"
 | where tostring(Properties.["agent_profiler.session_id"]) == targetSession
 | project
-    timestamp,
+    timestamp = TimeGenerated,
     message = Message,
     category = tostring(Properties.["agent_profiler.category"])
 | order by timestamp asc`;
