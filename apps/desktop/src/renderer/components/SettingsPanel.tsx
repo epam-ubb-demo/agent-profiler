@@ -312,7 +312,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
                       <>
                         <CheckCircle size={16} style={{ color: 'var(--uui-success-50)', flexShrink: 0 }} />
                         <Text fontSize="13" color="success">
-                          Connected — {testResult.sessionCount ?? 0} sessions found
+                          Connected
                         </Text>
                       </>
                     ) : (

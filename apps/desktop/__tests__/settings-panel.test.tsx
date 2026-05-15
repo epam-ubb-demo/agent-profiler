@@ -106,7 +106,6 @@ describe('SettingsPanel', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/connected/i)).toBeInTheDocument();
-      expect(screen.getByText(/5 sessions found/i)).toBeInTheDocument();
     });
   });
 
