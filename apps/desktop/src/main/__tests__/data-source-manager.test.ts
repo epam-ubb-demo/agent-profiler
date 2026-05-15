@@ -108,7 +108,7 @@ describe('DataSourceManager', () => {
       expect(sessions[0]!.id).toBe('local-1');
     });
 
-    it('deduplicates sessions by ID — first source wins', async () => {
+    it('keeps both copies when the same session ID appears in local and Application Insights', async () => {
       const duplicateId = 'dup-session';
       const localItem = makeSessionItem({ id: duplicateId, adapter: 'copilot-cli' });
       const aiItem = makeSessionItem({ id: duplicateId, adapter: 'application-insights' });
@@ -124,8 +124,10 @@ describe('DataSourceManager', () => {
       manager.configureAppInsights({ workspaceId: 'ws-123' });
       const sessions = await manager.listSessions();
 
-      expect(sessions).toHaveLength(1);
-      expect(sessions[0]!.adapter).toBe('copilot-cli');
+      // Both copies are preserved so each tab (local vs remote) can show its own entry.
+      expect(sessions).toHaveLength(2);
+      expect(sessions.map((s: SessionListItem) => s.adapter)).toContain('copilot-cli');
+      expect(sessions.map((s: SessionListItem) => s.adapter)).toContain('application-insights');
     });
   });
 

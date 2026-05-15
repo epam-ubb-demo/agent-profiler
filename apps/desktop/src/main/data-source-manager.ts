@@ -52,8 +52,10 @@ export class DataSourceManager {
   /**
    * Merge sessions from all available sources.
    *
-   * Results are deduplicated by ID — if the same session appears in
-   * multiple sources the first occurrence wins.
+   * Results are NOT deduplicated — the same session ID may appear from
+   * multiple sources (e.g. a local copy and a synced Application Insights
+   * copy). The client-side view already separates sessions by adapter, so
+   * duplicates never surface within a single tab.
    */
   async listSessions(): Promise<SessionListItem[]> {
     const promises: Promise<SessionListItem[]>[] = [this.localSource.listSessions()];
@@ -62,17 +64,11 @@ export class DataSourceManager {
     }
 
     const results = await Promise.allSettled(promises);
-    const seen = new Set<string>();
     const merged: SessionListItem[] = [];
 
     for (const result of results) {
       if (result.status !== 'fulfilled') continue;
-      for (const item of result.value) {
-        if (!seen.has(item.id)) {
-          seen.add(item.id);
-          merged.push(item);
-        }
-      }
+      merged.push(...result.value);
     }
 
     merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
