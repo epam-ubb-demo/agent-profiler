@@ -11,6 +11,7 @@ vi.mock('node:fs/promises', () => {
   const mockModule = {
     readFile: vi.fn(),
     writeFile: vi.fn(),
+    unlink: vi.fn(),
   };
   // Export mockModule so we can access it in tests
   (global as Record<string, unknown>).__mockFsPromises = mockModule;
@@ -105,6 +106,7 @@ describe('SessionIndexer', () => {
   let mockManager: DataSourceManager;
   let mockReadFile: ReturnType<typeof vi.fn>;
   let mockWriteFile: ReturnType<typeof vi.fn>;
+  let mockUnlink: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -113,6 +115,7 @@ describe('SessionIndexer', () => {
     const mockFs = (global as Record<string, unknown>).__mockFsPromises;
     mockReadFile = (mockFs as Record<string, unknown>).readFile as ReturnType<typeof vi.fn>;
     mockWriteFile = (mockFs as Record<string, unknown>).writeFile as ReturnType<typeof vi.fn>;
+    mockUnlink = (mockFs as Record<string, unknown>).unlink as ReturnType<typeof vi.fn>;
     
     mockManager = makeMockDataSourceManager();
     indexer = new SessionIndexer(mockManager);
@@ -1503,6 +1506,120 @@ describe('SessionIndexer', () => {
 
       // The key assertion: scanning must be false — not stuck at true.
       expect(indexer.isScanning()).toBe(false);
+    });
+  });
+
+  // ── Test 10: clearCache() ──────────────────────────────────────────────────
+
+  describe('clearCache', () => {
+    it('deletes the cache file', async () => {
+      const items = [makeSessionListItem({ id: 'session-1', name: 'Session 1' })];
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue(items);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      await indexer.start('/root');
+      await flushAllAsync();
+
+      // Verify session is in index
+      expect(indexer.getSessionList()).toHaveLength(1);
+
+      // Clear the mock and call clearCache
+      mockUnlink.mockClear();
+      mockUnlink.mockResolvedValue(undefined);
+
+      await indexer.clearCache();
+
+      // Verify unlink was called with the cache file path
+      expect(mockUnlink).toHaveBeenCalled();
+      const unlinkCall = mockUnlink.mock.calls[0];
+      expect(unlinkCall![0]).toContain('session-index-cache.json');
+    });
+
+    it('clears the in-memory session list', async () => {
+      const items = [
+        makeSessionListItem({ id: 'session-1', name: 'Session 1' }),
+        makeSessionListItem({ id: 'session-2', name: 'Session 2' }),
+      ];
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue(items);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      await indexer.start('/root');
+      await flushAllAsync();
+
+      expect(indexer.getSessionList()).toHaveLength(2);
+
+      mockUnlink.mockResolvedValue(undefined);
+      await indexer.clearCache();
+
+      expect(indexer.getSessionList()).toEqual([]);
+    });
+
+    it('emits updated event with empty list', async () => {
+      const items = [makeSessionListItem({ id: 'session-1' })];
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue(items);
+      vi.mocked(mockManager.getSession).mockResolvedValue({
+        parseStatus: { status: 'ok' },
+      } as unknown as Session);
+
+      await indexer.start('/root');
+      await flushAllAsync();
+
+      mockUnlink.mockResolvedValue(undefined);
+      const emitSpy = vi.spyOn(indexer, 'emit');
+
+      await indexer.clearCache();
+
+      const updatedCalls = emitSpy.mock.calls.filter((call) => call[0] === 'updated');
+      expect(updatedCalls.length).toBeGreaterThan(0);
+      const lastUpdatedCall = updatedCalls[updatedCalls.length - 1];
+      expect(lastUpdatedCall![1]).toEqual([]);
+    });
+
+    it('handles missing cache file gracefully (ENOENT)', async () => {
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      await indexer.start('/root');
+      await flushAllAsync();
+
+      // Mock unlink to throw ENOENT (file not found)
+      const enoentError = new Error('ENOENT') as NodeJS.ErrnoException;
+      enoentError.code = 'ENOENT';
+      mockUnlink.mockRejectedValue(enoentError);
+
+      // Should not throw
+      expect(async () => {
+        await indexer.clearCache();
+      }).not.toThrow();
+
+      expect(indexer.getSessionList()).toEqual([]);
+    });
+
+    it('throws when unlink fails for reasons other than ENOENT', async () => {
+      mockReadFile.mockRejectedValueOnce(new Error('no cache'));
+      vi.mocked(mockManager.listSessions).mockResolvedValue([]);
+
+      await indexer.start('/root');
+      await flushAllAsync();
+
+      // Mock unlink to throw a permission error
+      const permError = new Error('Permission denied') as NodeJS.ErrnoException;
+      permError.code = 'EACCES';
+      mockUnlink.mockRejectedValue(permError);
+
+      // Should not throw (error is caught and logged internally)
+      // but the cache is still cleared from memory
+      await indexer.clearCache();
+
+      // Session list is still cleared even on error
+      expect(indexer.getSessionList()).toEqual([]);
     });
   });
 });

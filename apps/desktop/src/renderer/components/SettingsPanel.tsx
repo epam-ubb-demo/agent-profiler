@@ -43,6 +43,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
   const [otlpEndpoint, setOtlpEndpoint] = useState('');
   const [syncTriggering, setSyncTriggering] = useState(false);
   const [resyncTriggering, setResyncTriggering] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
 
   // Load settings when the dialog opens
   useEffect(() => {
@@ -172,6 +173,18 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
       setResyncTriggering(false);
     }
   }, [buildSettings, onSettingsSaved, syncEnabled, syncCategories, otlpEndpoint]);
+
+  const handleClearCache = useCallback(async () => {
+    setClearingCache(true);
+    setSaveError(null);
+    try {
+      await window.electronApi.session.clearCache();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to clear cache');
+    } finally {
+      setClearingCache(false);
+    }
+  }, []);
 
   const handleClose = useCallback(() => setOpen(false), []);
 
@@ -446,6 +459,15 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
                       size="30"
                       isDisabled={syncTriggering || resyncTriggering}
                       onClick={() => void handleResyncAll()}
+                    />
+                    <Button
+                      caption={clearingCache ? 'Clearing…' : 'Clear local cache'}
+                      {...(clearingCache ? { icon: Loader2 } : {})}
+                      fill="outline"
+                      color="secondary"
+                      size="30"
+                      isDisabled={clearingCache}
+                      onClick={() => void handleClearCache()}
                     />
                   </div>
                   <Text color="secondary" fontSize="12">

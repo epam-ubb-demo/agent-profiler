@@ -90,6 +90,7 @@ export const ipcChannels = {
   SETTINGS_SET: 'settings:set',
   SETTINGS_TEST_CONNECTION: 'settings:testConnection',
   SETTINGS_LIST_WORKSPACES: 'settings:listWorkspaces',
+  SESSION_CLEAR_CACHE: 'session:clearCache',
   SYNC_TRIGGER: 'sync:trigger',
   SYNC_CLEAR_MARKERS: 'sync:clearMarkers',
   SYNC_STATUS: 'sync:status',

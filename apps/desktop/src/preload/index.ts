@@ -20,6 +20,7 @@ const api: ElectronApi = {
         ipcRenderer.removeListener(ipcChannels.SESSION_LIST_UPDATED, handler);
       };
     },
+    clearCache: () => ipcRenderer.invoke(ipcChannels.SESSION_CLEAR_CACHE),
     getScanningState: () => ipcRenderer.invoke(ipcChannels.SESSION_SCANNING_STATE),
     onScanningStateChanged: (callback) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

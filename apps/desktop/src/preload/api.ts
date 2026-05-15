@@ -18,6 +18,8 @@ export interface ElectronApi {
     open: (sessionId: string) => Promise<unknown | null>;
     /** Sets the root directory for session scanning */
     setRootDir: (dir: string) => Promise<boolean>;
+    /** Delete the local session index cache file and clear the in-memory index. */
+    clearCache: () => Promise<void>;
     /** Register a callback for push-based session list updates from main process */
     onListUpdated: (callback: (sessions: SessionListItemIpc[]) => void) => () => void;
     /** Query the current scanning state of the session indexer */

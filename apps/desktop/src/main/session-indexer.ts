@@ -14,7 +14,7 @@
 
 import { EventEmitter } from 'node:events';
 import { watch, type FSWatcher } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { Session, SessionListItemIpc } from '@agent-profiler/core';
@@ -162,6 +162,27 @@ export class SessionIndexer extends EventEmitter {
       void (this.scanPromise = this.runBackgroundScan());
     } catch (err) {
       console.error('[SessionIndexer] refresh() error:', err);
+    }
+  }
+
+  /**
+   * Delete the on-disk cache file and clear the in-memory index.
+   *
+   * Emits an empty session list immediately so the renderer reflects the
+   * cleared state.  A subsequent call to `refresh()` or `start()` will
+   * re-populate the index from App Insights / the filesystem.
+   */
+  async clearCache(): Promise<void> {
+    try {
+      await unlink(this.cacheFilePath).catch((err: NodeJS.ErrnoException) => {
+        if (err.code !== 'ENOENT') throw err;
+        // File already absent — that is fine, nothing to delete.
+      });
+      this.index.clear();
+      this.emit('updated', []);
+      console.log('[SessionIndexer] Cache cleared');
+    } catch (err) {
+      console.error('[SessionIndexer] clearCache() error:', err);
     }
   }
 

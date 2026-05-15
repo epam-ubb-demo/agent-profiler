@@ -259,6 +259,11 @@ if (gotLock) {
     return syncService.clearAllMarkers();
   });
 
+  ipcMain.handle(ipcChannels.SESSION_CLEAR_CACHE, async () => {
+    await indexer.clearCache();
+    void indexer.refresh();
+  });
+
   ipcMain.handle(ipcChannels.SYNC_SETTINGS_GET, () => {
     return getSyncSettings();
   });

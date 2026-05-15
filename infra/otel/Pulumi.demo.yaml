@@ -14,5 +14,5 @@ config:
   agent-profiler-otel-gateway:minReplicas: "0"
   agent-profiler-otel-gateway:maxReplicas: "2"
   agent-profiler-otel-gateway:publicAccess: "true"
-  agent-profiler-otel-gateway:allowedIpRanges: "31.121.15.162/32"
+  agent-profiler-otel-gateway:allowedIpRanges: "45.159.90.156/32"
 encryptionsalt: v1:aJ7bW+LuL3s=:v1:b/QOOI3jFsYI+9aF:Ny3spQ7mKYss4fKXR11Mcu2nP+nnjA==

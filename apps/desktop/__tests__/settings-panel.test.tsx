@@ -12,6 +12,7 @@ const mockElectronApi: ElectronApi = {
     list: vi.fn(),
     open: vi.fn(),
     setRootDir: vi.fn(),
+    clearCache: vi.fn<ElectronApi['session']['clearCache']>().mockResolvedValue(undefined),
     onListUpdated: vi.fn<ElectronApi['session']['onListUpdated']>().mockReturnValue(() => {}),
     getScanningState: vi.fn<ElectronApi['session']['getScanningState']>().mockResolvedValue(false),
     onScanningStateChanged: vi.fn<ElectronApi['session']['onScanningStateChanged']>().mockReturnValue(() => {}),
@@ -326,5 +327,91 @@ describe('SettingsPanel', () => {
 
     // trigger must NOT have been called after clearMarkers failed
     expect(mockElectronApi.sync.trigger).not.toHaveBeenCalled();
+  });
+
+  it('Clear local cache button is visible in the settings dialog', async () => {
+    await render(<SettingsPanel />);
+
+    await openSettingsDialog();
+
+    expect(screen.getByRole('button', { name: /clear local cache/i })).toBeInTheDocument();
+  });
+
+  it('Clear local cache calls session.clearCache on click', async () => {
+    await render(<SettingsPanel />);
+
+    await openSettingsDialog();
+
+    const clearBtn = screen.getByRole('button', { name: /clear local cache/i });
+    fireEvent.click(clearBtn);
+
+    await waitFor(() => {
+      expect(mockElectronApi.session.clearCache).toHaveBeenCalled();
+    });
+  });
+
+  it('Clear local cache button is disabled while clearing', async () => {
+    // Delay the clearCache resolution so we can observe the disabled state
+    let resolveClearCache: () => void = () => {};
+    vi.mocked(mockElectronApi.session.clearCache).mockImplementation(
+      () => new Promise<undefined>((resolve) => {
+        resolveClearCache = () => resolve(undefined);
+      })
+    );
+
+    await render(<SettingsPanel />);
+
+    await openSettingsDialog();
+
+    const clearBtn = screen.getByRole('button', { name: /clear local cache/i });
+    fireEvent.click(clearBtn);
+
+    // Button should be disabled while operation is in flight
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /clearing/i })).toBeInTheDocument();
+    });
+
+    // Resolve the promise to complete the operation
+    resolveClearCache();
+
+    // Wait for the button to be re-enabled (back to "Clear local cache" text)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /clear local cache/i })).toBeInTheDocument();
+    });
+  });
+
+  it('Clear local cache shows error when clearCache fails', async () => {
+    vi.mocked(mockElectronApi.session.clearCache).mockRejectedValueOnce(new Error('Cache deletion failed'));
+
+    await render(<SettingsPanel />);
+
+    await openSettingsDialog();
+
+    const clearBtn = screen.getByRole('button', { name: /clear local cache/i });
+    fireEvent.click(clearBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Cache deletion failed')).toBeInTheDocument();
+    });
+  });
+
+  it('Clear local cache does not close the dialog', async () => {
+    await render(<SettingsPanel />);
+
+    await openSettingsDialog();
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Workspace ID') as HTMLInputElement).value).toBe('test-ws');
+    });
+
+    const clearBtn = screen.getByRole('button', { name: /clear local cache/i });
+    fireEvent.click(clearBtn);
+
+    await waitFor(() => {
+      expect(mockElectronApi.session.clearCache).toHaveBeenCalled();
+    });
+
+    // Dialog must remain open
+    expect(screen.getByText('Application Insights Settings')).toBeInTheDocument();
   });
 });

@@ -56,6 +56,7 @@ const mockElectronApi = {
     list: vi.fn(),
     open: vi.fn(),
     setRootDir: vi.fn(),
+    clearCache: vi.fn<ElectronApi['session']['clearCache']>().mockResolvedValue(undefined),
     onListUpdated: vi.fn<ElectronApi['session']['onListUpdated']>().mockReturnValue(() => {}),
     getScanningState: vi.fn<ElectronApi['session']['getScanningState']>().mockResolvedValue(false),
     onScanningStateChanged: vi.fn<ElectronApi['session']['onScanningStateChanged']>().mockReturnValue(() => {}),
