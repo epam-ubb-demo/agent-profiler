@@ -638,10 +638,33 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
           </div>
         ) : (
           <div data-testid="session-list">
-            {groupedSessions.map(({ dateKey, items }) => (
+            {groupedSessions.map(({ dateKey, items }) => {
+              let dayCost: number | null = null;
+              let dayIn = 0;
+              let dayOut = 0;
+              let dayCached = 0;
+              let dayTime: number | null = null;
+              for (const s of items) {
+                const m = s.metrics;
+                if (m) {
+                  if (m.totalCostUsd != null) dayCost = (dayCost ?? 0) + m.totalCostUsd;
+                  dayIn += m.totalInputTokens;
+                  dayOut += m.totalOutputTokens;
+                  dayCached += m.totalCacheReadTokens;
+                  if (m.wallTimeMs != null) dayTime = (dayTime ?? 0) + m.wallTimeMs;
+                }
+              }
+              return (
               <div key={dateKey} className={styles.dayGroup}>
                 <div className={styles.dayHeading} data-testid="day-heading">
-                  {formatDayLabel(dateKey)}
+                  <span>{formatDayLabel(dateKey)}</span>
+                  <span className={styles.daySummary}>
+                    {dayCost !== null && <span>{`$${dayCost.toFixed(2)}`}</span>}
+                    <span>{`In: ${formatTokenCount(dayIn)}`}</span>
+                    <span>{`Out: ${formatTokenCount(dayOut)}`}</span>
+                    <span>{`Cached: ${formatTokenCount(dayCached)}`}</span>
+                    {dayTime !== null && <span>{`Time: ${formatDuration(dayTime)}`}</span>}
+                  </span>
                 </div>
                 <div className={styles.cardGrid}>
                   {items.map((session) => (
@@ -653,7 +676,8 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

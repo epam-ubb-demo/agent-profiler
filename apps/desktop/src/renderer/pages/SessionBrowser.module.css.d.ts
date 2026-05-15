@@ -22,6 +22,7 @@ declare const styles: {
   readonly chartArea: string;
   readonly dayGroup: string;
   readonly dayHeading: string;
+  readonly daySummary: string;
   readonly emptyFilterState: string;
   readonly scrollableContent: string;
 };

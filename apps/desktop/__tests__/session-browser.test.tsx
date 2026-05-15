@@ -235,8 +235,9 @@ describe('SessionBrowser', () => {
 
     const headings = screen.getAllByTestId('day-heading');
     const headingTexts = headings.map((h) => h.textContent ?? '');
-    expect(headingTexts).toContain('Today');
-    expect(headingTexts).toContain('Yesterday');
+    // textContent now includes day summary metrics after the label; check for substring
+    expect(headingTexts.some((t) => t.startsWith('Today'))).toBe(true);
+    expect(headingTexts.some((t) => t.startsWith('Yesterday'))).toBe(true);
   });
 
   it('summary bar shows aggregate metrics for filtered sessions', async () => {

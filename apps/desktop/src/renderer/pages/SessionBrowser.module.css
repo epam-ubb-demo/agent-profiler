@@ -202,6 +202,8 @@
 }
 
 .dayHeading {
+  display: flex;
+  align-items: baseline;
   font-size: 0.8125rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -209,6 +211,13 @@
   color: var(--uui-text-secondary);
   padding-bottom: 4px;
   border-bottom: 1px solid var(--uui-neutral-40);
+}
+
+.daySummary {
+  display: inline-flex;
+  gap: 12px;
+  font-weight: 400;
+  margin-left: auto;
 }
 
 /* ─── Scrollable content ─── */
