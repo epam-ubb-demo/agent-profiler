@@ -161,7 +161,7 @@ describe('buildEnrichmentRows', () => {
       expect(metadataRow.Payload.repository).toBe('test-repo');
     });
 
-    it('uses session startTs as TimeGenerated for metadata row', () => {
+    it('uses push timestamp (now) as TimeGenerated for metadata row, not the session startTs', () => {
       const session = makeSession({
         startTs: '2025-01-15T10:00:00Z',
       });
@@ -174,9 +174,16 @@ describe('buildEnrichmentRows', () => {
         },
       };
 
+      const before = new Date().toISOString();
       const rows = buildEnrichmentRows(session, options);
+      const after = new Date().toISOString();
 
-      expect(rows[0]?.TimeGenerated).toBe('2025-01-15T10:00:00Z');
+      // TimeGenerated must be close to now, not the historical session timestamp
+      expect(rows[0]?.TimeGenerated).not.toBe('2025-01-15T10:00:00Z');
+      expect(rows[0]?.TimeGenerated! >= before).toBe(true);
+      expect(rows[0]?.TimeGenerated! <= after).toBe(true);
+      // Original session timestamp preserved in Payload
+      expect(rows[0]?.Payload.startTs).toBe('2025-01-15T10:00:00Z');
     });
   });
 
@@ -240,7 +247,7 @@ describe('buildEnrichmentRows', () => {
       expect(rows).toHaveLength(0);
     });
 
-    it('uses sample timestamp as TimeGenerated for utilisation rows', () => {
+    it('uses push timestamp (now) as TimeGenerated for utilisation rows, not the sample timestamp', () => {
       const session = makeSession({
         utilisation: [
           {
@@ -261,9 +268,16 @@ describe('buildEnrichmentRows', () => {
         },
       };
 
+      const before = new Date().toISOString();
       const rows = buildEnrichmentRows(session, options);
+      const after = new Date().toISOString();
 
-      expect(rows[0]?.TimeGenerated).toBe('2025-01-15T10:00:10Z');
+      // TimeGenerated must be close to now, not the historical sample timestamp
+      expect(rows[0]?.TimeGenerated).not.toBe('2025-01-15T10:00:10Z');
+      expect(rows[0]?.TimeGenerated! >= before).toBe(true);
+      expect(rows[0]?.TimeGenerated! <= after).toBe(true);
+      // Original sample timestamp preserved in Payload
+      expect(rows[0]?.Payload.timestamp).toBe('2025-01-15T10:00:10Z');
     });
 
     it('includes all utilisation fields in payload', () => {
@@ -388,6 +402,41 @@ describe('buildEnrichmentRows', () => {
       expect(payload?.model).toBe('claude-sonnet-4-20250514');
       expect(payload?.turnId).toBe('turn-1');
     });
+
+    it('uses push timestamp (now) as TimeGenerated for compaction rows, not the compaction timestamp', () => {
+      const session = makeSession({
+        compactions: [
+          {
+            timestamp: '2025-01-15T10:00:15Z',
+            inputTokens: 100,
+            outputTokens: 50,
+            cacheRead: 10,
+            cacheWrite: 5,
+            model: 'claude-sonnet-4-20250514',
+            turnId: 'turn-1',
+          },
+        ],
+      });
+      const options = {
+        categories: {
+          metadata: false,
+          utilisation: false,
+          compactions: true,
+          toolResults: false,
+        },
+      };
+
+      const before = new Date().toISOString();
+      const rows = buildEnrichmentRows(session, options);
+      const after = new Date().toISOString();
+
+      // TimeGenerated must be close to now, not the historical compaction timestamp
+      expect(rows[0]?.TimeGenerated).not.toBe('2025-01-15T10:00:15Z');
+      expect(rows[0]?.TimeGenerated! >= before).toBe(true);
+      expect(rows[0]?.TimeGenerated! <= after).toBe(true);
+      // Original compaction timestamp preserved in Payload
+      expect(rows[0]?.Payload.timestamp).toBe('2025-01-15T10:00:15Z');
+    });
   });
 
   describe('tool result rows', () => {
@@ -496,6 +545,45 @@ describe('buildEnrichmentRows', () => {
       expect(payload?.turnId).toBe('turn-1');
       expect(payload?.eventId).toBe('evt-001');
       expect(payload?.argumentsPreview).toBe('ls -la');
+    });
+
+    it('uses push timestamp (now) as TimeGenerated for tool result rows, not the tool startTs', () => {
+      const session = makeSession({
+        toolCalls: [
+          {
+            toolCallId: 'tc-001',
+            toolName: 'bash',
+            model: 'claude-sonnet-4-20250514',
+            startTs: '2025-01-15T10:00:05Z',
+            endTs: '2025-01-15T10:00:06Z',
+            durationMs: 1000,
+            success: true,
+            parentId: null,
+            turnId: 'turn-1',
+            eventId: 'evt-001',
+            argumentsPreview: 'ls -la',
+          },
+        ],
+      });
+      const options = {
+        categories: {
+          metadata: false,
+          utilisation: false,
+          compactions: false,
+          toolResults: true,
+        },
+      };
+
+      const before = new Date().toISOString();
+      const rows = buildEnrichmentRows(session, options);
+      const after = new Date().toISOString();
+
+      // TimeGenerated must be close to now, not the historical tool startTs
+      expect(rows[0]?.TimeGenerated).not.toBe('2025-01-15T10:00:05Z');
+      expect(rows[0]?.TimeGenerated! >= before).toBe(true);
+      expect(rows[0]?.TimeGenerated! <= after).toBe(true);
+      // Original tool timestamp preserved in Payload
+      expect(rows[0]?.Payload.startTs).toBe('2025-01-15T10:00:05Z');
     });
 
     describe('skill field forwarding', () => {
@@ -1045,7 +1133,7 @@ describe('buildEnrichmentRows', () => {
       expect(payload?.subagentCount).toBe(2);
     });
 
-    it('uses turn startTs as TimeGenerated', () => {
+    it('uses push timestamp (now) as TimeGenerated for turn rows, not the turn startTs', () => {
       const session = makeSession({
         turns: [
           {
@@ -1069,9 +1157,16 @@ describe('buildEnrichmentRows', () => {
         },
       };
 
+      const before = new Date().toISOString();
       const rows = buildEnrichmentRows(session, options);
+      const after = new Date().toISOString();
 
-      expect(rows[0]?.TimeGenerated).toBe('2025-01-15T10:00:00Z');
+      // TimeGenerated must be close to now, not the historical turn startTs
+      expect(rows[0]?.TimeGenerated).not.toBe('2025-01-15T10:00:00Z');
+      expect(rows[0]?.TimeGenerated! >= before).toBe(true);
+      expect(rows[0]?.TimeGenerated! <= after).toBe(true);
+      // Original turn timestamp preserved in Payload
+      expect(rows[0]?.Payload.startTs).toBe('2025-01-15T10:00:00Z');
     });
 
     it('categories.turns disabled by default (undefined)', () => {
@@ -1223,7 +1318,7 @@ describe('buildEnrichmentRows', () => {
       expect(payload?.reasoningText).toBe('Internal reasoning here');
     });
 
-    it('uses message timestamp as TimeGenerated', () => {
+    it('uses push timestamp (now) as TimeGenerated for assistant message rows, not the message timestamp', () => {
       const session = makeSession({
         assistantMessages: [
           {
@@ -1253,9 +1348,16 @@ describe('buildEnrichmentRows', () => {
         },
       };
 
+      const before = new Date().toISOString();
       const rows = buildEnrichmentRows(session, options);
+      const after = new Date().toISOString();
 
-      expect(rows[0]?.TimeGenerated).toBe('2025-01-15T10:00:05Z');
+      // TimeGenerated must be close to now, not the historical message timestamp
+      expect(rows[0]?.TimeGenerated).not.toBe('2025-01-15T10:00:05Z');
+      expect(rows[0]?.TimeGenerated! >= before).toBe(true);
+      expect(rows[0]?.TimeGenerated! <= after).toBe(true);
+      // Original message timestamp preserved in Payload
+      expect(rows[0]?.Payload.timestamp).toBe('2025-01-15T10:00:05Z');
     });
 
     it('categories.assistantMessages disabled by default (undefined)', () => {

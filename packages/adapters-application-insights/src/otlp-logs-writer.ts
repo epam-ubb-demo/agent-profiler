@@ -3,22 +3,29 @@ import type { EnrichmentRow } from '@agent-profiler/core';
 /** Default batch size: 100 rows per POST to stay well under typical collector limits */
 const DEFAULT_BATCH_SIZE = 100;
 
+/** Default inter-batch delay in milliseconds to allow the collector to flush */
+const DEFAULT_BATCH_DELAY_MS = 200;
+
 export interface OtlpLogsWriterConfig {
   /** OTel Gateway URL, e.g. https://ca-otel-gw-demo.azurecontainerapps.io */
   otlpEndpoint: string;
   /** Max rows per OTLP POST request. Defaults to 100. */
   batchSize?: number;
+  /** Delay in ms between batch POSTs to avoid overwhelming the collector. Defaults to 200. */
+  batchDelayMs?: number;
 }
 
 export class OtlpLogsWriter {
   private readonly endpoint: string;
   private readonly batchSize: number;
+  private readonly batchDelayMs: number;
 
   constructor(config: OtlpLogsWriterConfig) {
     // Normalise: strip trailing slash, append /v1/logs
     const base = config.otlpEndpoint.replace(/\/+$/, '');
     this.endpoint = `${base}/v1/logs`;
     this.batchSize = config.batchSize ?? DEFAULT_BATCH_SIZE;
+    this.batchDelayMs = config.batchDelayMs ?? DEFAULT_BATCH_DELAY_MS;
   }
 
   /**
@@ -33,8 +40,14 @@ export class OtlpLogsWriter {
 
     const now = new Date().toISOString();
     const totalBatches = Math.ceil(rows.length / this.batchSize);
+    const batchDelayMs = this.batchDelayMs;
 
     for (let i = 0; i < totalBatches; i++) {
+      // Pause between batches (not before the first) to let the collector flush
+      if (i > 0 && batchDelayMs > 0) {
+        await new Promise<void>((resolve) => setTimeout(resolve, batchDelayMs));
+      }
+
       const chunk = rows.slice(i * this.batchSize, (i + 1) * this.batchSize);
       console.log(`[OtlpLogsWriter] Pushing batch ${i + 1}/${totalBatches} (${chunk.length} rows)`);
 

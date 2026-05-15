@@ -58,9 +58,8 @@ export function buildEnrichmentRows(
 
   // ── metadata ────────────────────────────────────────────────────────────────
   if (options.categories.metadata) {
-    const timeGenerated = session.startTs ?? now;
     rows.push(
-      makeRow('metadata', 0, timeGenerated, {
+      makeRow('metadata', 0, now, {
         copilotVersion: session.copilotVersion,
         selectedModel: session.selectedModel,
         reasoningEffort: session.reasoningEffort,
@@ -81,7 +80,7 @@ export function buildEnrichmentRows(
   if (options.categories.utilisation) {
     for (const [index, sample] of session.utilisation.entries()) {
       rows.push(
-        makeRow('utilisation', index, sample.timestamp, {
+        makeRow('utilisation', index, now, {
           timestamp: sample.timestamp,
           percentage: sample.percentage,
           used: sample.used,
@@ -95,9 +94,8 @@ export function buildEnrichmentRows(
   // ── compactions ─────────────────────────────────────────────────────────────
   if (options.categories.compactions) {
     for (const [index, compaction] of session.compactions.entries()) {
-      const timeGenerated = compaction.timestamp ?? session.startTs ?? now;
       rows.push(
-        makeRow('compaction', index, timeGenerated, {
+        makeRow('compaction', index, now, {
           timestamp: compaction.timestamp,
           inputTokens: compaction.inputTokens,
           outputTokens: compaction.outputTokens,
@@ -113,10 +111,9 @@ export function buildEnrichmentRows(
   // ── toolResults ─────────────────────────────────────────────────────────────
   if (options.categories.toolResults) {
     for (const [index, toolCall] of session.toolCalls.entries()) {
-      const timeGenerated = toolCall.startTs ?? session.startTs ?? now;
       // Skill telemetry fields (added in PR #359)
       rows.push(
-        makeRow('tool_result', index, timeGenerated, {
+        makeRow('tool_result', index, now, {
           toolCallId: toolCall.toolCallId,
           toolName: toolCall.toolName,
           model: toolCall.model,
@@ -141,9 +138,8 @@ export function buildEnrichmentRows(
   // ── turns ────────────────────────────────────────────────────────────────────
   if (options.categories.turns) {
     for (const [index, turn] of session.turns.entries()) {
-      const timeGenerated = turn.startTs ?? session.startTs ?? now;
       rows.push(
-        makeRow('turn', index, timeGenerated, {
+        makeRow('turn', index, now, {
           turnId: turn.turnId,
           startTs: turn.startTs,
           endTs: turn.endTs,
@@ -158,9 +154,8 @@ export function buildEnrichmentRows(
   // ── assistantMessages ────────────────────────────────────────────────────────
   if (options.categories.assistantMessages) {
     for (const [index, msg] of session.assistantMessages.entries()) {
-      const timeGenerated = msg.timestamp ?? session.startTs ?? now;
       rows.push(
-        makeRow('assistant_message', index, timeGenerated, {
+        makeRow('assistant_message', index, now, {
           interactionId: msg.interactionId,
           requestId: msg.requestId,
           outputTokens: msg.outputTokens,

@@ -110,7 +110,7 @@ export class ContainerAppStack extends pulumi.ComponentResource {
 
     // --- Resource limits per environment ---
     const cpuLimit = isProd ? 1.0 : 0.25;
-    const memoryLimit = isProd ? "2Gi" : "0.5Gi";
+    const memoryLimit = isProd ? "2Gi" : "1Gi"; // Increased from 0.5Gi to match the 800 MiB memory_limiter burst headroom
 
     // --- Ingress configuration ---
     // External ingress only for demo with public access enabled

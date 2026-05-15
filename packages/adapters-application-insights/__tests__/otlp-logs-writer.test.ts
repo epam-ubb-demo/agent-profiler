@@ -563,6 +563,47 @@ describe('OtlpLogsWriter', () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
+    it('inserts inter-batch delay between batches but not before the first', async () => {
+      const writer = new OtlpLogsWriter({
+        otlpEndpoint: 'https://otel.example.com',
+        batchSize: 2,
+        batchDelayMs: 50,
+      });
+
+      // 5 rows → 3 batches (2 + 2 + 1) → 2 inter-batch delays of 50 ms each
+      const rows = Array.from({ length: 5 }, (_, i) => ({ ...ROW, EventId: `sess-1:util:${i}` }));
+
+      mockFetch.mockResolvedValue({ ok: true, status: 200, statusText: 'OK' });
+
+      const start = Date.now();
+      await writer.push(rows);
+      const elapsed = Date.now() - start;
+
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+      // Two inter-batch pauses of 50 ms → total elapsed should be ≥ 100 ms
+      expect(elapsed).toBeGreaterThanOrEqual(100);
+    });
+
+    it('sends all batches without delay when batchDelayMs is 0', async () => {
+      const writer = new OtlpLogsWriter({
+        otlpEndpoint: 'https://otel.example.com',
+        batchSize: 2,
+        batchDelayMs: 0,
+      });
+
+      const rows = Array.from({ length: 5 }, (_, i) => ({ ...ROW, EventId: `sess-1:util:${i}` }));
+
+      mockFetch.mockResolvedValue({ ok: true, status: 200, statusText: 'OK' });
+
+      const start = Date.now();
+      await writer.push(rows);
+      const elapsed = Date.now() - start;
+
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+      // No deliberate delay — should complete well under 50 ms on any reasonable machine
+      expect(elapsed).toBeLessThan(50);
+    });
+
     it('logs batch progress for each batch', async () => {
       const writer = new OtlpLogsWriter({
         otlpEndpoint: 'https://otel.example.com',
