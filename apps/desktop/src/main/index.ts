@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 
-import { LogsIngestionWriter } from '@agent-profiler/adapters-application-insights';
+import { OtlpLogsWriter } from '@agent-profiler/adapters-application-insights';
 import {
   ipcChannels,
   appInsightsSettingsSchema,
@@ -83,19 +83,14 @@ if (gotLock) {
   // ── SyncService setup ─────────────────────────────────────────────────────
 
   /**
-   * Returns a configured LogsIngestionWriter only when all required fields are
-   * non-empty. Avoids constructing an SDK client with blank endpoint strings at
-   * startup (which may throw or waste credential-provider initialisation).
+   * Returns a configured OtlpLogsWriter only when the OTel Gateway URL field
+   * is non-empty. Avoids constructing a writer with a blank endpoint at startup.
    */
   function buildWriterIfConfigured(
     settings: ReturnType<typeof getSyncSettings>,
-  ): LogsIngestionWriter | null {
-    if (settings.dceEndpoint && settings.dcrImmutableId && settings.dcrStreamName) {
-      return new LogsIngestionWriter({
-        dceEndpoint: settings.dceEndpoint,
-        dcrImmutableId: settings.dcrImmutableId,
-        dcrStreamName: settings.dcrStreamName,
-      });
+  ): OtlpLogsWriter | null {
+    if (settings.otlpEndpoint) {
+      return new OtlpLogsWriter({ otlpEndpoint: settings.otlpEndpoint });
     }
     return null;
   }
@@ -104,7 +99,7 @@ if (gotLock) {
   const initialSyncSettings = getSyncSettings();
   const syncService = new SyncService({
     markerStore,
-    logsIngestionWriter: buildWriterIfConfigured(initialSyncSettings),
+    writer: buildWriterIfConfigured(initialSyncSettings),
     dataSourceManager: manager,
     sessionIndexer: indexer,
     settingsStore: { getSyncSettings },

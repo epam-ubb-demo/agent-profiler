@@ -585,9 +585,7 @@ describe('syncSettingsSchema', () => {
         compactions: true,
         toolResults: false,
       },
-      dceEndpoint: 'https://example.dcr.us.dcr.azure.com',
-      dcrImmutableId: 'immutable-id-123',
-      dcrStreamName: 'AgentProfilerEnrichment_CL',
+      otlpEndpoint: 'https://ca-otel-gw-demo.azurecontainerapps.io',
     };
     expect(syncSettingsSchema.parse(valid)).toEqual(valid);
   });
@@ -599,9 +597,7 @@ describe('syncSettingsSchema', () => {
     expect(defaults.categories.utilisation).toBe(true);
     expect(defaults.categories.compactions).toBe(true);
     expect(defaults.categories.toolResults).toBe(false);
-    expect(defaults.dceEndpoint).toBe('');
-    expect(defaults.dcrImmutableId).toBe('');
-    expect(defaults.dcrStreamName).toBe('');
+    expect(defaults.otlpEndpoint).toBe('');
   });
 
   it('round-trip is stable', () => {
@@ -613,13 +609,12 @@ describe('syncSettingsSchema', () => {
   it('accepts partial overrides of defaults', () => {
     const partial = {
       enabled: true,
-      dceEndpoint: 'https://example.dcr.us.dcr.azure.com',
+      otlpEndpoint: 'https://ca-otel-gw-demo.azurecontainerapps.io',
     };
     const result = syncSettingsSchema.parse(partial);
     expect(result.enabled).toBe(true);
-    expect(result.dceEndpoint).toBe('https://example.dcr.us.dcr.azure.com');
+    expect(result.otlpEndpoint).toBe('https://ca-otel-gw-demo.azurecontainerapps.io');
     expect(result.categories.metadata).toBe(true); // Should default
-    expect(result.dcrStreamName).toBe(''); // Should default
   });
 });
 

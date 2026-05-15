@@ -79,9 +79,7 @@ vi.mock('./settings-store', () => ({
   getSyncSettings: vi.fn().mockReturnValue({
     enabled: false,
     categories: { metadata: true, utilisation: true, compactions: true, toolResults: false },
-    dceEndpoint: '',
-    dcrImmutableId: '',
-    dcrStreamName: '',
+    otlpEndpoint: '',
   }),
   setSyncSettings: vi.fn(),
 }));
@@ -114,7 +112,7 @@ vi.mock('./sync-service', () => ({
 }));
 
 vi.mock('@agent-profiler/adapters-application-insights', () => ({
-  LogsIngestionWriter: vi.fn().mockImplementation(() => ({
+  OtlpLogsWriter: vi.fn().mockImplementation(() => ({
     push: vi.fn().mockResolvedValue(undefined),
   })),
 }));

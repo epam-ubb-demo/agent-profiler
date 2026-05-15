@@ -151,7 +151,7 @@ export type ListWorkspacesResultIpc = z.infer<typeof listWorkspacesResultSchema>
 
 /**
  * Schema for sync settings flowing across IPC.
- * Controls which categories are pushed and the DCE/DCR endpoint details.
+ * Controls which categories are pushed and the OTel/OTLP gateway endpoint.
  */
 export const syncSettingsSchema = z.object({
   enabled: z.boolean().default(false),
@@ -163,9 +163,7 @@ export const syncSettingsSchema = z.object({
       toolResults: z.boolean(),
     })
     .default({ metadata: true, utilisation: true, compactions: true, toolResults: false }),
-  dceEndpoint: z.string().default(''),
-  dcrImmutableId: z.string().default(''),
-  dcrStreamName: z.string().default(''),
+  otlpEndpoint: z.string().default(''),
 });
 
 export type SyncSettingsIpc = z.infer<typeof syncSettingsSchema>;

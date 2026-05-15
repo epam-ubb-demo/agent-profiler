@@ -20,9 +20,7 @@ const DEFAULT_SETTINGS: AppInsightsSettingsIpc = {
 const DEFAULT_SYNC_SETTINGS: SyncSettingsIpc = {
   enabled: false,
   categories: { metadata: true, utilisation: true, compactions: true, toolResults: false },
-  dceEndpoint: '',
-  dcrImmutableId: '',
-  dcrStreamName: '',
+  otlpEndpoint: '',
 };
 
 export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
@@ -42,9 +40,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
   // Sync settings state
   const [syncEnabled, setSyncEnabled] = useState(DEFAULT_SYNC_SETTINGS.enabled);
   const [syncCategories, setSyncCategories] = useState(DEFAULT_SYNC_SETTINGS.categories);
-  const [dceEndpoint, setDceEndpoint] = useState(DEFAULT_SYNC_SETTINGS.dceEndpoint);
-  const [dcrImmutableId, setDcrImmutableId] = useState(DEFAULT_SYNC_SETTINGS.dcrImmutableId);
-  const [dcrStreamName, setDcrStreamName] = useState(DEFAULT_SYNC_SETTINGS.dcrStreamName);
+  const [otlpEndpoint, setOtlpEndpoint] = useState('');
   const [syncTriggering, setSyncTriggering] = useState(false);
 
   // Load settings when the dialog opens
@@ -77,16 +73,12 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
         if (cancelled) return;
         setSyncEnabled(syncSettings.enabled);
         setSyncCategories(syncSettings.categories);
-        setDceEndpoint(syncSettings.dceEndpoint);
-        setDcrImmutableId(syncSettings.dcrImmutableId);
-        setDcrStreamName(syncSettings.dcrStreamName);
+        setOtlpEndpoint(syncSettings.otlpEndpoint);
       } catch {
         if (cancelled) return;
         setSyncEnabled(DEFAULT_SYNC_SETTINGS.enabled);
         setSyncCategories(DEFAULT_SYNC_SETTINGS.categories);
-        setDceEndpoint(DEFAULT_SYNC_SETTINGS.dceEndpoint);
-        setDcrImmutableId(DEFAULT_SYNC_SETTINGS.dcrImmutableId);
-        setDcrStreamName(DEFAULT_SYNC_SETTINGS.dcrStreamName);
+        setOtlpEndpoint(DEFAULT_SYNC_SETTINGS.otlpEndpoint);
       }
     })();
 
@@ -130,9 +122,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
       await window.electronApi.sync.setSettings({
         enabled: syncEnabled,
         categories: syncCategories,
-        dceEndpoint: dceEndpoint.trim(),
-        dcrImmutableId: dcrImmutableId.trim(),
-        dcrStreamName: dcrStreamName.trim(),
+        otlpEndpoint: otlpEndpoint.trim(),
       });
       onSettingsSaved?.();
       setOpen(false);
@@ -141,7 +131,7 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
     } finally {
       setSaving(false);
     }
-  }, [buildSettings, onSettingsSaved, syncEnabled, syncCategories, dceEndpoint, dcrImmutableId, dcrStreamName]);
+  }, [buildSettings, onSettingsSaved, syncEnabled, syncCategories, otlpEndpoint]);
 
   const handleSyncNow = useCallback(async () => {
     setSyncTriggering(true);
@@ -386,45 +376,19 @@ export function SettingsPanel({ onSettingsSaved }: SettingsPanelProps) {
                       />
                     </div>
 
-                    {/* Azure configuration */}
+                    {/* OTel Gateway configuration */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <Text fontSize="13" fontWeight="600">Azure configuration</Text>
+                      <Text fontSize="13" fontWeight="600">OTel Gateway configuration</Text>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <Text fontSize="13">
-                          <label htmlFor="dce-endpoint">DCE Endpoint URL</label>
+                          <label htmlFor="otlp-endpoint">OTel Gateway URL</label>
                         </Text>
                         <TextInput
-                          id="dce-endpoint"
-                          value={dceEndpoint}
-                          onValueChange={(v) => setDceEndpoint(v ?? '')}
-                          placeholder="https://my-dce.eastus-1.ingest.monitor.azure.com"
-                          size="36"
-                        />
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <Text fontSize="13">
-                          <label htmlFor="dcr-immutable-id">DCR Immutable ID</label>
-                        </Text>
-                        <TextInput
-                          id="dcr-immutable-id"
-                          value={dcrImmutableId}
-                          onValueChange={(v) => setDcrImmutableId(v ?? '')}
-                          placeholder="dcr-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          size="36"
-                        />
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <Text fontSize="13">
-                          <label htmlFor="dcr-stream-name">DCR Stream Name</label>
-                        </Text>
-                        <TextInput
-                          id="dcr-stream-name"
-                          value={dcrStreamName}
-                          onValueChange={(v) => setDcrStreamName(v ?? '')}
-                          placeholder="Custom-AgentProfilerEnrichment_CL"
+                          id="otlp-endpoint"
+                          value={otlpEndpoint}
+                          onValueChange={(v) => setOtlpEndpoint(v ?? '')}
+                          placeholder="https://ca-otel-gw-demo.azurecontainerapps.io"
                           size="36"
                         />
                       </div>

@@ -41,9 +41,7 @@ const store = new Store<SettingsSchema>({
     sync: {
       enabled: false,
       categories: { metadata: true, utilisation: true, compactions: true, toolResults: false },
-      dceEndpoint: '',
-      dcrImmutableId: '',
-      dcrStreamName: '',
+      otlpEndpoint: '',
     },
   },
 });

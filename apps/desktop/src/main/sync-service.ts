@@ -1,8 +1,8 @@
 /**
- * SyncService — main-process orchestrator for pushing local session data to Azure.
+ * SyncService — main-process orchestrator for pushing local session data to the OTel collector.
  *
- * Coordinates MarkerStore, EnrichmentBuilder, and LogsIngestionWriter to
- * incrementally sync unsynchronised local sessions to the configured DCE endpoint.
+ * Coordinates MarkerStore, EnrichmentBuilder, and OtlpLogsWriter to
+ * incrementally sync unsynchronised local sessions to the configured OTLP endpoint.
  *
  * Design constraints:
  * - A mutex flag prevents concurrent sync runs.
@@ -15,7 +15,7 @@
 
 
 import { buildEnrichmentRows } from '@agent-profiler/adapters-application-insights';
-import type { LogsIngestionWriter } from '@agent-profiler/adapters-application-insights';
+import type { OtlpLogsWriter } from '@agent-profiler/adapters-application-insights';
 import { ipcChannels } from '@agent-profiler/core';
 import type { SyncMarker, SyncSettingsIpc, SyncStatusIpc } from '@agent-profiler/core';
 import { BrowserWindow } from 'electron';
@@ -36,8 +36,8 @@ export interface SyncSettingsStore {
 /** Constructor dependencies for SyncService. */
 export interface SyncServiceDeps {
   markerStore: MarkerStore;
-  /** Null when sync is not yet configured (empty endpoint/DCR fields). */
-  logsIngestionWriter: LogsIngestionWriter | null;
+  /** Null when sync is not yet configured (empty OTLP endpoint field). */
+  writer: OtlpLogsWriter | null;
   dataSourceManager: DataSourceManager;
   sessionIndexer: SessionIndexer;
   settingsStore: SyncSettingsStore;
@@ -75,13 +75,13 @@ export class SyncService {
   }
 
   /**
-   * Replace the LogsIngestionWriter used for future sync operations.
-   * Accepts null when the new settings have empty endpoint/DCR fields.
-   * Call this whenever the DCE/DCR settings change so the next sync uses
-   * the updated endpoint and credentials.
+   * Replace the OtlpLogsWriter used for future sync operations.
+   * Accepts null when the new settings have an empty OTLP endpoint field.
+   * Call this whenever the OTel Gateway URL changes so the next sync uses
+   * the updated endpoint.
    */
-  updateWriter(newWriter: LogsIngestionWriter | null): void {
-    this.deps.logsIngestionWriter = newWriter;
+  updateWriter(newWriter: OtlpLogsWriter | null): void {
+    this.deps.writer = newWriter;
   }
 
   /**
@@ -257,14 +257,14 @@ export class SyncService {
       return;
     }
 
-    // Push rows to the Azure Logs Ingestion endpoint.
-    if (!this.deps.logsIngestionWriter) {
+    // Push rows to the OTel collector via OTLP/HTTP.
+    if (!this.deps.writer) {
       console.warn(
         `[SyncService] Sync skipped for session "${sessionId}" — remote endpoint not configured`,
       );
       return;
     }
-    await this.deps.logsIngestionWriter.push(rows);
+    await this.deps.writer.push(rows);
 
     // Record which categories were actually included in this push.
     const categoriesPushed: SyncMarker['categoriesPushed'] = [];

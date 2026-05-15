@@ -31,7 +31,7 @@ const mockElectronApi: ElectronApi = {
     listWorkspaces: vi.fn().mockResolvedValue({ success: true, workspaces: [] }),
   },
   sync: {
-    getSettings: vi.fn<ElectronApi['sync']['getSettings']>().mockResolvedValue({ enabled: false, categories: { metadata: true, utilisation: true, compactions: true, toolResults: false }, dceEndpoint: '', dcrImmutableId: '', dcrStreamName: '' }),
+    getSettings: vi.fn<ElectronApi['sync']['getSettings']>().mockResolvedValue({ enabled: false, categories: { metadata: true, utilisation: true, compactions: true, toolResults: false }, otlpEndpoint: '' }),
     setSettings: vi.fn<ElectronApi['sync']['setSettings']>().mockResolvedValue(undefined),
     getStatus: vi.fn<ElectronApi['sync']['getStatus']>().mockResolvedValue({ state: 'idle', lastSyncedAt: null, sessionsPending: 0, sessionsTotal: 0, lastError: null }),
     trigger: vi.fn<ElectronApi['sync']['trigger']>().mockResolvedValue(undefined),
