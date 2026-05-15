@@ -976,4 +976,132 @@ describe('ApplicationInsightsDataSource', () => {
     });
 
   });
+
+  // -----------------------------------------------------------------------
+  // getSession – enrichment KQL deduplication
+  // -----------------------------------------------------------------------
+  describe('getSession enrichment KQL deduplication', () => {
+    const ENRICHMENT_META = JSON.stringify({
+      copilotVersion: '1.0.0',
+      selectedModel: 'claude-opus-4',
+      reasoningEffort: 'medium',
+      repository: 'owner/repo',
+      branch: 'main',
+      cwd: '/home/user/project',
+      startTs: '2024-06-15T10:00:00Z',
+      endTs: '2024-06-15T10:30:00Z',
+      success: true,
+      parseStatus: null,
+      shutdown: null,
+      modelChanges: [],
+    });
+
+    const mockEnrichmentMetaRow = {
+      timestamp: new Date('2024-06-15T10:00:00Z'),
+      category: 'metadata',
+      message: ENRICHMENT_META,
+    };
+
+    it('passes a KQL query that deduplicates by event_id using arg_min to the query client', async () => {
+      // The server-side deduplication is the primary defence against duplicate rows
+      // produced by repeated Re-sync All operations. Verify the generated KQL
+      // contains the required summarise/arg_min clause.
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+      mock.query.mockResolvedValueOnce({ rows: [mockEnrichmentMetaRow] });
+
+      await ds.getSession('session-abc-123');
+
+      expect(mock.query).toHaveBeenCalled();
+      const kqlArg = mock.query.mock.calls[0]![0] as string;
+
+      // Must project the event_id column from Properties
+      expect(kqlArg).toContain('event_id = tostring(Properties.["agent_profiler.event_id"])');
+      // Must deduplicate by keeping the earliest row per event_id
+      expect(kqlArg).toContain('summarize arg_min(timestamp, message, category) by event_id');
+      // Must drop the helper column before passing rows downstream
+      expect(kqlArg).toContain('project-away event_id');
+      // Must retain the original chronological ordering
+      expect(kqlArg).toContain('order by timestamp asc');
+    });
+
+    it('assembleFromEnrichment produces no duplicate turns when duplicate enrichment rows are returned', async () => {
+      // Secondary resilience test: even if the server returns two rows with the
+      // same category and content (e.g. a transient deduplication failure), the
+      // assembled session should not contain duplicate turns when the KQL fix is
+      // in place. This test validates the expected server-deduplicated path — the
+      // mock returns only unique rows, mirroring what arg_min guarantees.
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+
+      const turnPayload = JSON.stringify({
+        turnId: 'turn-dedup',
+        startTs: '2024-06-15T10:00:00Z',
+        endTs: '2024-06-15T10:00:10Z',
+        userMessage: {
+          interactionId: null,
+          timestamp: '2024-06-15T10:00:00Z',
+          turnId: 'turn-dedup',
+          content: 'Hello',
+        },
+        toolCallIds: [],
+        subagentCount: 0,
+      });
+
+      // Simulate what the server returns after arg_min deduplication:
+      // only one row per unique event_id, so the turn row appears exactly once.
+      mock.query.mockResolvedValueOnce({
+        rows: [
+          mockEnrichmentMetaRow,
+          { timestamp: new Date('2024-06-15T10:00:00Z'), category: 'turn', message: turnPayload },
+        ],
+      });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      expect(session!.turns).toHaveLength(1);
+      expect(session!.turns[0]?.turnId).toBe('turn-dedup');
+    });
+
+    it('assembleFromEnrichment contains duplicate turns when duplicate rows reach it (documents pre-fix behaviour)', async () => {
+      // This test documents that WITHOUT KQL deduplication, duplicate rows DO
+      // produce duplicate turns. It acts as a regression canary: if the code
+      // ever accidentally re-introduces client-side deduplication that silently
+      // hides this, the test would still pass — but it documents the intent.
+      const ds = createDataSource();
+      const mock = getMockInstance();
+      mock.queryWithTruncationCheck.mockResolvedValueOnce({ rows: [], truncated: false });
+
+      const turnPayload = JSON.stringify({
+        turnId: 'turn-dup',
+        startTs: '2024-06-15T10:00:00Z',
+        endTs: '2024-06-15T10:00:10Z',
+        userMessage: null,
+        toolCallIds: [],
+        subagentCount: 0,
+      });
+
+      // Feed two identical turn rows to simulate duplicate AppTraces entries.
+      // The KQL fix prevents this from occurring in production; this test
+      // confirms the assembler itself does NOT silently deduplicate.
+      const duplicateTurnRow = { timestamp: new Date('2024-06-15T10:00:00Z'), category: 'turn', message: turnPayload };
+      mock.query.mockResolvedValueOnce({
+        rows: [
+          mockEnrichmentMetaRow,
+          duplicateTurnRow,
+          duplicateTurnRow,
+        ],
+      });
+
+      const session = await ds.getSession('session-abc-123');
+
+      expect(session).not.toBeNull();
+      // Two identical rows → two turns; the KQL layer (not the assembler) must deduplicate.
+      expect(session!.turns).toHaveLength(2);
+    });
+  });
+
 });

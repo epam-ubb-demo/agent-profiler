@@ -163,7 +163,10 @@ AppTraces
 | project
     timestamp = TimeGenerated,
     message = Message,
-    category = tostring(Properties.["agent_profiler.category"])
+    category = tostring(Properties.["agent_profiler.category"]),
+    event_id = tostring(Properties.["agent_profiler.event_id"])
+| summarize arg_min(timestamp, message, category) by event_id
+| project-away event_id
 | order by timestamp asc`;
 }
 
