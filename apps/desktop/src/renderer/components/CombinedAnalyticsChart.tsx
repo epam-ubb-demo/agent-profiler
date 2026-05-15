@@ -5,7 +5,7 @@
  */
 
 import { Text } from '@epam/uui';
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 /* ─── Props ─────────────────────────────────────────────────────────────────── */
 
@@ -33,18 +33,14 @@ export interface CombinedAnalyticsChartProps {
 
 /* ─── Chart geometry ────────────────────────────────────────────────────────── */
 
-const VIEW_W = 800;
-const VIEW_H = 200;
-
 const MARGIN_TOP = 20;
 const MARGIN_RIGHT = 60; // right Y-axis (tokens)
 const MARGIN_BOTTOM = 40; // room for x-axis labels
 const MARGIN_LEFT = 60; // room for y-axis labels
 
+/** These are stable aliases for the fixed margins — they never change with container size. */
 const CHART_X = MARGIN_LEFT;
 const CHART_Y = MARGIN_TOP;
-const CHART_W = VIEW_W - MARGIN_LEFT - MARGIN_RIGHT;
-const CHART_H = VIEW_H - MARGIN_TOP - MARGIN_BOTTOM;
 
 const DOT_RADIUS = 4;
 
@@ -125,8 +121,25 @@ interface TooltipState {
 
 function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [hiddenSeries, setHiddenSeries] = useState<ReadonlySet<string>>(new Set());
+  const [dims, setDims] = useState({ w: 800, h: 200 });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const { width, height } = entries[0]!.contentRect;
+      if (width > 0 && height > 0) {
+        const w = Math.round(width);
+        const h = Math.round(height);
+        setDims((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const handleColumnLeave = useCallback(() => {
     setTooltip(null);
@@ -143,6 +156,13 @@ function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
       return next;
     });
   }, []);
+
+  // ── Derived geometry from current container dimensions ─────────────────────
+  /** Fixed height reserved for the legend row below the SVG. */
+  const LEGEND_H = 40;
+  const svgH = Math.max(dims.h - LEGEND_H, 100);
+  const CHART_W = Math.max(dims.w - MARGIN_LEFT - MARGIN_RIGHT, 1);
+  const CHART_H = Math.max(svgH - MARGIN_TOP - MARGIN_BOTTOM, 1);
 
   const computed = useMemo(() => {
     if (data.length === 0) return null;
@@ -311,7 +331,7 @@ function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
       labelIndices,
       hitRects,
     };
-  }, [data]);
+  }, [data, CHART_W, CHART_H]);
 
   if (data.length === 0 || computed === null) {
     return (
@@ -349,12 +369,16 @@ function CombinedAnalyticsChartInner({ data }: CombinedAnalyticsChartProps) {
   ];
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div
+      ref={containerRef}
+      style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%' }}
+    >
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+        viewBox={`0 0 ${dims.w} ${svgH}`}
         width="100%"
-        style={{ display: 'block', maxHeight: 240 }}
+        height={svgH}
+        style={{ display: 'block' }}
         role="img"
         aria-label="Combined analytics chart: daily cost and model token usage"
         data-testid="combined-analytics-chart"

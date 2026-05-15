@@ -223,6 +223,7 @@
 /* ─── Chart area (inside summary bar) ─── */
 .chartArea {
   padding: 0 12px 12px;
+  height: clamp(200px, 30vh, 400px);
 }
 
 /* ─── Empty filter state ─── */
