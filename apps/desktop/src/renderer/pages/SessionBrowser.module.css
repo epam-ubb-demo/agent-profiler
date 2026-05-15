@@ -190,6 +190,92 @@
   flex-shrink: 0;
 }
 
+/* ─── Summary cards (inline in the summary row) ─── */
+.summaryCards {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  padding: 4px 12px;
+  border-left: 1px solid var(--uui-neutral-40);
+}
+
+.summaryCardLabel {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--uui-text-secondary);
+  line-height: 1;
+}
+
+.summaryCardValue {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+.summaryCardSub {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--uui-text-secondary);
+}
+
+/* ─── Analytics panel (expanded area) ─── */
+.analyticsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 12px 12px;
+}
+
+/* ─── Granularity toggle ─── */
+.granularityRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.granularityToggle {
+  display: inline-flex;
+  border: 1px solid var(--uui-neutral-40);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.granularityBtn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--uui-text-secondary);
+  transition: background 0.15s, color 0.15s;
+}
+
+.granularityBtn:hover {
+  background: var(--uui-neutral-20);
+}
+
+.granularityBtnActive {
+  background: var(--uui-primary);
+  color: #fff;
+}
+
+.granularityBtnActive:hover {
+  background: var(--uui-primary);
+  color: #fff;
+}
+
 /* ─── Day group ─── */
 .dayGroup {
   display: flex;
@@ -229,10 +315,18 @@
   gap: 18px;
 }
 
-/* ─── Chart area (inside summary bar) ─── */
+/* ─── Chart area (inside analytics panel) ─── */
 .chartArea {
-  padding: 0 12px 12px;
-  height: clamp(200px, 30vh, 400px);
+  height: clamp(200px, 28vh, 360px);
+}
+
+.cacheChartArea {
+  /* CacheHitRateChart manages its own fixed SVG height */
+}
+
+/* ─── Table area (inside analytics panel) ─── */
+.tableArea {
+  padding: 0 0 4px;
 }
 
 /* ─── Empty filter state ─── */

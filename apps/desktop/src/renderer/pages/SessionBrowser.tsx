@@ -9,10 +9,12 @@ import type { SessionListItemIpc, SessionListMetricsIpc } from '../../preload/ap
 
 import styles from './SessionBrowser.module.css';
 
+import { CacheHitRateChart } from '@/components/CacheHitRateChart';
 import { CombinedAnalyticsChart } from '@/components/CombinedAnalyticsChart';
 import type { DailyAnalytics } from '@/components/CombinedAnalyticsChart';
 import { EmptyState } from '@/components/EmptyState';
 import { FolderOpenIcon, SearchIcon } from '@/components/icons';
+import { ModelBreakdownTable } from '@/components/ModelBreakdownTable';
 import { SettingsPanel } from '@/components/SettingsPanel';
 
 // ── Adapter display config ────────────────────────────────────────────────────
@@ -214,6 +216,87 @@ function SessionCard({ session, onClick }: SessionCardProps) {
   );
 }
 
+// ── Granularity ───────────────────────────────────────────────────────────────
+
+type Granularity = 'day' | 'week' | 'month';
+
+/** Returns the Monday of the ISO week containing `dateStr` (YYYY-MM-DD). */
+function weekStart(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y!, m! - 1, d!);
+  const dow = dt.getDay(); // 0=Sun
+  const diff = dow === 0 ? -6 : 1 - dow;
+  dt.setDate(dt.getDate() + diff);
+  return dt.toISOString().slice(0, 10);
+}
+
+/** Returns the first day of the month for `dateStr`. */
+function monthStart(dateStr: string): string {
+  return dateStr.slice(0, 7) + '-01';
+}
+
+/** Re-buckets daily analytics into weekly or monthly aggregates. */
+function rebucket(data: ReadonlyArray<DailyAnalytics>, granularity: Granularity): DailyAnalytics[] {
+  if (granularity === 'day') return data as DailyAnalytics[];
+
+  const bucketKey = granularity === 'week' ? weekStart : monthStart;
+  const map = new Map<string, {
+    cost: number | null;
+    wallTimeMs: number | null;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+    modelTokens: Map<string, { totalTokens: number; costUsd: number | null }>;
+  }>();
+
+  for (const d of data) {
+    const key = bucketKey(d.date);
+    const prev = map.get(key) ?? {
+      cost: null,
+      wallTimeMs: null,
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      modelTokens: new Map(),
+    };
+
+    if (d.cost != null) prev.cost = (prev.cost ?? 0) + d.cost;
+    if (d.wallTimeMs != null) prev.wallTimeMs = (prev.wallTimeMs ?? 0) + d.wallTimeMs;
+    prev.inputTokens += d.inputTokens;
+    prev.outputTokens += d.outputTokens;
+    prev.cacheReadTokens += d.cacheReadTokens;
+    prev.cacheWriteTokens += d.cacheWriteTokens;
+
+    for (const mb of d.modelBreakdown) {
+      const existing = prev.modelTokens.get(mb.model) ?? { totalTokens: 0, costUsd: null };
+      existing.totalTokens += mb.totalTokens;
+      if (mb.costUsd != null) existing.costUsd = (existing.costUsd ?? 0) + mb.costUsd;
+      prev.modelTokens.set(mb.model, existing);
+    }
+
+    map.set(key, prev);
+  }
+
+  return Array.from(map.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, d]) => ({
+      date,
+      cost: d.cost,
+      wallTimeMs: d.wallTimeMs,
+      inputTokens: d.inputTokens,
+      outputTokens: d.outputTokens,
+      cacheReadTokens: d.cacheReadTokens,
+      cacheWriteTokens: d.cacheWriteTokens,
+      modelBreakdown: Array.from(d.modelTokens.entries()).map(([model, t]) => ({
+        model,
+        totalTokens: t.totalTokens,
+        costUsd: t.costUsd,
+      })),
+    }));
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export interface SessionBrowserProps {
@@ -232,6 +315,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
   const [adapterFilter, setAdapterFilter] = useState<string[]>([]);
   const [repoFilter, setRepoFilter] = useState<string[]>([]);
   const [analyticsExpanded, setAnalyticsExpanded] = useState(false);
+  const [granularity, setGranularity] = useState<Granularity>('day');
 
   const adapterDataSource = useArrayDataSource({ items: ADAPTER_OPTIONS }, []);
 
@@ -362,6 +446,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
       inputTokens: number;
       outputTokens: number;
       cacheReadTokens: number;
+      cacheWriteTokens: number;
       modelTokens: Map<string, {
         inputTokens: number;
         outputTokens: number;
@@ -379,6 +464,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
           inputTokens: 0,
           outputTokens: 0,
           cacheReadTokens: 0,
+          cacheWriteTokens: 0,
           modelTokens: new Map(),
         };
         if (m.totalCostUsd != null) prev.cost = (prev.cost ?? 0) + m.totalCostUsd;
@@ -386,6 +472,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
         prev.inputTokens += m.totalInputTokens;
         prev.outputTokens += m.totalOutputTokens;
         prev.cacheReadTokens += m.totalCacheReadTokens;
+        prev.cacheWriteTokens += m.totalCacheWriteTokens;
         for (const mu of m.modelUsage ?? []) {
           const existing = prev.modelTokens.get(mu.model) ?? {
             inputTokens: 0,
@@ -422,6 +509,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
           inputTokens: d.inputTokens,
           outputTokens: d.outputTokens,
           cacheReadTokens: d.cacheReadTokens,
+          cacheWriteTokens: d.cacheWriteTokens,
           modelBreakdown: Array.from(d.modelTokens.entries()).map(([model, t]) => ({
             model,
             totalTokens: t.inputTokens + t.outputTokens,
@@ -434,6 +522,12 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
       });
   }, [filteredSessions]);
 
+  // Rebucketed chart data (day/week/month)
+  const chartData = useMemo(
+    () => rebucket(dailyAnalytics, granularity),
+    [dailyAnalytics, granularity],
+  );
+
   // Aggregated summary for filtered sessions
   const summary = useMemo(() => {
     let totalTokens = 0;
@@ -441,6 +535,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
     let hasCost = false;
     let totalWallMs = 0;
     let wallCount = 0;
+    const models = new Set<string>();
 
     for (const s of filteredSessions) {
       const m = s.metrics;
@@ -454,6 +549,9 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
           totalWallMs += m.wallTimeMs;
           wallCount++;
         }
+        for (const mu of m.modelUsage ?? []) {
+          models.add(mu.model);
+        }
       }
     }
 
@@ -463,6 +561,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
       totalCostUsd: hasCost ? totalCostUsd : null,
       totalWallMs: wallCount > 0 ? totalWallMs : null,
       avgWallMs: wallCount > 0 ? totalWallMs / wallCount : null,
+      modelCount: models.size,
     };
   }, [filteredSessions]);
 
@@ -574,8 +673,9 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
           </FlexRow>
         </Panel>
 
-        {/* Summary + analytics (collapsible chart) */}
+        {/* Summary cards + analytics (collapsible) */}
         <Panel cx={styles.summaryBar} rawProps={{ 'data-testid': 'summary-bar' }}>
+          {/* Clickable summary row */}
           <FlexRow
             padding="12"
             spacing="12"
@@ -597,32 +697,84 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
             }}
           >
             <Text size="18" fontWeight="600">
-              {analyticsExpanded ? '▾' : '▸'} {summary.count} session{summary.count !== 1 ? 's' : ''}
-            </Text>
-            <div className={styles.summaryDivider} />
-            <Text size="18" color="secondary">
-              Tokens: {formatTokenCount(summary.totalTokens)}
-            </Text>
-            <div className={styles.summaryDivider} />
-            <Text size="18" color="secondary">
-              Cost: {summary.totalCostUsd !== null ? `$${summary.totalCostUsd.toFixed(2)}` : '—'}
-            </Text>
-            <div className={styles.summaryDivider} />
-            <Text size="18" color="secondary">
-              Total time: {formatDuration(summary.totalWallMs)}
-            </Text>
-            <div className={styles.summaryDivider} />
-            <Text size="18" color="secondary">
-              Avg time: {formatDuration(summary.avgWallMs)}
+              {analyticsExpanded ? '▾' : '▸'} Analytics
             </Text>
             <FlexSpacer />
-            <Text fontSize="14" color="secondary">
-              {dailyAnalytics.length} day{dailyAnalytics.length !== 1 ? 's' : ''}
-            </Text>
+
+            {/* Summary cards (inline) */}
+            <div className={styles.summaryCards}>
+              <div className={styles.summaryCard} data-testid="summary-sessions">
+                <span className={styles.summaryCardLabel}>Sessions</span>
+                <span className={styles.summaryCardValue}>{summary.count}</span>
+              </div>
+              <div className={styles.summaryCard} data-testid="summary-tokens">
+                <span className={styles.summaryCardLabel}>Tokens</span>
+                <span className={styles.summaryCardValue}>
+                  {formatTokenCount(summary.totalTokens)}
+                  {summary.modelCount > 0 && (
+                    <span className={styles.summaryCardSub}>
+                      {' '}· {summary.modelCount} model{summary.modelCount !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className={styles.summaryCard} data-testid="summary-cost">
+                <span className={styles.summaryCardLabel}>Est. cost</span>
+                <span className={styles.summaryCardValue}>
+                  {summary.totalCostUsd !== null ? `$${summary.totalCostUsd.toFixed(2)}` : '—'}
+                </span>
+              </div>
+              <div className={styles.summaryCard} data-testid="summary-time">
+                <span className={styles.summaryCardLabel}>Avg time</span>
+                <span className={styles.summaryCardValue}>{formatDuration(summary.avgWallMs)}</span>
+              </div>
+            </div>
           </FlexRow>
+
+          {/* Expanded analytics panel */}
           {analyticsExpanded && (
-            <div className={styles.chartArea} data-testid="analytics-panel">
-              <CombinedAnalyticsChart data={dailyAnalytics} />
+            <div className={styles.analyticsPanel} data-testid="analytics-panel">
+              {/* Granularity toggle */}
+              <div className={styles.granularityRow}>
+                <Text fontSize="14" color="secondary">
+                  {chartData.length} {granularity === 'day' ? 'day' : granularity === 'week' ? 'week' : 'month'}{chartData.length !== 1 ? 's' : ''}
+                </Text>
+                <div
+                  className={styles.granularityToggle}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  role="radiogroup"
+                  aria-label="Chart granularity"
+                >
+                  {(['day', 'week', 'month'] as const).map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      className={`${styles.granularityBtn} ${granularity === g ? styles.granularityBtnActive : ''}`}
+                      onClick={() => setGranularity(g)}
+                      role="radio"
+                      aria-checked={granularity === g}
+                    >
+                      {g.charAt(0).toUpperCase() + g.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Main chart: cost + model token areas */}
+              <div className={styles.chartArea}>
+                <CombinedAnalyticsChart data={chartData} />
+              </div>
+
+              {/* Cache hit rate chart */}
+              <div className={styles.cacheChartArea}>
+                <CacheHitRateChart data={chartData} />
+              </div>
+
+              {/* Model breakdown table */}
+              <div className={styles.tableArea}>
+                <ModelBreakdownTable sessions={filteredSessions} />
+              </div>
             </div>
           )}
         </Panel>
