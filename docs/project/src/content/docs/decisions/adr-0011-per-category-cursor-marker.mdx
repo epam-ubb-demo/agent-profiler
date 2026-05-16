@@ -1,0 +1,144 @@
+---
+title: "ADR-0011: Per-Category Cursor Marker Schema"
+description: Decision record for the v2 marker file schema that tracks per-category enrichment cursors, replacing the single global cursor from PR #360.
+---
+
+## Status
+
+Accepted
+
+## Date
+
+2026-05-16
+
+## Context
+
+PR #360 introduced a sidecar marker file, `.agent-profiler-sync.json`, that tracks a single global cursor: `lastSyncedRowCount`. This approach has three problems.
+
+**No selective re-upload.** If one category's data is corrupted, the entire session must be re-uploaded. There is no way to reset a single category's progress without discarding all other categories' sync state.
+
+**Awkward partial-failure semantics.** When a batch upload fails mid-way through a multi-category sync, the global cursor cannot represent the intermediate state accurately. Either the entire session is marked as unsynced (causing redundant re-upload of already-ingested categories) or the cursor is advanced past the failure point (silently dropping events).
+
+**Fixed marker location.** The sidecar file lives inside the session log directory. This fails silently for read-only directories, network-mounted drives, and cloud-synced folders (Dropbox, OneDrive) where mid-write state can be observed by sync clients. The marker location needs to be abstracted.
+
+Because PR #360 was never shipped to production, there is no v1 data to migrate. This means the v2 schema can be adopted directly without a migration path.
+
+## Decision
+
+Adopt a v2 marker schema with per-category cursors, and abstract the marker storage location behind a `MarkerStore` interface.
+
+### Marker schema
+
+```typescript
+interface Marker {
+  schemaVersion: 2;
+  tool: ToolId;
+  sessionId: string;
+  tenantId?: string;
+  userId?: string;
+
+  /** Per-category cursors keyed by category string. */
+  cursors: Record<string, EnrichmentCursor>;
+
+  /**
+   * Tracks the payloadSchema version seen at last sync per category.
+   * When the active payloadSchema bumps, the cursor is reset to trigger re-projection.
+   */
+  payloadSchemaVersions: Record<string, string>;
+
+  /** ISO 8601 timestamp of the last full re-upload, if any. */
+  lastFullReuploadAt?: string;
+}
+
+interface EnrichmentCursor {
+  tool: ToolId;
+  sessionId: string;
+  category: string;
+
+  /** Ordinal of the last event successfully confirmed by the sink. */
+  lastOrdinal: number;
+
+  /** EventId of the last event, for cross-validation. */
+  lastEventId: string;
+
+  /** Original event timestamp (eventTs from the envelope). */
+  lastEventTs: string;
+
+  /** Wall-clock time at which the event was confirmed by the sink. */
+  lastIngestedAt: string;
+}
+```
+
+### Per-category cursor semantics
+
+Each category in `cursors` holds an independent `EnrichmentCursor`. The sync orchestrator passes the full `cursors` map to `readEvents()` (ADR-0010); the source implementation filters events to only those with `ordinal > cursor.lastOrdinal` for each category.
+
+This means:
+
+- A failure in the `tool-results` category does not affect the `metadata` or `utilisation` cursors.
+- Resetting one category is a targeted operation that leaves all other categories intact.
+- An empty `cursors` record is a valid initial state (no prior sync for any category).
+
+### Cursor advancement timing
+
+A category's cursor is only advanced **after** the sink confirms acceptance of the batch. This preserves at-least-once semantics: if the process exits after the sink accepts the batch but before the marker is written, the next sync will re-send the same events. The deterministic `eventId` (ADR-0009) and the KQL deduplication layer (ADR-0012) handle the resulting duplicates safely.
+
+### Reset operations
+
+```typescript
+interface MarkerStore {
+  read(ref: SessionRef): Promise<Marker | null>;
+  write(ref: SessionRef, marker: Marker): Promise<void>;
+
+  /** Reset cursors for the named categories back to zero. All other categories are unchanged. */
+  resetCategories(ref: SessionRef, categories: ReadonlyArray<string>): Promise<void>;
+
+  /** Reset all category cursors to zero. Equivalent to a full re-upload trigger. */
+  resetAll(ref: SessionRef): Promise<void>;
+}
+```
+
+`resetCategories` enables the "re-upload this category" UX action without disturbing other categories. `resetAll` supports the "re-upload everything" action and is also called when `lastFullReuploadAt` needs to be refreshed.
+
+### Atomic write
+
+Marker writes use the `.tmp` + atomic rename pattern from PR #360. The write sequence is:
+
+1. Serialise the new marker to JSON.
+2. Write to `<markerPath>.tmp`.
+3. Rename `.tmp` to `<markerPath>` (atomic on POSIX; `ReplaceFile` on Windows).
+
+This prevents partial writes from producing a corrupt marker if the process is interrupted.
+
+### `MarkerStore` abstraction
+
+The concrete `MarkerStore` implementation is injected rather than hard-coded. The default desktop implementation writes to the application data directory (`app.getPath('userData')/markers/`), keyed by a hash of `(tool, sessionId)`. This avoids writing into session log directories and is safe for read-only and cloud-synced source directories.
+
+Alternative implementations (e.g. for testing, or for future cloud-backed state) can be injected without changing any consumer.
+
+### `payloadSchemaVersions` for re-projection
+
+`payloadSchemaVersions` records the `payloadSchema` string that was active when each category was last synced. When the source emits an event with a different `payloadSchema` than the recorded version, the orchestrator resets that category's cursor before syncing, causing all events to be re-projected with the new schema. This prevents a mixed-schema table state in Log Analytics.
+
+## Alternatives considered
+
+### Keep the global cursor from PR #360
+
+Rejected. A global cursor cannot represent independent progress across categories. Selective re-upload — a first-class UX requirement — is impossible without per-category state.
+
+### Per-event tracking (one marker entry per event)
+
+Rejected. Tracking every individual event creates a marker that grows without bound for long sessions. The ordinal monotonicity guarantee (ADR-0009) makes per-event tracking unnecessary: knowing `lastOrdinal` is sufficient to resume from the correct position.
+
+### Database-backed markers (SQLite, LevelDB)
+
+Rejected. Agent Profiler is a desktop application that must work offline and without infrastructure dependencies. A file-based marker with atomic write is crash-safe, human-readable, and requires no additional runtime dependencies. The data volume (one marker per session, ~10 categories at most) does not justify a database.
+
+## Consequences
+
+- The marker file format is v2 from the start; there is no v1 compatibility code to maintain because PR #360 was never shipped.
+- Each category's sync progress is tracked independently, enabling selective re-upload from the settings UI.
+- At-least-once delivery is preserved; the KQL deduplication layer (ADR-0012) absorbs any duplicates from a cursor-advance failure.
+- The `MarkerStore` interface allows test doubles to operate purely in memory, making orchestrator unit tests faster and eliminating test artefacts on disk.
+- The `payloadSchemaVersions` field adds a lightweight re-projection trigger; teams that bump a payload schema must update the `payloadSchema` identifier in the corresponding source implementation.
+- Marker files are co-located with app data rather than session data; they are not backed up or synced by source-directory cloud sync clients.

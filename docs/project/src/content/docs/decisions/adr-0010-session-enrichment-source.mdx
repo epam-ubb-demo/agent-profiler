@@ -1,0 +1,107 @@
+---
+title: "ADR-0010: SessionEnrichmentSource Abstraction"
+description: Decision record for the SessionEnrichmentSource Strategy interface that decouples per-tool session parsing from the shared sync pipeline.
+---
+
+## Status
+
+Accepted
+
+## Date
+
+2026-05-16
+
+## Context
+
+PR #360's `EnrichmentBuilder` consumes a pre-parsed `Session` object and hard-codes six Copilot CLI categories. The builder is tightly coupled to the Copilot CLI data model: it knows how to walk a `Session`'s internal structure and emit the specific enrichment categories that Copilot CLI supports.
+
+Adding a second tool under this design requires either:
+
+1. Pretending the new tool is Copilot CLI and mapping its data into the `Session` type — which forces every new tool through a lossy translation that discards tool-specific context, or
+2. Duplicating the entire pipeline — a `ToolXEnrichmentBuilder`, a `ToolXSyncOrchestrator`, and a `ToolXWatcher` — creating a maintenance burden that grows linearly with the number of tools.
+
+Both options violate the Open/Closed Principle: adding a tool modifies existing orchestration code rather than extending it. The E11 initiative requires a design that supports at least three tools without repeated pipeline duplication.
+
+## Decision
+
+Define a `SessionEnrichmentSource` interface (Strategy pattern) that encapsulates all tool-specific knowledge. The sync orchestrator depends on this interface and is oblivious to which tool is providing data.
+
+### Interface definition
+
+```typescript
+interface SessionEnrichmentSource {
+  readonly tool: ToolId;
+
+  /** Enumerate all sessions this source can see on the local machine. */
+  discoverSessions(): AsyncIterable<SessionRef>;
+
+  /**
+   * Read enrichment events for the given session, honouring per-category cursors.
+   * Only events whose ordinal exceeds cursor.lastOrdinal are emitted.
+   */
+  readEvents(
+    ref: SessionRef,
+    cursor: Record<string, EnrichmentCursor | null>
+  ): AsyncIterable<EnrichmentEvent>;
+
+  /** Return a watcher that emits notifications when the session's data changes on disk. */
+  watch(ref: SessionRef): SessionWatcher;
+
+  /**
+   * Return the categories available for this session.
+   * May be dynamic — a session with no tool-result events yields an empty tool-results category.
+   */
+  categoriesFor(ref: SessionRef): Promise<ReadonlyArray<string>>;
+}
+```
+
+### Pull-based `AsyncIterable` over push-based `EventEmitter`
+
+`readEvents` returns an `AsyncIterable<EnrichmentEvent>`. The caller pulls events at its own pace, which means:
+
+- **Back-pressure is natural**: the orchestrator can pause between batches without accumulating an unbounded buffer.
+- **Cursor resumption is straightforward**: the iterable can be re-created from the cursor state without replaying the entire source; the caller passes the current cursor and the source begins emitting from the next ordinal.
+- **Error handling is sequential**: a failure mid-stream suspends the current session without racing with an in-flight EventEmitter queue.
+
+A push-based `EventEmitter` would require the orchestrator to manage flow-control explicitly and would make cursor resume semantics awkward — resuming a paused emitter is not well-defined.
+
+### Sources read raw tool artefacts
+
+Each `SessionEnrichmentSource` implementation reads the tool's own raw artefacts directly (e.g. the Copilot CLI source reads `events.jsonl`; a VS Code Chat source would read its own storage format). This inverts the dependency: the shared pipeline no longer depends on the `Session` parsed model. The source is free to interpret its artefacts as it sees fit and emit only the `EnrichmentEvent` envelope format.
+
+### `SessionWatcher` is a separate type
+
+The `watch` method returns a `SessionWatcher` rather than attaching change detection to the source itself. This separation follows the Interface Segregation Principle: the orchestrator only needs a watcher when running in auto-sync mode; in manual or batch modes it never calls `watch`. Decoupling the watcher means test doubles for `SessionEnrichmentSource` do not need to implement filesystem watching, and vice versa.
+
+### `SourceRegistry` for OCP compliance
+
+A `SourceRegistry` singleton holds the registered `SessionEnrichmentSource` implementations. The orchestrator asks the registry for all registered sources and iterates them uniformly. Adding a new tool means registering a new source — no modification to the orchestrator is required. Sources can be registered conditionally (e.g. only if the tool is installed) without any change to the orchestration logic.
+
+### Dynamic `categoriesFor`
+
+`categoriesFor(ref)` is an async method that may inspect the session's contents to determine which categories are present. For example, a session with no tool-call events has no `tool-results` category, so the sync orchestrator skips that category without attempting an empty upload. This avoids generating zero-row batches and avoids creating spurious cursor entries for categories that never existed.
+
+A static category list (e.g. a constant array on the class) would over-report categories and force the orchestrator to handle empty iterables gracefully for every session.
+
+## Alternatives considered
+
+### Extend `EnrichmentBuilder` with `if/else` per tool
+
+Rejected. This is a direct OCP violation: every new tool requires modifying the builder's branching logic. The builder becomes a maintenance bottleneck that cannot be extended without risk of regression in existing tool paths.
+
+### Push-based `EventEmitter`
+
+Rejected. EventEmitters lose cursor resumption semantics — there is no standard way to replay "events since ordinal N" from a paused emitter. Back-pressure must be implemented by hand and is error-prone when combined with async I/O.
+
+### Unified parser → single intermediate format
+
+Rejected. Agent tools have fundamentally different log formats (JSONL event streams, SQLite databases, structured directories, remote APIs). A unified parser would require every tool to implement a lossy translation into a common intermediate type, discarding tool-specific context that may be valuable for future analytics categories. The `EnrichmentEvent` envelope (ADR-0009) is the correct common format; the source implementation is the right place for the translation.
+
+## Consequences
+
+- Each agent tool ships its own `SessionEnrichmentSource` package; the sync orchestrator and pipeline packages have no direct dependency on any tool-specific code.
+- The `SourceRegistry` is the only place where tool-specific packages are referenced; dependency injection keeps orchestrator tests clean.
+- Adding a new tool requires writing a new `SessionEnrichmentSource` implementation and one registry registration call — no existing code changes.
+- `AsyncIterable` semantics require callers to use `for await...of` or explicit iterator protocols; this is idiomatic TypeScript and consistent with Node.js stream conventions.
+- `SessionWatcher` implementations must be torn down explicitly when the orchestrator stops watching a session; callers are responsible for calling `watcher.stop()`.
+- `categoriesFor` may perform I/O; callers should cache the result for the lifetime of a single sync run to avoid repeated reads.
