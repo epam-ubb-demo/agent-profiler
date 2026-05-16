@@ -105,7 +105,7 @@ describe('CopilotCliEnrichmentSource', () => {
       for await (const event of source.readEvents(ref, {})) {
         expect(event.schemaVersion).toBe(1);
         expect(event.tool).toBe('copilot-cli');
-        expect(event.sessionId).toBe('valid-session');
+        expect(event.sessionId).toBe('sess-abc-123');
         expect(typeof event.eventId).toBe('string');
         expect(event.eventId.length).toBeGreaterThan(0);
         expect(typeof event.eventTs).toBe('string');

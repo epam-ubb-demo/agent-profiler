@@ -36,7 +36,7 @@ describe('CopilotCliSessionProjector', () => {
       const projector = new CopilotCliSessionProjector();
       const session = projector.project(events);
 
-      expect(session.sessionId).toBe('valid-session');
+      expect(session.sessionId).toBe('sess-abc-123');
     });
 
     it('restores copilotVersion from metadata payload', async () => {

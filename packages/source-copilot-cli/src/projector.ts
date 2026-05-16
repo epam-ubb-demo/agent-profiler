@@ -68,9 +68,12 @@ function reconstructTokenBucket(v: unknown): TokenBucket {
   };
 }
 
-function reconstructUtilisationSample(payload: Record<string, unknown>): UtilisationSample {
+function reconstructUtilisationSample(
+  payload: Record<string, unknown>,
+  fallbackTs: string,
+): UtilisationSample {
   return {
-    timestamp: getString(payload, 'timestamp') || new Date().toISOString(),
+    timestamp: getString(payload, 'timestamp') || fallbackTs,
     percentage: getNumber(payload, 'percentage'),
     used: getNumber(payload, 'used'),
     total: getNumber(payload, 'total'),
@@ -166,7 +169,7 @@ export class CopilotCliSessionProjector implements SessionProjector {
       parseStatus: getParseStatus(meta),
       shutdown: (meta['shutdown'] as Session['shutdown']) ?? null,
       modelChanges,
-      utilisation: utilisationEvents.map((e) => reconstructUtilisationSample(e.payload)),
+      utilisation: utilisationEvents.map((e) => reconstructUtilisationSample(e.payload, e.eventTs)),
       compactions: compactionEvents.map((e) => reconstructCompaction(e.payload)),
       toolCalls: toolResultEvents.map((e) => reconstructToolCall(e.payload)),
       // Fields not available from enrichment events:

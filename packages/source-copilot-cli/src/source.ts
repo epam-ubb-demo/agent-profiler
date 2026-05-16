@@ -5,7 +5,7 @@
  */
 
 import fs from 'node:fs';
-import { access, readdir } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import os from 'node:os';
 import { join } from 'node:path';
 
@@ -49,7 +49,8 @@ export class CopilotCliEnrichmentSource implements SessionEnrichmentSource {
 
       for (const filename of EVENT_FILES) {
         try {
-          await access(join(dirPath, filename));
+          const s = await stat(join(dirPath, filename));
+          if (!s.isFile()) continue;
           yield {
             tool: 'copilot-cli',
             sessionId: entry.name,
@@ -68,7 +69,8 @@ export class CopilotCliEnrichmentSource implements SessionEnrichmentSource {
     cursors: Readonly<Record<string, EnrichmentCursor | undefined>>,
   ): AsyncGenerator<EnrichmentEvent> {
     const session = await parseCopilotCliSession(ref.locationHint);
-    const now = new Date().toISOString();
+    const EPOCH = '1970-01-01T00:00:00.000Z';
+    const sessionId = session.sessionId || ref.sessionId;
     const toolVersion = session.copilotVersion || '0.0.0';
     const sourceMachine = os.hostname();
 
@@ -83,10 +85,10 @@ export class CopilotCliEnrichmentSource implements SessionEnrichmentSource {
         tool: 'copilot-cli',
         toolVersion,
         sourceMachine,
-        sessionId: ref.sessionId,
+        sessionId,
         category,
         ordinal,
-        eventId: buildEventId({ tool: 'copilot-cli', sessionId: ref.sessionId, category, ordinal }),
+        eventId: buildEventId({ tool: 'copilot-cli', sessionId, category, ordinal }),
         eventTs,
         payloadSchema: `copilot-cli/${category}/v1`,
         payload,
@@ -96,7 +98,7 @@ export class CopilotCliEnrichmentSource implements SessionEnrichmentSource {
     // ── metadata (single event, ordinal 0) ───────────────────────────────────
     const metadataCursor = cursors['metadata'];
     if (metadataCursor === undefined || 0 > metadataCursor.lastOrdinal) {
-      const eventTs = session.startTs ?? now;
+      const eventTs = session.startTs ?? EPOCH;
       yield makeEnvelope('metadata', 0, eventTs, {
         copilotVersion: session.copilotVersion,
         selectedModel: session.selectedModel,
@@ -130,7 +132,7 @@ export class CopilotCliEnrichmentSource implements SessionEnrichmentSource {
     const compactionCursor = cursors['compaction'];
     for (const [index, compaction] of session.compactions.entries()) {
       if (compactionCursor !== undefined && index <= compactionCursor.lastOrdinal) continue;
-      const eventTs = compaction.timestamp ?? session.startTs ?? now;
+      const eventTs = compaction.timestamp ?? session.startTs ?? EPOCH;
       yield makeEnvelope('compaction', index, eventTs, {
         timestamp: compaction.timestamp,
         inputTokens: compaction.inputTokens,
@@ -146,7 +148,7 @@ export class CopilotCliEnrichmentSource implements SessionEnrichmentSource {
     const toolResultCursor = cursors['tool_result'];
     for (const [index, toolCall] of session.toolCalls.entries()) {
       if (toolResultCursor !== undefined && index <= toolResultCursor.lastOrdinal) continue;
-      const eventTs = toolCall.startTs ?? session.startTs ?? now;
+      const eventTs = toolCall.startTs ?? session.startTs ?? EPOCH;
       yield makeEnvelope('tool_result', index, eventTs, {
         toolCallId: toolCall.toolCallId,
         toolName: toolCall.toolName,
