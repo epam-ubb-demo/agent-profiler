@@ -8,7 +8,7 @@ export const toolIdSchema = z.enum(['copilot-cli', 'vscode-chat', 'claude-code']
  */
 export const enrichmentEventSchema = z.object({
   /** Schema version of the envelope itself. Currently 1. */
-  schemaVersion: z.number().int(),
+  schemaVersion: z.literal(1),
   tenantId: z.string().optional(),
   userId: z.string().optional(),
   tool: toolIdSchema,
@@ -22,7 +22,7 @@ export const enrichmentEventSchema = z.object({
   /** Deterministic ID — see {@link buildEventId}. */
   eventId: z.string(),
   /** ISO 8601 timestamp. */
-  eventTs: z.string(),
+  eventTs: z.string().datetime(),
   /** Payload schema identifier, e.g. `copilot-cli/metadata/v2`. */
   payloadSchema: z.string(),
   /** Arbitrary JSON object payload. */
@@ -42,9 +42,9 @@ export const enrichmentCursorSchema = z.object({
   lastOrdinal: z.number().int().nonnegative(),
   lastEventId: z.string(),
   /** ISO 8601 */
-  lastEventTs: z.string(),
+  lastEventTs: z.string().datetime(),
   /** ISO 8601 */
-  lastIngestedAt: z.string(),
+  lastIngestedAt: z.string().datetime(),
 });
 
 export type EnrichmentCursor = z.infer<typeof enrichmentCursorSchema>;

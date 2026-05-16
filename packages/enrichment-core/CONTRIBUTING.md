@@ -7,7 +7,7 @@ Use this guide when adding new source or sink adapters.
 1. Create a new package at `packages/enrichment-source-<tool>/`.
 2. Implement `SessionEnrichmentSource` in the package's public API.
 3. Register the source in `SourceRegistry` at the composition root.
-4. Run the shared contract tests from `@agent-profiler/enrichment-core/testing` once the testing module is available.
+4. Run the shared contract tests from `@agent-profiler/enrichment-core/testing`.
 5. Add a `SessionProjector` for read-side projection and register it in `ProjectorRegistry`.
 
 Keep the source focused on raw artefact reading and event emission. Do not project into `Session` inside the source package.
@@ -33,4 +33,4 @@ runSourceContractTests(() => ({
 }));
 ```
 
-Use the same pattern for sink implementations once the sink contract helpers are added.
+Use the same pattern for sink implementations with the sink contract helpers.

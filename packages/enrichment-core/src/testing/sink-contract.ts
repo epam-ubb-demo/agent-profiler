@@ -99,14 +99,12 @@ export function runSinkContractTests(
       if (events.length > 0) {
         const result = await sink.push(events);
 
-        const rejectedOrdinals = new Set(result.rejected.map((r) => r.ordinal));
-        const totalProcessed = new Set([
+        const allEventOrdinals = events.map(e => e.ordinal);
+        const accountedOrdinals = [
           ...result.acceptedOrdinals,
-          ...rejectedOrdinals,
-        ]);
-
-        // Every ordinal should be either accepted or rejected
-        expect(totalProcessed.size).toBeLessThanOrEqual(events.length);
+          ...result.rejected.map(r => r.ordinal),
+        ];
+        expect(new Set(accountedOrdinals)).toEqual(new Set(allEventOrdinals));
       }
     });
 

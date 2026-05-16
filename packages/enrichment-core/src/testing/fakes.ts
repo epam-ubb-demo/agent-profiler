@@ -64,7 +64,7 @@ export function createFakeSink(options?: {
     supportsCategory: (category: string) =>
       supportedCategories.includes('*') || supportedCategories.includes(category),
     push: async (batch: readonly EnrichmentEvent[]): Promise<PushResult> => ({
-      acceptedOrdinals: batch.map((_, i) => i),
+      acceptedOrdinals: batch.map(e => e.ordinal),
       rejected: [],
     }),
   };

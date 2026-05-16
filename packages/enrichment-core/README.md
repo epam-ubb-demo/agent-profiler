@@ -308,7 +308,7 @@ If `tenantId` or `userId` is omitted, their segments are preserved as empty stri
 
 ## Contract tests
 
-The `@agent-profiler/enrichment-core/testing` entry point will provide shared contract tests once the testing module is added.
+The `@agent-profiler/enrichment-core/testing` entry point provides shared contract tests.
 
 Use it to validate custom implementations before wiring them into the registries. A source adapter will look like this:
 

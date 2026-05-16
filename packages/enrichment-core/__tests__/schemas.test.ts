@@ -82,6 +82,12 @@ describe('Zod schemas', () => {
         enrichmentEventSchema.parse({ ...validEvent, tool: 'invalid-tool' }),
       ).toThrow();
     });
+
+    it('should reject events with schemaVersion other than 1', () => {
+      expect(() =>
+        enrichmentEventSchema.parse({ ...validEvent, schemaVersion: 2 }),
+      ).toThrow();
+    });
   });
 
   describe('enrichmentCursorSchema', () => {

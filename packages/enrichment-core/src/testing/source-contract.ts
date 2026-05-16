@@ -163,5 +163,21 @@ export function runSourceContractTests(
         }
       }
     });
+
+    it('readEvents should produce deterministic results on repeated calls', async () => {
+      const { source, fixture } = factory();
+
+      const firstRead: string[] = [];
+      for await (const event of source.readEvents(fixture, {})) {
+        firstRead.push(event.eventId);
+      }
+
+      const secondRead: string[] = [];
+      for await (const event of source.readEvents(fixture, {})) {
+        secondRead.push(event.eventId);
+      }
+
+      expect(firstRead).toEqual(secondRead);
+    });
   });
 }
