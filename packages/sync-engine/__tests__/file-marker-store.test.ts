@@ -146,6 +146,30 @@ describe('FileMarkerStore', () => {
       expect(markerFiles.length).toBe(1);
       expect(markerFiles[0]).not.toContain('\\');
     });
+
+    it('is injective — sessions "a/b" and "a_b" produce different files and do not interfere', async () => {
+      const store = new FileMarkerStore(tmpDir);
+      const refSlash = createTestSessionRef('copilot-cli', 'a/b');
+      const refUnderscore = createTestSessionRef('copilot-cli', 'a_b');
+
+      const cursorSlash = createTestCursor('copilot-cli', 'a/b', 'metadata', 10);
+      const cursorUnderscore = createTestCursor('copilot-cli', 'a_b', 'metadata', 20);
+
+      await store.write(refSlash, createTestMarker('copilot-cli', 'a/b', { metadata: cursorSlash }));
+      await store.write(refUnderscore, createTestMarker('copilot-cli', 'a_b', { metadata: cursorUnderscore }));
+
+      // Both files must coexist — no collision
+      const { readdir } = await import('node:fs/promises');
+      const files = await readdir(tmpDir);
+      const markerFiles = files.filter((f) => f.endsWith('.marker.json'));
+      expect(markerFiles).toHaveLength(2);
+
+      // Each ref reads back its own distinct value
+      const readSlash = await store.read(refSlash);
+      const readUnderscore = await store.read(refUnderscore);
+      expect(readSlash?.cursors.metadata?.lastOrdinal).toBe(10);
+      expect(readUnderscore?.cursors.metadata?.lastOrdinal).toBe(20);
+    });
   });
 
   describe('multiple sessions', () => {

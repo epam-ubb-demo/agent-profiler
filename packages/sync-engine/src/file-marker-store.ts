@@ -15,11 +15,10 @@ export class FileMarkerStore implements MarkerStore {
 
   /** Derive the marker file path from a session ref. */
   private markerPath(ref: SessionRef): string {
-    // Use tool--sessionId as filename, sanitising colons for Windows compatibility.
-    // Also strip any path-separator characters to prevent traversal.
-    const safeName = `${ref.tool}--${ref.sessionId}`
-      .replace(/[/\\]/g, '_')
-      .concat('.marker.json');
+    // encodeURIComponent is injective and encodes all OS-reserved characters
+    // (`:`, `/`, `\`, `*`, `?`, `"`, `<`, `>`, `|`), preventing both
+    // filename collisions and path-traversal attacks.
+    const safeName = `${encodeURIComponent(ref.tool)}--${encodeURIComponent(ref.sessionId)}.marker.json`;
     return join(this.baseDir, safeName);
   }
 
