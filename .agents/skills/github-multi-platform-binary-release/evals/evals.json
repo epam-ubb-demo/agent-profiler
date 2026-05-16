@@ -1,0 +1,68 @@
+{
+  "$schema": "https://agentskills.io/schema/evals.json",
+  "skill": "github-multi-platform-binary-release",
+  "description": "Evals for the multi-OS binary release scaffolding skill. Content evals exercise the skill once with it loaded and once without to measure value delta. Trigger evals validate the dispatch description against should-trigger and should-not-trigger prompts, split 60/40 train/val.",
+  "ship_gates": {
+    "trigger_should_trigger_rate": ">=0.5",
+    "trigger_should_not_trigger_rate": "<0.5",
+    "content_delta_required": true
+  },
+  "content_evals": [
+    {
+      "id": "C1-electron-curl-install",
+      "prompt": "Scaffold a multi-OS release pipeline into my Electron app repo so users can curl-pipe an install script.",
+      "expected_outcomes": [
+        "The skill is invoked.",
+        "The agent probes the consumer repo for an existing build-release workflow before writing.",
+        "Parameterised build-release.yml is written to .github/workflows/ covering Linux x86_64/arm64, macOS Intel and Apple Silicon, and Windows x86_64.",
+        "install.sh and install.ps1 are written with the documented env-var contract (VERSION, INSTALL_DIR, REPO, GITHUB_URL).",
+        "Asset names include sha256 sidecars and match what the installers fetch.",
+        "An operator-action checklist is printed listing required secrets, first tag push, and the prerelease-tag convention."
+      ],
+      "negative_outcomes_without_skill": [
+        "Hand-rolled workflow likely misses sha256 sidecars, prerelease auto-detect, or one of the OS/arch entries.",
+        "Install scripts likely omit checksum verification or do not match the asset-naming pattern emitted by the workflow."
+      ]
+    },
+    {
+      "id": "C2-go-binary-multi-arch",
+      "prompt": "I want my Go CLI's GitHub Release to attach pre-built binaries for Linux x86_64 and arm64, macOS, and Windows, with checksums.",
+      "expected_outcomes": [
+        "The skill is invoked.",
+        "The agent asks for the Go build command per OS (or per matrix entry) and the binary name.",
+        "build-release.yml.template is instantiated with the supplied build command in each matrix leg.",
+        "Each archive is paired with a .sha256 sidecar.",
+        "install.sh and install.ps1 are emitted and reference the correct asset names."
+      ],
+      "negative_outcomes_without_skill": [
+        "Likely produces a single-OS workflow or skips the arm64 cross-build entry.",
+        "Likely omits checksum sidecars or the prerelease-detection regex."
+      ]
+    }
+  ],
+  "trigger_evals": {
+    "split": { "train": 0.6, "val": 0.4 },
+    "should_trigger": [
+      { "id": "T1",  "prompt": "set up multi-OS binary release for my CLI on GitHub",                                       "split": "train" },
+      { "id": "T2",  "prompt": "I want install.sh and install.ps1 for my Electron app",                                     "split": "train" },
+      { "id": "T3",  "prompt": "publish pre-built executables for linux/darwin/windows to GitHub Releases",                 "split": "train" },
+      { "id": "T4",  "prompt": "matrix-build a Rust binary and ship it with sha256 sums",                                    "split": "train" },
+      { "id": "T5",  "prompt": "do the same thing microsoft/apm does for releases in my repo",                              "split": "train" },
+      { "id": "T6",  "prompt": "add a tag-triggered release pipeline that produces tar.gz and zip",                          "split": "train" },
+      { "id": "T7",  "prompt": "I want users to `curl ... | sh` to install agent-profiler",                                  "split": "val"   },
+      { "id": "T8",  "prompt": "ship copilot-token-benchmark binaries across OSes",                                          "split": "val"   },
+      { "id": "T9",  "prompt": "release my Go tool with arm64 and x86_64 artefacts",                                         "split": "val"   },
+      { "id": "T10", "prompt": "auto-detect prerelease from the tag and upload release archives",                            "split": "val"   }
+    ],
+    "should_not_trigger": [
+      { "id": "N1", "prompt": "publish my package to npm on tag push",                          "expected_route": "github-setup-tag-release",   "split": "train" },
+      { "id": "N2", "prompt": "set up Dependabot",                                              "expected_route": "unrelated",                  "split": "train" },
+      { "id": "N3", "prompt": "investigate why my CI failed",                                   "expected_route": "ci-investigation",           "split": "train" },
+      { "id": "N4", "prompt": "publish to PyPI",                                                "expected_route": "github-setup-tag-release",   "split": "train" },
+      { "id": "N5", "prompt": "code-sign my macOS binary",                                      "expected_route": "out-of-scope",               "split": "val"   },
+      { "id": "N6", "prompt": "deploy my Docker image",                                         "expected_route": "github-setup-tag-release",   "split": "val"   },
+      { "id": "N7", "prompt": "review this PR",                                                 "expected_route": "pr-feedback",                "split": "val"   },
+      { "id": "N8", "prompt": "scaffold a new GitHub repo with community health files",        "expected_route": "ossbootstrap-repo",          "split": "val"   }
+    ]
+  }
+}

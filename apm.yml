@@ -5,6 +5,7 @@ author: Sergio Sisternes
 dependencies:
   apm:
   - epam-mbg-demo/agent-forge/content/docs-website#docs-website/v1.0.0
+  - epam-mbg-demo/agent-forge/devops/github-multi-platform-binary-release#github-multi-platform-binary-release/v1.0.0
   mcp: []
 includes: auto
 scripts: {}

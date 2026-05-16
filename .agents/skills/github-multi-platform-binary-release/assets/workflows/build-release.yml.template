@@ -1,0 +1,240 @@
+name: Build & Release
+
+# Multi-OS / multi-arch binary release pipeline.
+# Tag a commit with `v*` to trigger the full build -> validate -> release flow.
+# Push to `main` exercises build only (no release).
+#
+# Required customisation (search for `{{` markers):
+#   {{BINARY_NAME}}        e.g. "agent-profiler"
+#   {{BUILD_CMD_LINUX}}    shell command that produces ./dist/{{BINARY_NAME}}-linux-<arch>/<bin>
+#   {{BUILD_CMD_MACOS}}    shell command that produces ./dist/{{BINARY_NAME}}-darwin-<arch>/<bin>
+#   {{BUILD_CMD_WINDOWS}}  pwsh command that produces ./dist/{{BINARY_NAME}}-windows-x86_64/<bin>.exe
+#   {{SMOKE_TEST}}         shell command run against the unpacked binary at pre-release time
+#   {{MATRIX_SUBSET}}      drop the matrix entries you do not need (delete the include items)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      test_build:
+        description: 'Test build (uploads as workflow artifacts only)'
+        required: false
+        default: true
+        type: boolean
+
+# Principle of least privilege. Only create-release escalates to contents: write.
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # PHASE 1 -- build matrix.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build (${{ matrix.platform }}-${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+            arch: x86_64
+            artefact: {{BINARY_NAME}}-linux-x86_64
+            shell: bash
+          - os: ubuntu-24.04-arm
+            platform: linux
+            arch: arm64
+            artefact: {{BINARY_NAME}}-linux-arm64
+            shell: bash
+          - os: macos-15-intel
+            platform: darwin
+            arch: x86_64
+            artefact: {{BINARY_NAME}}-darwin-x86_64
+            shell: bash
+          - os: macos-latest
+            platform: darwin
+            arch: arm64
+            artefact: {{BINARY_NAME}}-darwin-arm64
+            shell: bash
+          - os: windows-latest
+            platform: windows
+            arch: x86_64
+            artefact: {{BINARY_NAME}}-windows-x86_64
+            shell: pwsh
+
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO: insert your language toolchain setup here (setup-node, setup-go,
+      # setup-python, dtolnay/rust-toolchain, etc). Pin versions explicitly.
+
+      - name: Build binary (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          {{BUILD_CMD_LINUX}}
+
+      - name: Build binary (macOS)
+        if: matrix.platform == 'darwin'
+        run: |
+          {{BUILD_CMD_MACOS}}
+
+      - name: Build binary (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          {{BUILD_CMD_WINDOWS}}
+
+      - name: Upload build artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artefact }}
+          path: ./dist/${{ matrix.artefact }}
+          if-no-files-found: error
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # PHASE 2 -- smoke-test each shipped binary on its native OS.
+  # Gated to release-cut moments only (tag / workflow_dispatch) so push-to-main
+  # stays fast.
+  # ---------------------------------------------------------------------------
+  smoke-test:
+    name: Smoke (${{ matrix.platform }}-${{ matrix.arch }})
+    needs: build
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+            arch: x86_64
+            artefact: {{BINARY_NAME}}-linux-x86_64
+            shell: bash
+          - os: ubuntu-24.04-arm
+            platform: linux
+            arch: arm64
+            artefact: {{BINARY_NAME}}-linux-arm64
+            shell: bash
+          - os: macos-15-intel
+            platform: darwin
+            arch: x86_64
+            artefact: {{BINARY_NAME}}-darwin-x86_64
+            shell: bash
+          - os: macos-latest
+            platform: darwin
+            arch: arm64
+            artefact: {{BINARY_NAME}}-darwin-arm64
+            shell: bash
+          - os: windows-latest
+            platform: windows
+            arch: x86_64
+            artefact: {{BINARY_NAME}}-windows-x86_64
+            shell: pwsh
+
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artefact }}
+          path: ./bin
+
+      - name: Smoke-test binary
+        run: |
+          {{SMOKE_TEST}}
+
+  # ---------------------------------------------------------------------------
+  # PHASE 3 -- archive + sha256 + GitHub Release. Tag-only.
+  # ---------------------------------------------------------------------------
+  create-release:
+    name: Create GitHub Release
+    needs: [build, smoke-test]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      is_prerelease: ${{ steps.release_type.outputs.is_prerelease }}
+
+    steps:
+      - name: Download all build artefacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./dist
+
+      - name: Archive + checksum
+        run: |
+          set -euo pipefail
+          cd dist
+          # Unix archives (tar.gz)
+          for art in {{BINARY_NAME}}-linux-x86_64 \
+                    {{BINARY_NAME}}-linux-arm64 \
+                    {{BINARY_NAME}}-darwin-x86_64 \
+                    {{BINARY_NAME}}-darwin-arm64; do
+            if [ -d "$art" ]; then
+              tar -czf "${art}.tar.gz" "${art}"
+              if command -v sha256sum >/dev/null; then
+                sha256sum "${art}.tar.gz" > "${art}.tar.gz.sha256"
+              else
+                shasum -a 256 "${art}.tar.gz" > "${art}.tar.gz.sha256"
+              fi
+            fi
+          done
+          # Windows archive (zip)
+          win="{{BINARY_NAME}}-windows-x86_64"
+          if [ -d "$win" ]; then
+            (cd "$win" && zip -qr "../${win}.zip" .)
+            if command -v sha256sum >/dev/null; then
+              sha256sum "${win}.zip" > "${win}.zip.sha256"
+            else
+              shasum -a 256 "${win}.zip" > "${win}.zip.sha256"
+            fi
+          fi
+          ls -la
+
+      - name: Determine release type
+        id: release_type
+        run: |
+          TAG="${{ github.ref_name }}"
+          # Stable semver: vMAJOR.MINOR.PATCH
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          # PEP 440 prerelease forms: v1.2.3a1, v1.2.3b1, v1.2.3rc1
+          elif [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(a|b|rc)[0-9]+$ ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          prerelease: ${{ steps.release_type.outputs.is_prerelease == 'true' }}
+          files: |
+            ./dist/{{BINARY_NAME}}-linux-x86_64.tar.gz
+            ./dist/{{BINARY_NAME}}-linux-x86_64.tar.gz.sha256
+            ./dist/{{BINARY_NAME}}-linux-arm64.tar.gz
+            ./dist/{{BINARY_NAME}}-linux-arm64.tar.gz.sha256
+            ./dist/{{BINARY_NAME}}-darwin-x86_64.tar.gz
+            ./dist/{{BINARY_NAME}}-darwin-x86_64.tar.gz.sha256
+            ./dist/{{BINARY_NAME}}-darwin-arm64.tar.gz
+            ./dist/{{BINARY_NAME}}-darwin-arm64.tar.gz.sha256
+            ./dist/{{BINARY_NAME}}-windows-x86_64.zip
+            ./dist/{{BINARY_NAME}}-windows-x86_64.zip.sha256
+
+# Code-signing / notarisation is intentionally out of scope here. See
+# references/signing-todo.md for guidance and platform-specific pointers.

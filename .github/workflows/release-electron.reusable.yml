@@ -1,0 +1,296 @@
+name: Release Electron App (reusable)
+
+# Reusable workflow that does the *read-only* work of validating, stamping
+# (in-memory + artifact), and building the desktop installers across the
+# requested platforms. Called from:
+#
+#   * release-electron.yml         (push tag → dry-run = false, full pipeline;
+#                                   the caller owns commit + publish)
+#   * release-electron-dryrun.yml  (manual / PR-on-touch → dry-run = true)
+#
+# Permissions: every job in this workflow runs with `contents: read`. The
+# writable steps (committing the stamped CHANGELOG back to main, creating the
+# GitHub Release) live in the production caller workflow, so PR-triggered
+# dry-run runs can never obtain a writable token through this reusable. The
+# reusable exposes the derived version and prerelease flag as workflow
+# outputs so the caller can use them in its commit + publish jobs.
+
+on:
+  workflow_call:
+    inputs:
+      tag-name:
+        description: >-
+          Full tag name. Production: `@agent-profiler/desktop@X.Y.Z`.
+          Dry-run: any string; only the suffix after the last `@` is treated
+          as the version, e.g. `dryrun@0.0.0-dryrun.123`.
+        required: true
+        type: string
+      dry-run:
+        description: 'When true: builds run unsigned, no commit/publish.'
+        required: false
+        default: false
+        type: boolean
+      platforms:
+        description: 'Comma-separated subset of: macos,windows,linux'
+        required: false
+        default: 'macos,windows,linux'
+        type: string
+    outputs:
+      version:
+        description: 'Semantic version derived from the tag name'
+        value: ${{ jobs.prepare.outputs.version }}
+      prerelease:
+        description: 'true when the version contains a pre-release suffix'
+        value: ${{ jobs.prepare.outputs.prerelease }}
+      run-macos:
+        description: 'true when the macOS build was requested'
+        value: ${{ jobs.prepare.outputs.run-macos }}
+      run-windows:
+        description: 'true when the Windows build was requested'
+        value: ${{ jobs.prepare.outputs.run-windows }}
+      run-linux:
+        description: 'true when the Linux build was requested'
+        value: ${{ jobs.prepare.outputs.run-linux }}
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.derive.outputs.version }}
+      prerelease: ${{ steps.derive.outputs.prerelease }}
+      run-macos: ${{ steps.derive.outputs.run-macos }}
+      run-windows: ${{ steps.derive.outputs.run-windows }}
+      run-linux: ${{ steps.derive.outputs.run-linux }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # For real releases we want to validate against main (where the
+          # CHANGELOG commit will eventually land). For dry-runs the calling
+          # event's ref is fine because we never push anywhere.
+          ref: ${{ inputs.dry-run && github.ref || 'main' }}
+          fetch-depth: 0
+
+      - name: Derive version, prerelease flag and platform matrix
+        id: derive
+        env:
+          TAG_NAME: ${{ inputs.tag-name }}
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          set -euo pipefail
+          # Version is everything after the last `@`. Works for both the
+          # `@agent-profiler/desktop@X.Y.Z` production tag and arbitrary
+          # dry-run inputs like `dryrun@0.0.0-dryrun.123`.
+          version="${TAG_NAME##*@}"
+          if [[ -z "$version" ]]; then
+            echo "::error::Could not derive version from tag '${TAG_NAME}'"
+            exit 1
+          fi
+          if [[ "$version" == *-* ]]; then
+            prerelease=true
+          else
+            prerelease=false
+          fi
+          {
+            echo "version=${version}"
+            echo "prerelease=${prerelease}"
+            for plat in macos windows linux; do
+              if [[ ",${PLATFORMS}," == *",${plat},"* ]]; then
+                echo "run-${plat}=true"
+              else
+                echo "run-${plat}=false"
+              fi
+            done
+          } >> "$GITHUB_OUTPUT"
+          echo "Releasing version: ${version} (prerelease=${prerelease}, platforms=${PLATFORMS})"
+
+      - name: Verify desktop package.json version matches the tag
+        # Production-only: the tagged version must match the source-of-truth
+        # version in apps/desktop/package.json so the installer's internal
+        # version matches the Release tag. Dry-runs use synthetic versions
+        # (e.g. `0.0.0-pr.<run_id>`) that intentionally never match the
+        # source, so this check would always fail there.
+        if: ${{ !inputs.dry-run }}
+        env:
+          VERSION: ${{ steps.derive.outputs.version }}
+        run: |
+          set -euo pipefail
+          pkg_version=$(node -p "require('./apps/desktop/package.json').version")
+          if [[ "${pkg_version}" != "${VERSION}" ]]; then
+            echo "::error::apps/desktop/package.json version (${pkg_version}) does not match the released version (${VERSION}). Bump the package version on main before tagging."
+            exit 1
+          fi
+          echo "apps/desktop/package.json version matches: ${pkg_version}"
+
+      - name: Verify tag is reachable from origin/main (production only)
+        if: ${{ !inputs.dry-run }}
+        env:
+          TAG_NAME: ${{ inputs.tag-name }}
+          TAG_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # GitHub tag-push events match on tag name only, so a tag pushed
+          # from a feature branch would still fire this workflow. Guard
+          # against that by requiring the tagged commit to be an ancestor of
+          # origin/main (we already check out main above).
+          if ! git merge-base --is-ancestor "${TAG_SHA}" origin/main; then
+            echo "::error::Tag ${TAG_NAME} points at ${TAG_SHA}, which is not reachable from origin/main. Refusing to release."
+            exit 1
+          fi
+          echo "Tag ${TAG_NAME} (${TAG_SHA}) is on main."
+
+      - name: Stamp CHANGELOG.md (in-memory for this run only)
+        # In dry-run this is the only validation of the stamp. In production
+        # the caller's commit-changelog job will re-stamp against a fresh
+        # checkout of main at commit time, so this artifact is preview-only
+        # and is not used as the canonical input for the commit.
+        uses: ./.github/actions/stamp-changelog
+        with:
+          version: ${{ steps.derive.outputs.version }}
+
+      - name: Upload stamped CHANGELOG (preview)
+        # Always uploaded so operators (dry-run) or reviewers can inspect the
+        # stamped file. Production publishing does NOT consume this artifact:
+        # the publish job re-derives release notes from the freshly-committed
+        # CHANGELOG to avoid a race where main moves between prepare and
+        # commit-changelog.
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog-stamped
+          path: CHANGELOG.md
+          if-no-files-found: error
+          retention-days: 7
+
+  build-macos:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.run-macos == 'true' }}
+    runs-on: macos-14
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agent-profiler/desktop run build
+      - name: Build macOS installers
+        run: pnpm --filter @agent-profiler/desktop run dist:mac
+        env:
+          # `!inputs.dry-run && secrets.X || ''` correctly resolves to `''`
+          # in dry-run mode. The naive `inputs.dry-run && '' || secrets.X`
+          # leaks the secret because `''` is falsy in GHA expressions and
+          # `'' || secrets.X` evaluates to `secrets.X`.
+          CSC_LINK: ${{ !inputs.dry-run && secrets.MAC_CERT_P12 || '' }}
+          CSC_KEY_PASSWORD: ${{ !inputs.dry-run && secrets.MAC_CERT_PASSWORD || '' }}
+          APPLE_ID: ${{ !inputs.dry-run && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ !inputs.dry-run && secrets.APPLE_APP_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ !inputs.dry-run && secrets.APPLE_TEAM_ID || '' }}
+          # No GH_TOKEN here — the dist:* scripts pass `--publish never` so
+          # electron-builder's own publisher is disabled; publication is the
+          # exclusive responsibility of the caller's publish job.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-macos
+          path: |
+            apps/desktop/dist-release/*.dmg
+            apps/desktop/dist-release/*.dmg.blockmap
+            apps/desktop/dist-release/latest-mac.yml
+          if-no-files-found: error
+
+  build-windows:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.run-windows == 'true' }}
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agent-profiler/desktop run build
+      - name: Build Windows installers
+        run: pnpm --filter @agent-profiler/desktop run dist:win
+        env:
+          CSC_LINK: ${{ !inputs.dry-run && secrets.WIN_CERT_P12 || '' }}
+          CSC_KEY_PASSWORD: ${{ !inputs.dry-run && secrets.WIN_CERT_PASSWORD || '' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-windows
+          path: |
+            apps/desktop/dist-release/*.exe
+            apps/desktop/dist-release/*.exe.blockmap
+            apps/desktop/dist-release/latest.yml
+          if-no-files-found: error
+
+  build-linux:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.run-linux == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agent-profiler/desktop run build
+      - name: Build Linux installers
+        run: pnpm --filter @agent-profiler/desktop run dist:linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-linux
+          path: |
+            apps/desktop/dist-release/*.AppImage
+            apps/desktop/dist-release/*.AppImage.blockmap
+            apps/desktop/dist-release/*.deb
+            apps/desktop/dist-release/latest-linux.yml
+          if-no-files-found: error
+
+  dry-run-summary:
+    needs: [prepare, build-macos, build-windows, build-linux]
+    if: ${{ always() && inputs.dry-run }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Summarise dry-run
+        run: |
+          set -euo pipefail
+          # Tolerate the case where upstream jobs failed and no artifacts
+          # were uploaded — the summary should still render so operators can
+          # see which jobs were skipped/failed.
+          mkdir -p artifacts
+          {
+            echo "## Dry-run summary"
+            echo ""
+            echo "* Derived version: \`${{ needs.prepare.outputs.version }}\`"
+            echo "* Pre-release flag: \`${{ needs.prepare.outputs.prerelease }}\`"
+            echo "* Platforms requested: \`${{ inputs.platforms }}\`"
+            echo ""
+            echo "### Build job results"
+            echo "* macOS: \`${{ needs.build-macos.result }}\`"
+            echo "* Windows: \`${{ needs.build-windows.result }}\`"
+            echo "* Linux: \`${{ needs.build-linux.result }}\`"
+            echo ""
+            echo "### Artifacts collected"
+            find artifacts -type f | sort | sed 's|^|* `|; s|$|`|'
+          } >> "$GITHUB_STEP_SUMMARY"

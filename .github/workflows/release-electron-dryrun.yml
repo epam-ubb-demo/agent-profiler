@@ -1,0 +1,83 @@
+name: Release Electron App (dry-run)
+
+# Validates the release pipeline without producing a real GitHub Release.
+#
+# Triggers:
+#   1. Manual `workflow_dispatch` on any branch — for ad-hoc verification.
+#   2. `pull_request` whenever a file that affects the release pipeline changes
+#      — to guard against regressions before they reach main.
+#
+# Delegates to the reusable workflow with `dry-run: true`, which means:
+#   * the stamped CHANGELOG is uploaded as an artifact (not committed to main);
+#   * platform builds run end-to-end so packaging regressions are caught;
+#   * no GitHub Release is created, no auto-update manifests are published.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to test-stamp (no @-prefix, e.g. 0.0.0-dryrun.42)'
+        required: false
+        default: '0.0.0-dryrun'
+        type: string
+      platforms:
+        description: 'Comma-separated subset of: macos,windows,linux'
+        required: false
+        default: 'linux'
+        type: string
+
+  pull_request:
+    paths:
+      - '.github/workflows/release-electron*.yml'
+      - '.github/actions/stamp-changelog/**'
+      - 'tooling/release/**'
+      - 'apps/desktop/electron-builder.config.ts'
+      - 'apps/desktop/package.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-electron-dryrun-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Run the standalone Node tests first — they cover the CHANGELOG stamp
+  # logic and finish in well under a second, providing the fastest possible
+  # signal on the most error-prone part of the pipeline.
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run stamp-changelog unit tests
+        run: node --test tooling/release/stamp-changelog.test.mjs
+
+  pipeline:
+    needs: unit-tests
+    uses: ./.github/workflows/release-electron.reusable.yml
+    permissions:
+      # The reusable workflow runs every job at `contents: read`; the
+      # writable steps (commit CHANGELOG, create GitHub Release) live in
+      # the production caller (`release-electron.yml`). Granting only read
+      # here means a same-repo PR that modifies the reusable cannot obtain
+      # a writable token through this dry-run path.
+      contents: read
+    with:
+      # On manual dispatch the user supplies the version; on PR-on-touch we
+      # synthesise one from the run id so each invocation is unique and never
+      # collides with a real released section.
+      tag-name: >-
+        ${{ github.event_name == 'workflow_dispatch'
+            && format('dryrun@{0}', inputs.version)
+            || format('dryrun@0.0.0-pr.{0}', github.run_id) }}
+      dry-run: true
+      # Manual: respect the user's choice. PR-on-touch: Linux only to keep
+      # runner-minute usage proportionate.
+      platforms: >-
+        ${{ github.event_name == 'workflow_dispatch'
+            && inputs.platforms
+            || 'linux' }}
+    secrets: inherit

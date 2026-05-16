@@ -1,0 +1,17 @@
+# Categorises pull requests in auto-generated release notes.
+# Goes at .github/release.yml in the consumer repository.
+# Reference: https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes
+changelog:
+  categories:
+    - title: Breaking Changes
+      labels: [breaking-change, breaking]
+    - title: New Features
+      labels: [enhancement, feature]
+    - title: Bug Fixes
+      labels: [bug, bugfix, fix]
+    - title: Maintenance
+      labels: [chore, dependencies, refactor, ci]
+    - title: Documentation
+      labels: [documentation, docs]
+    - title: Other Changes
+      labels: ['*']
