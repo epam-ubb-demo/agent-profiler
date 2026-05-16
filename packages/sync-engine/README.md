@@ -38,7 +38,7 @@ import {
 
 const markerStore = new FileMarkerStore('/path/to/marker-dir');
 const planner = new DefaultSyncPlanner(markerStore, mySource);
-const orchestrator = new DefaultSyncOrchestrator();
+const orchestrator = new DefaultSyncOrchestrator(markerStore);
 
 // Incremental sync
 const plan = await planner.planIncremental(ref);

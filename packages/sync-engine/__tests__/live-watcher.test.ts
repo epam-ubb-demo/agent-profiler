@@ -171,6 +171,25 @@ describe('LiveWatcher', () => {
     expect(mockWatch.mock.calls.length).toBeGreaterThan(firstCallCount);
   });
 
+  it('stop() during restart delay cancels the pending restart', async () => {
+    const watcher = new LiveWatcher('/root', vi.fn(), { debounceMs: 50 });
+    watcher.start();
+
+    const callCountAfterStart = mockWatch.mock.calls.length;
+
+    // Trigger an error which sets a 1000ms restart timer
+    fireErrorEvent(new Error('ENOENT'));
+
+    // stop() is called before the timer fires
+    watcher.stop();
+
+    // Advance past the restart window
+    await vi.advanceTimersByTimeAsync(1100);
+
+    // fs.watch must NOT have been called again
+    expect(mockWatch.mock.calls.length).toBe(callCountAfterStart);
+  });
+
   it('does not double-start if start() called twice', () => {
     const watcher = new LiveWatcher('/root', vi.fn());
     watcher.start();

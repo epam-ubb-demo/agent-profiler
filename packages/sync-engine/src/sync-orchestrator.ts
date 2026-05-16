@@ -98,6 +98,10 @@ export class DefaultSyncOrchestrator {
 
         let firstResult: PushResult | undefined;
 
+        // Push to every supporting sink (at-least-once delivery).
+        // Each sink is retried independently; a failure in one sink does NOT
+        // suppress delivery to subsequent sinks — the error propagates and
+        // the entire batch is retried by the caller.
         for (const sink of supportingSinks) {
           let attempt = 0;
           while (true) {

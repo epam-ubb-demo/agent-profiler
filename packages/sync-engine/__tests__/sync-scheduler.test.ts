@@ -303,6 +303,49 @@ describe('DefaultSyncScheduler', () => {
       const [plan] = deps.mockRunPlan.mock.calls[0] as [SyncPlan];
       expect(plan.mode).toBe('incremental');
     });
+
+    it('one session error does not prevent other sessions from syncing', async () => {
+      const ref2: SessionRef = createTestSessionRef('copilot-cli', 'session-2', '/sessions/session-2');
+      const fakeSource = {
+        ...createFakeSource('copilot-cli', { sessions: [REF, ref2] }),
+      };
+      const fakeSink = createFakeSink();
+      const mockRunPlan = vi.fn().mockResolvedValue(DONE_JOB_UPDATE);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // planIncremental fails for the first session, succeeds for the second
+      const mockPlanner = {
+        planFull: vi.fn().mockResolvedValue(FULL_PLAN),
+        planSelective: vi.fn().mockResolvedValue(SELECTIVE_PLAN),
+        planIncremental: vi.fn()
+          .mockRejectedValueOnce(new Error('boom'))
+          .mockResolvedValue(INCREMENTAL_PLAN),
+      };
+      const mockPlannerFactory = vi.fn().mockReturnValue(mockPlanner);
+
+      const deps: SyncSchedulerDeps = {
+        sourceRegistry: { list: vi.fn().mockReturnValue([fakeSource]), forTool: vi.fn().mockReturnValue(fakeSource) } as unknown as SourceRegistry,
+        sinkRegistry: { list: vi.fn().mockReturnValue([fakeSink]) } as unknown as SinkRegistry,
+        markerStore: { read: vi.fn(), write: vi.fn(), resetCategories: vi.fn(), resetAll: vi.fn() },
+        orchestrator: { runPlan: mockRunPlan } as unknown as SyncSchedulerDeps['orchestrator'],
+        plannerFactory: mockPlannerFactory,
+      };
+
+      const scheduler = new DefaultSyncScheduler(deps);
+      scheduler.start('/sessions');
+
+      await capturedOnTick();
+
+      // Second session was still synced despite the first failing
+      expect(mockRunPlan).toHaveBeenCalledOnce();
+      // A warning was emitted for the failing session
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[SyncScheduler] session sync failed, skipping:',
+        expect.any(Error),
+      );
+
+      warnSpy.mockRestore();
+    });
   });
 
   describe('requestFullReupload', () => {

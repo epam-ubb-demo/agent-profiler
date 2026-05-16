@@ -16,6 +16,8 @@ export interface LiveWatcherOptions {
 export class LiveWatcher {
   private watcher: fs.FSWatcher | undefined;
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
+  private stopped = false;
+  private restartTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     private readonly rootDir: string,
@@ -26,14 +28,21 @@ export class LiveWatcher {
   /** Start watching. Idempotent — calling twice is a no-op. */
   start(): void {
     if (this.watcher !== undefined) return;
+    this.stopped = false;
     this.startInternal();
   }
 
   /** Stop watching. Idempotent. */
   stop(): void {
-    if (this.watcher === undefined) return;
-    this.watcher.close();
-    this.watcher = undefined;
+    this.stopped = true;
+    if (this.restartTimer !== undefined) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = undefined;
+    }
+    if (this.watcher !== undefined) {
+      this.watcher.close();
+      this.watcher = undefined;
+    }
     for (const timer of this.timers.values()) {
       clearTimeout(timer);
     }
@@ -64,9 +73,11 @@ export class LiveWatcher {
       w.on('error', (err: Error) => {
         console.error('[LiveWatcher] watcher error:', err);
         this.watcher = undefined;
-        // Attempt restart after a brief delay
-        setTimeout(() => {
-          if (this.watcher === undefined) {
+        // Attempt restart after a brief delay. Capture the handle so stop()
+        // can cancel it and prevent a restart after intentional shutdown.
+        this.restartTimer = setTimeout(() => {
+          this.restartTimer = undefined;
+          if (!this.stopped) {
             this.startInternal();
           }
         }, 1000);

@@ -96,6 +96,9 @@ export class DefaultSyncScheduler {
   }
 
   private async handleChange(sessionPath: string): Promise<void> {
+    // Linear scan across sources/sessions to find the matching path.
+    // Acceptable because the total number of registered sources and their
+    // discovered sessions is small (typically < 10 per tool).
     for (const source of this.deps.sourceRegistry.list()) {
       for await (const ref of source.discoverSessions()) {
         if (ref.locationHint === sessionPath) {
@@ -111,9 +114,13 @@ export class DefaultSyncScheduler {
   private async handlePollTick(): Promise<void> {
     for (const source of this.deps.sourceRegistry.list()) {
       for await (const ref of source.discoverSessions()) {
-        const planner = this.deps.plannerFactory(source);
-        const plan = await planner.planIncremental(ref);
-        await this.runWithMutex(ref, plan, source);
+        try {
+          const planner = this.deps.plannerFactory(source);
+          const plan = await planner.planIncremental(ref);
+          await this.runWithMutex(ref, plan, source);
+        } catch (err) {
+          console.warn('[SyncScheduler] session sync failed, skipping:', err);
+        }
       }
     }
   }
