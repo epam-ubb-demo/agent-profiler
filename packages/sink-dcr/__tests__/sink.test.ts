@@ -323,6 +323,24 @@ describe('DcrEnrichmentSink — push() non-retriable errors', () => {
     expect(result.acceptedOrdinals).toHaveLength(0);
     expect(result.rejected).toHaveLength(1);
   });
+
+  it('returns rejected result when payload serialisation throws (circular reference)', async () => {
+    // JSON.stringify throws a TypeError on circular structures.
+    // push() must catch this inside its try/catch and report it as a rejection,
+    // not let the error propagate to the caller.
+    const circular: Record<string, unknown> = {};
+    circular['self'] = circular; // creates a circular reference
+
+    const sink = makeSink();
+    const event = createTestEvent('copilot-cli', 'session-1', 'metadata', 0, circular);
+
+    const result = await sink.push([event]);
+
+    expect(result.acceptedOrdinals).toHaveLength(0);
+    expect(result.rejected).toHaveLength(1);
+    expect(result.rejected[0]!.ordinal).toBe(0);
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
 });
 
 describe('DcrEnrichmentSink — push() retriable errors', () => {

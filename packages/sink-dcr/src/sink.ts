@@ -131,10 +131,9 @@ export class DcrEnrichmentSink implements EnrichmentSink {
       return { acceptedOrdinals: [], rejected: categoryRejected };
     }
 
-    const pushTimestamp = new Date().toISOString();
-    const rows = mapEventsToDcrRows(supported, pushTimestamp);
-
     try {
+      const pushTimestamp = new Date().toISOString();
+      const rows = mapEventsToDcrRows(supported, pushTimestamp);
       await this.client.upload(this.ruleId, this.streamName, rows as unknown as Record<string, unknown>[]);
       return {
         acceptedOrdinals: supported.map(e => e.ordinal),
