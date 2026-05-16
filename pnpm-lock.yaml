@@ -501,6 +501,31 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/debug@4.1.13)(@types/node@20.19.39)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.8.4)
 
+  packages/sink-dcr:
+    dependencies:
+      '@agent-profiler/enrichment-core':
+        specifier: workspace:*
+        version: link:../enrichment-core
+      '@azure/identity':
+        specifier: ^4.4.0
+        version: 4.13.1
+      '@azure/monitor-ingestion':
+        specifier: ^1.1.0
+        version: 1.2.0
+    devDependencies:
+      '@agent-profiler/tsconfig-base':
+        specifier: workspace:*
+        version: link:../../tooling/tsconfig-base
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.39
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@20.19.39)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.8.4)
+
   packages/source-copilot-cli:
     dependencies:
       '@agent-profiler/adapters-copilot-cli':
