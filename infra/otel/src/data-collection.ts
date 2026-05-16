@@ -12,8 +12,8 @@
  *  - `dcrImmutableId` — immutable rule ID required by `@agent-profiler/sink-dcr`
  */
 
-import * as pulumi from "@pulumi/pulumi";
 import * as insights from "@pulumi/azure-native/insights/v20220601/index.js";
+import * as pulumi from "@pulumi/pulumi";
 
 import { dceName, dcrName } from "./naming.js";
 import type { SharedArgs } from "./types.js";
