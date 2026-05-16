@@ -13,7 +13,7 @@ Accepted
 
 ## Context
 
-The enrichment envelope carries optional `tenantId` and `userId` fields (introduced in ADR-0011), but the architecture does not yet define how these fields flow through the system or how access control is enforced. Two distinct visibility needs must be satisfied:
+The enrichment envelope carries optional `tenantId` and `userId` fields (introduced in ADR-0009), but the architecture does not yet define how these fields flow through the system or how access control is enforced. Two distinct visibility needs must be satisfied:
 
 1. **Per-user isolation** — an individual developer should see only their own sessions by default.
 2. **Per-team visibility** — a team lead or analytics tool should be able to see all sessions from a team in a single shared workspace.
