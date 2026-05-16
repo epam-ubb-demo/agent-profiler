@@ -384,6 +384,25 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/debug@4.1.13)(@types/node@20.19.39)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.8.4)
 
+  packages/enrichment-core:
+    dependencies:
+      '@agent-profiler/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
+    devDependencies:
+      '@agent-profiler/tsconfig-base':
+        specifier: workspace:*
+        version: link:../../tooling/tsconfig-base
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.8.4)
+
   packages/export-html:
     dependencies:
       '@agent-profiler/core':
