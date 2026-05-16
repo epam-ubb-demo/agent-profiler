@@ -1,0 +1,24 @@
+{
+  "name": "@agent-profiler/enrichment-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@agent-profiler/core": "workspace:*",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@agent-profiler/tsconfig-base": "workspace:*",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
