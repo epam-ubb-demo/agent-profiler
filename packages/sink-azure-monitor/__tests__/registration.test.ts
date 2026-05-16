@@ -13,7 +13,7 @@ import { registerAzureMonitorSink } from '../src/registration.js';
 import { AzureMonitorEnrichmentSink } from '../src/sink.js';
 
 function makeNoOpUploader() {
-  return async (rows: readonly unknown[]) => rows.length;
+  return async (_rows: readonly unknown[]) => {};
 }
 
 describe('registerAzureMonitorSink', () => {

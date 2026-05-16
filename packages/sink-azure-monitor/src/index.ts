@@ -10,4 +10,4 @@ export type { AzureMonitorSinkConfig, RowUploader } from './sink.js';
 
 export { registerAzureMonitorSink } from './registration.js';
 
-export { mapEventToRow, mapEventsToRows } from './row-mapper.js';
+export { mapEventToRow, mapEventsToRows, VALID_CATEGORIES } from './row-mapper.js';

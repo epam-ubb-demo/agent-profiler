@@ -2,6 +2,18 @@ import type { EnrichmentRow } from '@agent-profiler/core';
 import type { EnrichmentEvent } from '@agent-profiler/enrichment-core';
 
 /**
+ * The set of category values accepted by the Azure Monitor DCR custom table.
+ * Matches the `Category` enum in {@link EnrichmentRow}.
+ * Callers should validate against this set before calling {@link mapEventToRow}.
+ */
+export const VALID_CATEGORIES: ReadonlySet<string> = new Set([
+  'metadata',
+  'utilisation',
+  'compaction',
+  'tool_result',
+]);
+
+/**
  * Converts an EnrichmentEvent envelope to an EnrichmentRow suitable for
  * Azure Monitor ingestion (DCR custom table).
  *

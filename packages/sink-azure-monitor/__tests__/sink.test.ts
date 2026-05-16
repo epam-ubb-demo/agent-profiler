@@ -10,7 +10,7 @@ import { AzureMonitorEnrichmentSink } from '../src/sink.js';
 import type { RowUploader } from '../src/sink.js';
 
 function makeNoOpUploader(): RowUploader {
-  return async (rows) => rows.length;
+  return async () => {};
 }
 
 function makeFailingUploader(message = 'upload failed'): RowUploader {
@@ -33,11 +33,15 @@ describe('AzureMonitorEnrichmentSink — constructor defaults', () => {
     expect(sink.id).toBe('my-custom-sink');
   });
 
-  it('defaults supportedCategories to ["*"]', () => {
+  it('defaults supportedCategories to the 4 known DCR categories', () => {
     const sink = new AzureMonitorEnrichmentSink({ upload: makeNoOpUploader() });
-    // Wildcard means it supports any category
-    expect(sink.supportsCategory('anything')).toBe(true);
+    // All four known categories are supported
     expect(sink.supportsCategory('metadata')).toBe(true);
+    expect(sink.supportsCategory('utilisation')).toBe(true);
+    expect(sink.supportsCategory('compaction')).toBe(true);
+    expect(sink.supportsCategory('tool_result')).toBe(true);
+    // Unknown categories are not supported by default
+    expect(sink.supportsCategory('anything')).toBe(false);
   });
 
   it('accepts custom supportedCategories', () => {
@@ -65,7 +69,7 @@ describe('AzureMonitorEnrichmentSink — availability()', () => {
   });
 
   it('calls the uploader with an empty array for the availability probe', async () => {
-    const uploadSpy = vi.fn(async (rows: readonly EnrichmentRow[]) => rows.length);
+    const uploadSpy = vi.fn(async (_rows: readonly EnrichmentRow[]) => {});
     const sink = new AzureMonitorEnrichmentSink({ upload: uploadSpy });
 
     await sink.availability();
@@ -76,8 +80,11 @@ describe('AzureMonitorEnrichmentSink — availability()', () => {
 });
 
 describe('AzureMonitorEnrichmentSink — supportsCategory()', () => {
-  it('returns true for any category when wildcard is set', () => {
-    const sink = new AzureMonitorEnrichmentSink({ upload: makeNoOpUploader() });
+  it('returns true for any category when wildcard is explicitly set', () => {
+    const sink = new AzureMonitorEnrichmentSink({
+      supportedCategories: ['*'],
+      upload: makeNoOpUploader(),
+    });
     expect(sink.supportsCategory('metadata')).toBe(true);
     expect(sink.supportsCategory('utilisation')).toBe(true);
     expect(sink.supportsCategory('unknown-category')).toBe(true);
@@ -112,7 +119,7 @@ describe('AzureMonitorEnrichmentSink — push()', () => {
   });
 
   it('does not call the uploader for an empty batch', async () => {
-    const uploadSpy = vi.fn(async (rows: readonly EnrichmentRow[]) => rows.length);
+    const uploadSpy = vi.fn(async (_rows: readonly EnrichmentRow[]) => {});
     const sink = new AzureMonitorEnrichmentSink({ upload: uploadSpy });
 
     await sink.push([]);
@@ -124,7 +131,6 @@ describe('AzureMonitorEnrichmentSink — push()', () => {
     const capturedRows: EnrichmentRow[][] = [];
     const upload: RowUploader = async (rows) => {
       capturedRows.push([...rows]);
-      return rows.length;
     };
 
     const sink = new AzureMonitorEnrichmentSink({ upload });
@@ -197,5 +203,65 @@ describe('AzureMonitorEnrichmentSink — push()', () => {
     const second = await sink.push(events);
 
     expect(first.acceptedOrdinals).toEqual(second.acceptedOrdinals);
+  });
+
+  it('rejects events whose category is not supported', async () => {
+    const sink = new AzureMonitorEnrichmentSink({ upload: makeNoOpUploader() });
+    const events = [
+      createTestEvent('copilot-cli', 'session-1', 'unknown-category', 0),
+      createTestEvent('copilot-cli', 'session-1', 'turns', 1),
+    ];
+
+    const result = await sink.push(events);
+
+    expect(result.acceptedOrdinals).toHaveLength(0);
+    expect(result.rejected).toHaveLength(2);
+    expect(result.rejected[0]!.ordinal).toBe(0);
+    expect(result.rejected[0]!.reason).toMatch(/Unsupported category: unknown-category/);
+    expect(result.rejected[1]!.ordinal).toBe(1);
+    expect(result.rejected[1]!.reason).toMatch(/Unsupported category: turns/);
+  });
+
+  it('does not call the uploader when all events have unsupported categories', async () => {
+    const uploadSpy = vi.fn(async (_rows: readonly EnrichmentRow[]) => {});
+    const sink = new AzureMonitorEnrichmentSink({ upload: uploadSpy });
+    const events = [createTestEvent('copilot-cli', 'session-1', 'unknown-category', 0)];
+
+    await sink.push(events);
+
+    expect(uploadSpy).not.toHaveBeenCalled();
+  });
+
+  it('splits a mixed batch: supported events accepted, unsupported events rejected', async () => {
+    const sink = new AzureMonitorEnrichmentSink({ upload: makeNoOpUploader() });
+    const events = [
+      createTestEvent('copilot-cli', 'session-1', 'metadata', 0),
+      createTestEvent('copilot-cli', 'session-1', 'unknown-category', 1),
+      createTestEvent('copilot-cli', 'session-1', 'utilisation', 2),
+    ];
+
+    const result = await sink.push(events);
+
+    expect(result.acceptedOrdinals).toEqual([0, 2]);
+    expect(result.rejected).toHaveLength(1);
+    expect(result.rejected[0]!.ordinal).toBe(1);
+    expect(result.rejected[0]!.reason).toMatch(/Unsupported category: unknown-category/);
+  });
+
+  it('on upload failure, category-rejected and upload-failed events are all in rejected', async () => {
+    const sink = new AzureMonitorEnrichmentSink({
+      upload: makeFailingUploader('server error'),
+    });
+    const events = [
+      createTestEvent('copilot-cli', 'session-1', 'metadata', 0),       // supported → upload fails
+      createTestEvent('copilot-cli', 'session-1', 'unknown-category', 1), // unsupported → category-rejected
+    ];
+
+    const result = await sink.push(events);
+
+    expect(result.acceptedOrdinals).toHaveLength(0);
+    expect(result.rejected).toHaveLength(2);
+    const ordinals = result.rejected.map(r => r.ordinal).sort();
+    expect(ordinals).toEqual([0, 1]);
   });
 });
