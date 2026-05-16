@@ -1,0 +1,119 @@
+---
+title: "ADR-0014: Watcher + Poll Incremental Scheduler"
+description: Decision record for a two-tier SyncScheduler that combines a file-system watcher for low-latency detection with a polling guard for guaranteed eventual consistency.
+---
+
+## Status
+
+Accepted
+
+## Date
+
+2026-05-16
+
+## Context
+
+PR #360 syncs session enrichment data only when triggered manually or at app startup. There is no live watching of session directories. This makes "show the latest data as the tool writes it" impossible — an agent runtime can append dozens of events per second, but the UI only reflects them after the user triggers a sync.
+
+For a production multi-source system we need:
+
+1. **Low-latency detection** — changes should appear in the UI within seconds of being written.
+2. **Guaranteed eventual consistency** — events must not be silently lost due to watcher unreliability, laptop sleep/wake gaps, or sessions discovered after the watcher was started.
+
+A watcher-only approach is unreliable: `fs.watch()` is known to miss events on network mounts, after sleep/wake cycles, and in high-churn scenarios on some platforms. A poll-only approach introduces unacceptable latency (30 s per tick). The solution combines both.
+
+## Decision
+
+Implement a two-tier `SyncScheduler` composed of a `LiveWatcher` and a `PollGuard`.
+
+### LiveWatcher
+
+The `LiveWatcher` uses `fs.watch()` with a **500 ms debounce** per session directory. When a change is detected:
+
+1. The debounce timer resets (suppresses burst writes from the agent runtime).
+2. After 500 ms of silence, `SyncScheduler` calls `SyncPlanner.planIncremental(ref)` for the affected session.
+3. The resulting `SyncPlan` is handed to the orchestrator, which pushes events beyond the current cursor.
+
+The 500 ms debounce is a balance between latency and efficiency: it is short enough to feel live, and long enough to coalesce the rapid sequential appends common when an agent runtime streams tool-call results.
+
+### PollGuard
+
+The `PollGuard` runs on a **30-second interval** (configurable via app settings). Each tick:
+
+1. Walks all registered sources.
+2. Discovers sessions modified since their last sync.
+3. For sessions where events exist beyond the current cursor, schedules an incremental sync.
+
+The poll guard catches situations that the watcher cannot:
+
+- Missed watcher events (file renames, network mounts, platform limits)
+- Sleep/wake gaps (laptop lid close → open)
+- Sessions discovered after the watcher was started
+- Watcher failures or resource exhaustion (`fs.watch` has per-process file-descriptor limits on Linux)
+
+To avoid scanning all sessions on every tick, the PollGuard operates in two tiers:
+
+| Tier | Scope | Interval |
+|------|-------|----------|
+| Active | Sessions modified within the last 7 days | 30 s (default) |
+| Cold | All other sessions | 5 min (default) |
+
+Both intervals are configurable.
+
+### Deduplication via per-session mutex
+
+The `LiveWatcher` and `PollGuard` must not cause the same session to be synced twice concurrently. The `SyncScheduler` holds a per-`(tool, sessionId)` mutex. If an incremental sync is already in flight for a session when the `PollGuard` tick fires, the tick is a no-op for that session. The mutex is released when the orchestrator completes (or fails) the sync.
+
+### Concurrency cap
+
+A global concurrency cap of **2 concurrent syncs** across all sessions (configurable) prevents the scheduler from overwhelming the sink or the event loop when many sessions are active simultaneously.
+
+### Lifecycle
+
+`SyncScheduler` is created at app startup (bound to the main process lifecycle). It tears down cleanly on app shutdown: the watcher is closed, in-flight syncs are allowed to finish, and the poll timer is cancelled.
+
+### End-to-end sequence
+
+```
+Tool runtime          LiveWatcher          SyncScheduler      Orchestrator
+      │                    │                    │                   │
+      │ append events.jsonl│                    │                   │
+      │──────────────────► │                    │                   │
+      │                    │ fs.watch fires     │                   │
+      │                    │ debounce 500ms     │                   │
+      │                    │──────────────────► │                   │
+      │                    │                    │ planIncremental() │
+      │                    │                    │──────────────────►│
+      │                    │                    │                   │ push to sinks
+      │                    │                    │ cursor advanced   │
+      │                    │                    │◄──────────────────│
+      │                    │                    │                   │
+      │   (if watcher missed, PollGuard fires within 30s)          │
+```
+
+## Alternatives considered
+
+### Watcher only
+
+Relying solely on `fs.watch()` was considered. Rejected because `fs.watch()` is unreliable on network mounts, misses events after sleep/wake cycles, and has platform-specific limits on the number of watched directories. For a product targeting developer laptops across macOS, Linux, and Windows, a watcher-only approach would result in occasional silent data loss.
+
+### Poll only
+
+A polling-only approach at 30-second intervals was considered. Rejected because 30 s latency is too high for a live experience — the UI goal is to reflect the latest session data within a few seconds of the agent runtime writing it.
+
+### Push from agent runtime
+
+Having the agent runtime (Copilot CLI, Claude Code, etc.) emit a notification or directly call the sync API was considered. Rejected because it requires modifying each tool and creates coupling between the tool runtime and the desktop app. The desktop app must be able to sync sessions from tools it did not instrument.
+
+### inotify / FSEvents / ReadDirectoryChangesW directly
+
+Using platform-native file-system event APIs directly (bypassing Node.js `fs.watch()`) was considered for higher reliability. Rejected because Node.js `fs.watch()` wraps these same platform-native APIs (inotify on Linux, FSEvents on macOS, ReadDirectoryChangesW on Windows) and is adequate for desktop use. The PollGuard safety net covers any gaps; adding a native module dependency for marginal gains is not justified.
+
+## Consequences
+
+- Session changes are reflected in the UI within approximately 500 ms of the agent runtime completing a write burst.
+- The PollGuard guarantees eventual consistency — no event can be silently lost for more than 30 seconds (for active sessions).
+- The per-session mutex prevents double-push without requiring sink-side deduplication beyond the idempotency requirement already specified in ADR-0013.
+- The two-tier scan (active vs. cold sessions) keeps CPU and I/O overhead negligible for users with large session histories.
+- The scheduler's configurable parameters (debounce interval, poll intervals, concurrency cap) allow tuning without code changes.
+- On platforms with `fs.watch()` limitations, the PollGuard alone is sufficient for correctness; the watcher is a latency optimisation, not a correctness requirement.

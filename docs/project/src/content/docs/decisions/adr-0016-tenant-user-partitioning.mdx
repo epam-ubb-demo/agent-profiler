@@ -1,0 +1,92 @@
+---
+title: "ADR-0016: Tenant and User Partitioning for Shared Workspaces"
+description: Decision record for partition-based isolation using envelope fields and KQL filtering to support both per-user and per-team session visibility in shared Log Analytics workspaces.
+---
+
+## Status
+
+Accepted
+
+## Date
+
+2026-05-16
+
+## Context
+
+The enrichment envelope carries optional `tenantId` and `userId` fields (introduced in ADR-0011), but the architecture does not yet define how these fields flow through the system or how access control is enforced. Two distinct visibility needs must be satisfied:
+
+1. **Per-user isolation** — an individual developer should see only their own sessions by default.
+2. **Per-team visibility** — a team lead or analytics tool should be able to see all sessions from a team in a single shared workspace.
+
+These needs must be met without requiring separate Log Analytics workspaces per user, and without introducing infrastructure that Log Analytics does not natively support (such as row-level security).
+
+## Decision
+
+Implement partition-based isolation using the `tenantId` and `userId` envelope fields combined with KQL filtering in the remote data source. No additional infrastructure is required beyond what is already provisioned for the shared workspace.
+
+### Partition keys
+
+| Key | Source | Semantics |
+|-----|--------|-----------|
+| `tenantId` | App settings (admin-configured) | Identifies the workspace or team. When absent, sessions are treated as "personal" and excluded from team aggregation. |
+| `userId` | System principal or app settings, resolved at startup | Identifies the individual contributor. When absent, only per-machine views are available. |
+
+Both keys are optional to support gradual rollout — a user can begin syncing before their organisation has configured team identity.
+
+### Access patterns
+
+| Scenario | `tenantId` | `userId` | KQL filter |
+|----------|------------|----------|------------|
+| Personal workspace | absent | present | `where UserId_CF == currentUser` |
+| Team workspace (own sessions) | present | present | `where TenantId_CF == team and UserId_CF == currentUser` |
+| Team workspace (all sessions) | present | any | `where TenantId_CF == team` |
+| Team analytics | present | any | `summarize ... by UserId_CF \| where TenantId_CF == team` |
+
+### Security model
+
+Log Analytics workspace-level RBAC controls who can query data at all. Within a shared workspace:
+
+- **`TenantId_CF` filtering is a convenience boundary**, not a security boundary. Any workspace reader with sufficient RBAC permissions can query across tenant values if they construct a KQL query without the filter.
+- **User isolation within a team workspace is enforced at the application layer** via the KQL filter injected by the remote data source. Log Analytics does not support row-level security natively, so this is an application-level convention.
+- **For strict user isolation** (where one team member must not be able to see another's session data even with direct workspace access), the recommended approach is to use separate Log Analytics workspaces per user. This is a deployment choice outside the scope of this ADR.
+
+The KQL filter helpers in the remote data source abstract the filtering logic from the UI. The UI never constructs raw KQL — it calls typed data-source methods that inject the correct filter based on the current partition context.
+
+### eventId collision avoidance
+
+The `eventId` deterministic identifier (format: `sessionId:category:ordinal`, as specified in ADR-0008) does not include `tenantId` or `userId`. Because all events from the same session have the same `sessionId`, and sessions are inherently per-user (the session file lives on a single machine), cross-partition `eventId` collisions cannot occur in practice. The `tenantId` and `userId` fields serve only as query filters and aggregation dimensions, not as uniqueness keys.
+
+### Envelope propagation
+
+Partition keys are set in the enrichment envelope by the desktop app at sync time — they are not injected at the collector or ingestion layer. This means:
+
+- The collector does not need to know user or tenant identity.
+- A user who reconfigures their `tenantId` (e.g., moves teams) will produce new events under the new `tenantId` without affecting historical events.
+- The desktop app is the authoritative source for partition assignment.
+
+## Alternatives considered
+
+### Row-level security in Log Analytics
+
+Implementing row-level security so that each user's data is only visible to that user (even within a shared workspace) was considered. Rejected because Log Analytics does not support row-level security natively. Emulating it would require a custom query proxy or Azure API Management layer, adding significant operational complexity with no Log Analytics-native path.
+
+### Separate tables per tenant
+
+Creating a dedicated Log Analytics custom table per tenant (e.g., `AgentSessionEvents_TeamA_CL`, `AgentSessionEvents_TeamB_CL`) was considered. Rejected because it creates significant operational complexity — each new team requires table provisioning, DCR updates, and schema maintenance — and defeats the purpose of unified cross-team analytics.
+
+### Inject tenant identity at the collector
+
+Having the OTel collector inject `tenantId` and `userId` based on authentication context was considered. Rejected because the collector does not know user identity in the current architecture — it is a dumb forwarder authenticated at the service level, not the user level. Teaching the collector about user identity would require auth changes that add coupling and provisioning burden.
+
+### Azure AD token-based partition
+
+Using Azure Active Directory tokens as the partition key (so that the user's AAD object ID serves as `userId` and the AAD tenant ID serves as `tenantId`) was considered. Rejected because it ties the partitioning scheme to a specific identity provider. Not all development teams use Azure AD, and the agent-profiler desktop app is designed to work without AAD credentials. The app-settings-based approach allows any team to configure identity without changing the infrastructure.
+
+## Consequences
+
+- The remote data source correctly filters sessions by user and team based on envelope fields without additional infrastructure.
+- Teams can adopt shared workspaces incrementally — individual users can sync before `tenantId` is configured, and team aggregation becomes available once the admin sets `tenantId` in app settings.
+- The application-layer KQL filter is not a hard security boundary; teams requiring strict isolation should deploy per-user workspaces.
+- KQL helper methods in the remote data source centralise filter logic, preventing accidental omission in future query additions.
+- Schema for `tenantId` and `userId` custom columns (`TenantId_CF`, `UserId_CF`) must be included in the DCR stream definition (see ADR-0012).
+- Historical events ingested before `tenantId` was configured have an absent `TenantId_CF` column value; queries for team workspaces will naturally exclude them, which is the correct behaviour.

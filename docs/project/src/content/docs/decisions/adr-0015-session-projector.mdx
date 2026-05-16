@@ -1,0 +1,100 @@
+---
+title: "ADR-0015: Per-Tool SessionProjector for Read-Side Assembly"
+description: Decision record for introducing a SessionProjector interface that decouples per-tool event projection logic from the remote data source, enabling extensible multi-tool read-side assembly.
+---
+
+## Status
+
+Accepted
+
+## Date
+
+2026-05-16
+
+## Context
+
+PR #360's `assembleFromEnrichment` function is hard-coded inline in `data-source.ts` and handles only Copilot CLI sessions. Adding a second tool's read-side projection (e.g., Claude Code, GitHub Copilot in VS Code) requires modifying `data-source.ts` directly. This violates the Open/Closed Principle and makes `data-source.ts` a catch-all that grows with every new tool.
+
+The remote data source's responsibility is to query enrichment events and return a `Session` object. How those events are assembled into a `Session` is tool-specific knowledge that does not belong in the data source itself. The multi-source architecture requires a clean separation between event retrieval and session reconstruction.
+
+## Decision
+
+Define a `SessionProjector` interface following the Strategy pattern. Each tool provides its own projector; the remote data source resolves the correct projector at query time.
+
+### Interface contract
+
+```typescript
+interface SessionProjector {
+  readonly tool: ToolId;
+  project(events: ReadonlyArray<EnrichmentEvent>): Session;
+}
+```
+
+### ProjectorRegistry
+
+A `ProjectorRegistry` maps `ToolId` to its `SessionProjector`. The remote data source receives the registry via dependency injection at composition root. When assembling a session, the data source inspects `events[0].tool` to identify the tool and resolves the corresponding projector from the registry.
+
+This means adding support for a new tool's read path requires only:
+
+1. Implementing `SessionProjector` for that tool.
+2. Registering it in `ProjectorRegistry` at composition root.
+
+No changes to `data-source.ts` are required.
+
+### Migrating the existing Copilot CLI logic
+
+The existing `assembleFromEnrichment` logic is extracted into `CopilotCliSessionProjector` without behaviour changes. This is a pure refactor — the projection output is identical, and all existing tests continue to pass against the new class.
+
+### Schema evolution
+
+Each projector handles its own schema evolution by inspecting the `payloadSchema` field on enrichment events and switching on version. A `Marker.payloadSchemaVersions` map records which schema version each category was written at. When a category's schema bumps (e.g., a new field is added to `utilisation`), the projector can apply the appropriate transformation without affecting other projectors or the data source.
+
+### Universal Session contract
+
+The `Session` type remains the universal UI contract — every projector is responsible for mapping tool-specific enrichment events to the shared `Session` model. The UI never needs to know which tool produced a session; it always receives a canonical `Session` object regardless of the source tool.
+
+### Read-side assembly flow
+
+```
+Remote data source
+      │
+      │ 1. Query AgentSessionEvents_CL for sessionId
+      │
+      ▼
+ EventGroups (grouped by sessionId, ordered by ordinal)
+      │
+      │ 2. Identify tool from events[0].tool
+      │
+      ▼
+ ProjectorRegistry.resolve(tool)
+      │
+      │ 3. Projector.project(events) → Session
+      │
+      ▼
+ Session (universal UI contract)
+      │
+      │ 4. Return to UI layer (same shape as local sessions)
+```
+
+## Alternatives considered
+
+### Single projector with tool-specific branches
+
+A single `assemble` function (or class) with `if/else` or `switch` branches per tool was considered. Rejected because it violates the Open/Closed Principle — adding a tool means editing a shared function, creating merge conflicts and regression risk. The function would grow unboundedly with each new tool.
+
+### Store pre-projected Sessions remotely
+
+Pre-computing the `Session` object at ingestion time and storing it in a separate Log Analytics table (or custom column) was considered. Rejected because it abandons the event-sourced model: if the `Session` schema evolves (new fields, renamed properties), all historical pre-projected records become stale and would require re-ingestion. Storing raw enrichment events and projecting on read is more resilient to schema evolution.
+
+### Let the UI handle projection
+
+Moving projection logic into the renderer process (the UI layer) was considered, keeping `data-source.ts` thin. Rejected because it would duplicate projection logic across the renderer and any future consumers (e.g., a background analytics job, a CLI query tool). The data source is the correct integration seam — it owns the responsibility of returning a `Session`, not raw events.
+
+## Consequences
+
+- Adding read-side support for a new tool requires only a new `SessionProjector` implementation and a registry entry — no changes to `data-source.ts`.
+- The existing `assembleFromEnrichment` logic is preserved, renamed, and retested as `CopilotCliSessionProjector` — no behaviour change in the initial refactor.
+- Schema evolution is localised to each tool's projector, preventing cross-tool regressions when one tool's enrichment schema changes.
+- The `Session` type boundary is enforced at the projector level — the UI never receives partial or tool-specific data structures.
+- `ProjectorRegistry` is a lightweight in-process map; there is no runtime overhead beyond a single lookup per session assembly.
+- Projectors are stateless by design (`project` takes events and returns a `Session`), which makes them straightforward to unit-test with snapshot assertions.
