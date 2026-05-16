@@ -9,8 +9,8 @@ receivers:
 
 processors:
   memory_limiter:
-    limit_mib: 400
-    spike_limit_mib: 100
+    limit_mib: 600
+    spike_limit_mib: 150
     check_interval: 1s
 
   resourcedetection:

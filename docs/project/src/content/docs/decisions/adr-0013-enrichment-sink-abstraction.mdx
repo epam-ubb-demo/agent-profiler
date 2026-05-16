@@ -1,0 +1,107 @@
+---
+title: "ADR-0013: Pluggable EnrichmentSink Abstraction"
+description: Decision record for introducing a transport-agnostic EnrichmentSink interface that decouples wire format from transport and enables routing enrichment events to multiple backends.
+---
+
+## Status
+
+Accepted
+
+## Date
+
+2026-05-16
+
+## Context
+
+PR #360's `OtlpLogsWriter` couples the OTLP wire format directly with its HTTP transport. As a result, switching to a DCR sink, an Azure Blob exporter, or a lightweight test stub requires forking the writer class. This tight coupling makes it impossible to:
+
+- Route different enrichment categories to different backends (e.g., avoid sending `tool_result` events to a shared team workspace for privacy reasons)
+- Test sync logic in isolation without a live OTel collector
+- Introduce the DCR transport described in ADR-0012 without duplicating orchestration code
+
+The multi-source architecture requires a transport-agnostic abstraction so the orchestrator can push enrichment events without knowing or caring how they are delivered.
+
+## Decision
+
+Define an `EnrichmentSink` interface following the Strategy pattern. The orchestrator depends only on this interface; all concrete transports implement it.
+
+### Interface contract
+
+```typescript
+interface EnrichmentSink {
+  readonly id: string;
+  availability(): Promise<boolean>;
+  supportsCategory(category: string): boolean;
+  push(batch: ReadonlyArray<EnrichmentEvent>): Promise<PushResult>;
+}
+
+interface PushResult {
+  acceptedOrdinals: number[];
+  rejected: RejectInfo[];
+  retryAfter?: number;  // milliseconds
+}
+```
+
+### SinkRegistry
+
+A `SinkRegistry` holds all available sinks and is injected into the orchestrator at composition root. The orchestrator never imports a concrete sink class directly; it always resolves sinks through the registry. This keeps the dependency graph clean and makes it trivial to add or remove sinks without touching orchestration logic.
+
+### Idempotency requirement
+
+`push()` is idempotent on `eventId`. Every sink implementation **must** handle duplicate batches gracefully — a re-delivered batch with the same event IDs must not cause double-counting or errors. This is required for safe retries at the orchestrator level.
+
+### Partial-batch success
+
+`PushResult.acceptedOrdinals` carries the ordinal positions (within the submitted batch) of every event the sink accepted. The orchestrator advances its cursor only for accepted events. Rejected events are either requeued (for transient rejections) or logged and discarded (for permanent rejections such as schema mismatches).
+
+### Error model
+
+- `RetriableSinkError` — thrown for transient failures (network timeouts, HTTP 429, HTTP 503). The orchestrator retries with exponential backoff using the `retryAfter` hint when present.
+- `PermanentSinkError` — thrown for non-retriable failures (authentication errors, schema validation failures). The orchestrator logs and skips the batch.
+
+### Availability check
+
+`availability()` lets the scheduler probe a sink before attempting a sync job. If a sink returns `false`, the scheduler skips it gracefully without failing the overall job. This prevents a single unavailable backend from blocking the entire sync pipeline.
+
+### Category-level routing
+
+`supportsCategory()` enables routing enrichment categories to different sinks. For example, a shared team workspace sink may set `supportsCategory('tool_result')` to `false` to respect privacy constraints, while a personal workspace sink accepts all categories. The orchestrator evaluates category support before partitioning each batch.
+
+### Default batching thresholds
+
+| Threshold | Default value |
+|-----------|--------------|
+| Max events per batch | 256 |
+| Max time before flush | 5 s |
+| Max payload size | 512 KB |
+
+The orchestrator flushes when any threshold is crossed first.
+
+### Initial sink implementations
+
+1. **`OtlpEnrichmentSink`** — transitional sink that wraps the existing OTLP/HTTP transport from `OtlpLogsWriter`. No behaviour changes; the existing test coverage applies.
+2. **`DcrEnrichmentSink`** — target production transport using the Azure Logs Ingestion API (DCR endpoint), as specified in ADR-0012.
+3. **In-memory test sink** — accumulates pushed batches in memory; used for contract tests and unit tests of the orchestrator.
+
+## Alternatives considered
+
+### Extend `OtlpLogsWriter` per transport
+
+Adding a new transport by subclassing or adding conditional logic to `OtlpLogsWriter` was considered. Rejected because it violates the Open/Closed Principle — every new transport requires modifying existing code, expanding a class that should remain stable.
+
+### Message queue between source and sink
+
+Introducing a durable queue (e.g., SQLite-backed queue) between the sync orchestrator and sinks was considered to decouple write rate from delivery rate. Rejected as over-engineering for a desktop application context: the existing cursor + batching approach already handles backpressure, and a queue adds persistence complexity without meaningful benefit at desktop scale.
+
+### Plugin-based sink loading
+
+Loading sinks from a plugin directory at runtime (similar to a driver model) was considered. Rejected because sinks are compile-time known — all sinks ship with the application. Dynamic loading would add module resolution complexity, security surface, and versioning constraints without any practical benefit.
+
+## Consequences
+
+- The orchestrator is fully decoupled from concrete transport implementations.
+- Adding a new sink (e.g., Azure Blob, Datadog) requires only implementing `EnrichmentSink` and registering with `SinkRegistry` — no changes to orchestration logic.
+- Partial-batch success means the cursor advances conservatively, preventing data loss at the cost of occasional re-delivery of already-accepted events (safe due to idempotency requirement).
+- The `OtlpLogsWriter` class is retained internally as the implementation behind `OtlpEnrichmentSink` to avoid breaking existing behaviour during the transitional period.
+- Contract tests against the in-memory sink provide fast, collector-free validation of orchestrator logic.
+- Teams can enforce privacy boundaries at the sink level by overriding `supportsCategory()`, without requiring changes to the producer or the enrichment schema.

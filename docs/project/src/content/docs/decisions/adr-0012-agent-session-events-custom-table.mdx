@@ -1,0 +1,118 @@
+---
+title: "ADR-0012: Dedicated AgentSessionEvents_CL Custom Table via DCR"
+description: Decision record for creating a dedicated Log Analytics custom table (AgentSessionEvents_CL) via Data Collection Rule, replacing the shared AppTraces table used in PR #360.
+---
+
+## Status
+
+Accepted
+
+## Date
+
+2026-05-16
+
+## Context
+
+PR #360 piggybacked enrichment data on the `AppTraces` table in Application Insights. This approach is functional for a proof of concept but has significant limitations for a production multi-source system.
+
+**Untyped columns.** `AppTraces` stores all custom fields inside a single `customDimensions` bag (a `dynamic` JSON column). Every query that touches enrichment fields must navigate this bag explicitly, producing verbose KQL that is fragile and hard to maintain.
+
+**Shared table.** `AppTraces` is shared with all other application telemetry — exceptions, dependency calls, traces from the UI renderer. Cross-team analytics on enrichment data requires careful `where customDimensions["agent_profiler.enrichment"] == true` guards on every query, and there is no way to set per-table retention or RBAC on the enrichment subset.
+
+**No typed indexing.** Log Analytics optimises queries on typed columns. Querying `customDimensions["SessionId"]` scans the entire JSON bag rather than using a typed column index. For high-cardinality fields like `SessionId`, `UserId`, and `EventId`, this is a meaningful performance penalty at scale.
+
+**Column naming conflicts.** The `TenantId` and `UserId` fields in the `EnrichmentEvent` envelope (ADR-0009) conflict with built-in Log Analytics reserved column names, requiring aliasing throughout.
+
+Because PR #360 was never shipped to production, there is no legacy data in `AppTraces` that needs to be preserved or migrated. A direct cutover is safe.
+
+## Decision
+
+Create a dedicated custom Log Analytics table `AgentSessionEvents_CL` via a Data Collection Rule (DCR). The table schema maps directly to the `EnrichmentEvent` envelope defined in ADR-0009.
+
+### Table schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `TimeGenerated` | `datetime` | Push time (required by Azure; set at ingestion) |
+| `SchemaVersion` | `int` | Envelope schema version |
+| `TenantId_CF` | `string` | Workspace partition key (`_CF` suffix avoids reserved-name conflict) |
+| `UserId_CF` | `string` | User partition key (`_CF` suffix avoids reserved-name conflict) |
+| `Tool` | `string` | `ToolId` value (e.g. `copilot-cli`) |
+| `ToolVersion` | `string` | Semver version of the emitting tool |
+| `SourceMachine` | `string` | Machine identifier for multi-device deduplication |
+| `SessionId` | `string` | Session identifier |
+| `Category` | `string` | Event category (e.g. `metadata`, `utilisation`) |
+| `Ordinal` | `int` | Sequence number within `(SessionId, Category)` |
+| `EventId` | `string` | Deterministic deduplication key (see ADR-0009) |
+| `EventTs` | `datetime` | Original event timestamp from the tool |
+| `PayloadSchema` | `string` | Versioned payload schema identifier |
+| `Payload` | `dynamic` | Tool-specific and category-specific JSON payload |
+
+The `_CF` (Custom Field) suffix on `TenantId_CF` and `UserId_CF` avoids conflicts with the built-in `TenantId` and `_ResourceId`-derived fields that Log Analytics injects automatically. All enrichment-specific columns are unambiguously distinct from system columns.
+
+### Transport: DCR with Logs Ingestion API
+
+Data is sent via the [Azure Monitor Logs Ingestion API](https://learn.microsoft.com/azure/azure-monitor/logs/logs-ingestion-api-overview) with a Data Collection Endpoint (DCE) and a Data Collection Rule (DCR) that maps the inbound JSON stream to the `AgentSessionEvents_CL` table. Authentication is handled by the OTel collector (as established in ADR-0008); the desktop app sends OTLP log records to the collector, which translates and forwards them to the DCE.
+
+This preserves the desktop app's zero-credential requirement: the app only needs the collector URL. The DCR configuration (DCE URL, DCR Immutable ID, stream name) lives in the collector, not in the app.
+
+### OTLP sink as fallback and test transport
+
+The OTLP sink (Application Insights `AppTraces` path) remains available as a fallback transport and for local development testing. In production, the DCR is the target transport. The sink selection is a collector configuration concern and does not affect the desktop app or the envelope format.
+
+### `Payload` as `dynamic`
+
+The `Payload` column is typed `dynamic` (native JSON) rather than projected into individual columns. This is intentional:
+
+- `Payload` contents vary by `(Tool, Category, PayloadSchema)`. Flattening all possible payload fields into top-level columns would produce a sparse, wide table with many nulls.
+- New payload fields can be added without a schema migration; KQL can query `Payload.newField` immediately after the first event arrives.
+- Existing KQL queries that do not reference `Payload` are unaffected by payload schema changes.
+
+Analytics that require high-cardinality lookup on payload fields (e.g. filtering by `copilotVersion`) should use the typed top-level columns where possible, falling back to `Payload.field` for category-specific data.
+
+### KQL deduplication (layer 3)
+
+The third idempotency layer from ADR-0008 is preserved and adapted to the new table:
+
+```kql
+AgentSessionEvents_CL
+| summarize arg_min(TimeGenerated, *) by EventId
+```
+
+This deduplicates any records that slipped through the cursor-level (layer 1) and wire-level (layer 2) guards. Because `EventId` is deterministic (ADR-0009), the `arg_min` selects a stable canonical row per logical event regardless of how many times it was ingested.
+
+### Direct cutover
+
+There is no dual-write phase. PR #360 was never shipped, so there is no data in `AppTraces` that needs to be migrated or preserved. The `AgentSessionEvents_CL` table is the first and only destination.
+
+### Retention
+
+The table follows the workspace default retention policy (typically 90 days), which is configurable per customer workspace. No custom retention override is set at the table level for the initial deployment.
+
+## Alternatives considered
+
+### Continue with AppTraces
+
+Rejected. Untyped `customDimensions`, shared table with unrelated telemetry, no per-table RBAC or retention, and reserved-name conflicts are all fundamental limitations that compound over time. The shared table is acceptable for a proof of concept; it is not acceptable for a production system with multiple tools and cross-team analytics.
+
+### Azure Blob Storage
+
+Rejected. Blob Storage has no native KQL query path. Joining enrichment data from Blob Storage with session spans in Log Analytics would require either exporting both datasets to a common query layer or duplicating the enrichment data into Log Analytics anyway. The operational cost is higher with no benefit.
+
+### Cosmos DB
+
+Rejected. Cosmos DB is well-suited for transactional workloads with point reads and low-latency writes. Session enrichment data is fundamentally a log workload — append-heavy, query-heavy, with no individual document updates after ingestion. Log Analytics provides native KQL, configurable retention, workspace-level RBAC, and no per-document write cost — all of which are better fits for this workload. The operational and cost overhead of Cosmos DB is not justified.
+
+### Custom API → SQL Database
+
+Rejected. Building a custom ingestion API fronting a relational database would require owning the API service, the database infrastructure, authentication, schema migrations, and backup/restore operations. Log Analytics provides all of these capabilities as a managed service. Introducing custom infrastructure for what is a log storage problem adds operational burden with no analytical advantage.
+
+## Consequences
+
+- Enrichment data is queryable in isolation from other application telemetry, with no `customDimensions` bag navigation required for top-level fields.
+- Per-table RBAC can be applied to `AgentSessionEvents_CL` independently of `AppTraces`, enabling fine-grained access control for cross-team analytics.
+- The `_CF` suffix on `TenantId_CF` and `UserId_CF` must be documented in all KQL templates and dashboards to avoid confusion with the built-in `TenantId` field.
+- `EventTs` and `TimeGenerated` serve different purposes (ADR-0009); all KQL templates must clearly annotate which timestamp is used for each filter or aggregation.
+- The DCR configuration (DCE URL, DCR Immutable ID, stream name) is an infrastructure concern; it is provisioned via Bicep or Terraform and not embedded in application code.
+- Payload schema changes are forward-compatible: new fields added to `Payload` are immediately queryable without a table schema migration.
+- The three-layer idempotency model (cursor marker, deterministic `EventId`, KQL `arg_min`) is fully preserved and adapted to the new table structure.

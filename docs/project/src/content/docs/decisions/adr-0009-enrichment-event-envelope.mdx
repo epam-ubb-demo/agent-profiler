@@ -1,0 +1,89 @@
+---
+title: "ADR-0009: Tool-Agnostic Enrichment Event Envelope"
+description: Decision record for a tool-agnostic wire format (EnrichmentEvent envelope) that decouples enrichment data from any specific agent tool's session model.
+---
+
+## Status
+
+Accepted
+
+## Date
+
+2026-05-16
+
+## Context
+
+PR #360 sent enrichment rows coupled directly to Copilot CLI's `Session` model. Every enrichment record was shaped around the Copilot CLI data structure, which means any second tool would either need to pretend to be Copilot CLI or require a parallel pipeline with its own wire format.
+
+The E11 multi-source sync initiative targets at least three tools — Copilot CLI, VS Code Chat, and Claude Code — with additional tools anticipated. Each tool has a different internal data model, different log formats, and potentially different categories of enrichment data. Without a shared envelope format, the ingest pipeline, the deduplication logic, and the KQL queries in the remote workspace would need to fork per tool.
+
+We also need a stable forward-compatibility story. Categories will grow over time (new tool capabilities, new analytics needs), schema versions will evolve, and tenancy requirements may be added incrementally. A tightly-coupled model makes any of these changes a co-ordinated breaking change across multiple packages.
+
+## Decision
+
+Define an `EnrichmentEvent` envelope as the canonical wire format. Every agent tool emits events in this structure, and the ingest pipeline operates exclusively on this type.
+
+### Envelope fields
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `schemaVersion` | `int` | Envelope version for forward-compatibility; current value is `1` |
+| `tenantId` | `string \| undefined` | Workspace partition key; optional for single-tenant deployments |
+| `userId` | `string \| undefined` | User partition key; optional for anonymous or shared sessions |
+| `tool` | `ToolId` | Enum: `copilot-cli`, `vscode-chat`, `claude-code` |
+| `toolVersion` | `string` | Semver string of the emitting tool |
+| `sourceMachine` | `string` | Machine identifier used for multi-device deduplication |
+| `sessionId` | `string` | Opaque session identifier as assigned by the source tool |
+| `category` | `string` | Open-ended category label (e.g. `metadata`, `utilisation`, `tool-results`) |
+| `ordinal` | `int` | Strictly increasing per `(sessionId, category)` tuple; starts at `0` |
+| `eventId` | `string` | Deterministic identifier; see construction rule below |
+| `eventTs` | `string` | ISO 8601 timestamp of the original event as recorded by the tool |
+| `payloadSchema` | `string` | Versioned schema identifier for the payload (e.g. `copilot-cli/metadata/v2`) |
+| `payload` | `JsonObject` | Tool-specific and category-specific data |
+
+### Deterministic `eventId`
+
+The `eventId` is constructed as:
+
+```
+${tenantId ?? ""}:${userId ?? ""}:${tool}:${sessionId}:${category}:${ordinal}
+```
+
+Empty segments are preserved as empty strings so the delimiter structure remains stable. This makes the identifier deterministic: the same logical event always produces the same `eventId` regardless of which machine or process emits it. This is essential for wire-level deduplication (layer 2 of the three-layer idempotency model from ADR-0008).
+
+### Why `category` is a free string
+
+`category` is a plain string rather than a union literal type. Union literals would require every new tool or new analytics category to change the shared `EnrichmentEvent` schema, creating co-ordination overhead across packages. A free string allows each tool's source implementation to define its own category vocabulary without touching shared types. Validation of known categories happens at the source level, not at the envelope level.
+
+### `eventTs` versus `TimeGenerated`
+
+`eventTs` records the original timestamp as the tool assigned it. `TimeGenerated` in the Log Analytics table (see ADR-0012) is set to push time when the record arrives at the ingestion endpoint.
+
+This distinction is operationally critical: Azure Monitor rejects log records whose timestamps are more than 2 days in the past. If offline sessions are synced late, using `eventTs` as `TimeGenerated` would cause silent ingestion failures. By always using push time as `TimeGenerated`, ingestion always succeeds, and `eventTs` is available as a separate queryable column for analytics that care about when the event actually occurred.
+
+### `payloadSchema` and schema evolution
+
+`payloadSchema` is a versioned identifier (e.g. `copilot-cli/metadata/v2`) that identifies the schema of the `payload` object. When a category's payload structure changes incompatibly, the `payloadSchema` string is bumped. Downstream consumers (query templates, dashboards) can filter or branch on `payloadSchema` without needing envelope changes. The cursor marker (see ADR-0011) tracks `payloadSchema` per category so that schema-version bumps can trigger selective re-projection.
+
+## Alternatives considered
+
+### Extend the Session model per tool
+
+Rejected. Each new tool would add fields to a shared `Session` type, creating a combinatorial coupling between tool-specific concerns and the shared pipeline. Categories that are meaningful for one tool become noise for another.
+
+### Use Protocol Buffers (protobuf)
+
+Rejected. The Agent Profiler pipeline is JSON-native throughout — from the collector's OTLP transport to the KQL `dynamic` column in Log Analytics. Introducing protobuf would add a serialisation layer with no meaningful benefit for the current data volumes and no consumers that require binary encoding.
+
+### Untyped JSON blob
+
+Rejected. Without a `payloadSchema` field and a versioned identifier, there is no tractable path for schema evolution. Consumers would have to guess the shape of `payload` from contextual clues, making query maintenance fragile and schema changes invisible.
+
+## Consequences
+
+- All agent tool source implementations (ADR-0010) must produce `EnrichmentEvent` objects; no tool-specific type leaks past the source boundary.
+- The three-layer idempotency model from ADR-0008 is preserved: application-level (cursor marker), wire-level (deterministic `eventId`), and KQL-level (`arg_min` by `eventId`).
+- Adding a new tool requires only a new `ToolId` enum value and a new `SessionEnrichmentSource` implementation; no changes to the envelope schema.
+- Adding a new category for an existing tool requires no schema changes — just a new category string and a corresponding `payloadSchema` identifier.
+- Consumers that need to validate or restrict which categories are accepted can do so at the registry or sink level without coupling to the envelope definition.
+- The `eventTs` / `TimeGenerated` split must be documented in all KQL query templates to avoid confusion between "when did this happen" and "when was it ingested".
