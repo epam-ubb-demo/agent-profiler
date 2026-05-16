@@ -5,6 +5,7 @@ import * as azure from "@pulumi/azure-native";
 import * as pulumi from "@pulumi/pulumi";
 
 import { ContainerAppStack } from "./container-app.js";
+import { DataCollectionStack } from "./data-collection.js";
 import { GatewayStack } from "./gateway.js";
 import { IdentityStack } from "./identity.js";
 import { KeyVaultStack } from "./keyvault.js";
@@ -48,6 +49,16 @@ const monitoring = new MonitoringStack("monitoring", {
   instance,
   resourceGroupName: resourceGroup.name,
   tags,
+});
+
+// Data Collection stack (DCE + DCR for custom-table enrichment sink)
+const dataCollection = new DataCollectionStack("data-collection", {
+  environment,
+  region,
+  instance,
+  resourceGroupName: resourceGroup.name,
+  tags,
+  logAnalyticsWorkspaceId: monitoring.logAnalyticsWorkspaceId,
 });
 
 // Key Vault stack
@@ -222,3 +233,5 @@ export const containerAppFqdn = containerApp.containerAppFqdn;
 export const containerAppId = containerApp.containerAppId;
 export const keyVaultUri = keyVault.keyVaultUri;
 export const managedIdentityClientId = identity.managedIdentityClientId;
+export const dceEndpoint = dataCollection.dceEndpoint;
+export const dcrImmutableId = dataCollection.dcrImmutableId;

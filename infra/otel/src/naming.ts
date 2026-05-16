@@ -79,3 +79,11 @@ export function privateEndpointName(
 export function actionGroupName(args: NamingArgs): string {
   return azureName("ag", "otel", args);
 }
+
+export function dceName(args: NamingArgs): string {
+  return azureName("dce", "otel", args);
+}
+
+export function dcrName(args: NamingArgs): string {
+  return azureName("dcr", "enrichment", args);
+}
