@@ -21,7 +21,7 @@ Each test run uses a unique `tenantId` (`e2e-<timestamp>`) to isolate data and a
 
 - An active **Azure subscription** with a Log Analytics workspace deployed.
 - A **Data Collection Endpoint (DCE)** and **Data Collection Rule (DCR)** configured to ingest into the `AgentSessionEvents_CL` custom table with the stream name `Custom-AgentSessionEvents_CL`.
-- Infrastructure deployed via the Pulumi stack in [`infra/otel/`](../../../../infra/otel/README.md).
+- Infrastructure deployed via the Pulumi stack in [`infra/otel/`](https://github.com/epam-ubb-demo/agent-profiler/blob/main/infra/otel/README.md).
 - Azure credentials — either:
   - A **service principal** (`AZURE_TENANT_ID` + `AZURE_CLIENT_ID` + `AZURE_CLIENT_SECRET`), or
   - An **interactive login** via `az login` (resolved automatically by `DefaultAzureCredential`).
@@ -59,7 +59,7 @@ These values are output by the Pulumi deployment.  See the [Azure Workspace Setu
 2. **Run the E2E tests**
 
    ```bash
-   pnpm --filter @agent-profiler/integration-tests test -- --testPathPattern e2e
+   pnpm --filter @agent-profiler/integration-tests test -- __tests__/e2e/
    ```
 
 3. **Review output**
@@ -69,7 +69,7 @@ These values are output by the Pulumi deployment.  See the [Azure Workspace Setu
 
 ## Azure Workspace Setup
 
-The Log Analytics workspace, Data Collection Endpoint, and Data Collection Rule are provisioned by the Pulumi stack in `infra/otel/`.  Follow the deployment guide in [`infra/otel/README.md`](../../../../infra/otel/README.md) to:
+The Log Analytics workspace, Data Collection Endpoint, and Data Collection Rule are provisioned by the Pulumi stack in `infra/otel/`.  Follow the deployment guide in [`infra/otel/README.md`](https://github.com/epam-ubb-demo/agent-profiler/blob/main/infra/otel/README.md) to:
 
 - Deploy or update the infrastructure stack.
 - Retrieve the DCE endpoint URL, DCR rule ID, and workspace ID from Pulumi outputs.

@@ -23,7 +23,7 @@ describe.skipIf(!AZURE_AVAILABLE)('DCR push — golden fixtures', () => {
     async () => {
       const sink = createTestDcrSink();
       const fixture = loadCopilotCliFixture();
-      const testRunId = `e2e-${Date.now()}`;
+      const testRunId = `e2e-${crypto.randomUUID()}`;
 
       const taggedEvents = fixture.expectedEvents.map(e => ({
         ...e,
@@ -47,7 +47,7 @@ describe.skipIf(!AZURE_AVAILABLE)('DCR push — golden fixtures', () => {
     async () => {
       const sink = createTestDcrSink();
       const fixture = loadVsCodeChatFixture();
-      const testRunId = `e2e-${Date.now()}`;
+      const testRunId = `e2e-${crypto.randomUUID()}`;
 
       const taggedEvents = fixture.expectedEvents.map(e => ({
         ...e,
@@ -70,7 +70,7 @@ describe.skipIf(!AZURE_AVAILABLE)('DCR push — golden fixtures', () => {
     async () => {
       const sink = createTestDcrSink();
       const fixture = loadClaudeCodeFixture();
-      const testRunId = `e2e-${Date.now()}`;
+      const testRunId = `e2e-${crypto.randomUUID()}`;
 
       const taggedEvents = fixture.expectedEvents.map(e => ({
         ...e,

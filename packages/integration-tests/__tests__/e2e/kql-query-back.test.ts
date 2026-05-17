@@ -26,7 +26,7 @@ describe.skipIf(!AZURE_AVAILABLE)('KQL query-back — envelope field round-trip'
       const sink = createTestDcrSink();
       const queryClient = createTestQueryClient();
       const fixture = loadCopilotCliFixture();
-      const testRunId = `e2e-${Date.now()}`;
+      const testRunId = `e2e-${crypto.randomUUID()}`;
 
       const taggedEvents = fixture.expectedEvents.map(e => ({
         ...e,

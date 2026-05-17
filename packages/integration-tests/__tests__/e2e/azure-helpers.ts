@@ -90,14 +90,27 @@ export async function waitForIngestion(
     endTime: new Date(Date.now() + 600_000), // 10 min from now (safety buffer)
   };
 
+  let lastError: unknown;
+
   while (Date.now() - start < timeoutMs) {
-    const result = await queryClient.query(kql, timeRange);
-    if (result.rows.length >= expectedMinRows) {
-      return result.rows;
+    try {
+      const result = await queryClient.query(kql, timeRange);
+      if (result.rows.length >= expectedMinRows) {
+        return result.rows;
+      }
+    } catch (err) {
+      // Absorb transient errors (e.g. QueryTimeoutError, network blips) and
+      // record the last one for diagnostic output on final timeout.
+      lastError = err;
     }
     await new Promise<void>(r => setTimeout(r, pollInterval));
   }
+
+  const errorSuffix =
+    lastError !== undefined
+      ? `. Last error: ${lastError instanceof Error ? lastError.message : String(lastError)}`
+      : '';
   throw new Error(
-    `Timed out after ${timeoutMs}ms waiting for ${expectedMinRows} rows. KQL: ${kql}`,
+    `Timed out after ${timeoutMs}ms waiting for ${expectedMinRows} rows. KQL: ${kql}${errorSuffix}`,
   );
 }

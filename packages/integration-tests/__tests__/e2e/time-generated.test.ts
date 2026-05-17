@@ -28,7 +28,7 @@ describe.skipIf(!AZURE_AVAILABLE)('TimeGenerated — timestamp preservation', ()
       const sink = createTestDcrSink();
       const queryClient = createTestQueryClient();
       const fixture = loadCopilotCliFixture();
-      const testRunId = `e2e-${Date.now()}`;
+      const testRunId = `e2e-${crypto.randomUUID()}`;
 
       const taggedEvents = fixture.expectedEvents.map(e => ({
         ...e,
@@ -52,11 +52,14 @@ describe.skipIf(!AZURE_AVAILABLE)('TimeGenerated — timestamp preservation', ()
       expect(rows.length).toBeGreaterThan(0);
 
       // Validate timestamp semantics on every returned row.
+      // The Azure SDK may return datetime columns as Date objects or ISO strings.
+      // Normalise both forms to Date for safe arithmetic.
+      const toDate = (value: unknown): Date =>
+        value instanceof Date ? value : new Date(String(value));
+
       for (const row of rows) {
         // TimeGenerated must be a recent timestamp close to when we pushed.
-        const timeGeneratedStr = row['TimeGenerated'];
-        expect(typeof timeGeneratedStr).toBe('string');
-        const timeGenerated = new Date(timeGeneratedStr as string);
+        const timeGenerated = toDate(row['TimeGenerated']);
         const timeGeneratedDiffMs = Math.abs(
           timeGenerated.getTime() - pushTimestamp.getTime(),
         );
@@ -76,9 +79,7 @@ describe.skipIf(!AZURE_AVAILABLE)('TimeGenerated — timestamp preservation', ()
 
         // PushedAt is set to the same value as TimeGenerated at push time.
         // After Azure Monitor processing, they may diverge slightly — allow 1 minute.
-        const pushedAtStr = row['PushedAt'];
-        expect(typeof pushedAtStr).toBe('string');
-        const pushedAt = new Date(pushedAtStr as string);
+        const pushedAt = toDate(row['PushedAt']);
         const pushedAtDiffMs = Math.abs(pushedAt.getTime() - timeGenerated.getTime());
         expect(pushedAtDiffMs).toBeLessThan(60_000); // within 1 minute
       }
