@@ -240,6 +240,25 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/debug@4.1.13)(@types/node@20.19.39)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.8.4)
 
+  packages/adapters-claude-code:
+    dependencies:
+      '@agent-profiler/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@agent-profiler/tsconfig-base':
+        specifier: workspace:*
+        version: link:../../tooling/tsconfig-base
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.39
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@20.19.39)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.8.4)
+
   packages/adapters-copilot-cli:
     dependencies:
       '@agent-profiler/core':
@@ -526,11 +545,61 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/debug@4.1.13)(@types/node@20.19.39)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.8.4)
 
+  packages/source-claude-code:
+    dependencies:
+      '@agent-profiler/adapters-claude-code':
+        specifier: workspace:*
+        version: link:../adapters-claude-code
+      '@agent-profiler/core':
+        specifier: workspace:*
+        version: link:../core
+      '@agent-profiler/enrichment-core':
+        specifier: workspace:*
+        version: link:../enrichment-core
+    devDependencies:
+      '@agent-profiler/tsconfig-base':
+        specifier: workspace:*
+        version: link:../../tooling/tsconfig-base
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.39
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@20.19.39)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.8.4)
+
   packages/source-copilot-cli:
     dependencies:
       '@agent-profiler/adapters-copilot-cli':
         specifier: workspace:*
         version: link:../adapters-copilot-cli
+      '@agent-profiler/core':
+        specifier: workspace:*
+        version: link:../core
+      '@agent-profiler/enrichment-core':
+        specifier: workspace:*
+        version: link:../enrichment-core
+    devDependencies:
+      '@agent-profiler/tsconfig-base':
+        specifier: workspace:*
+        version: link:../../tooling/tsconfig-base
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.39
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@20.19.39)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)(yaml@2.8.4)
+
+  packages/source-vscode-chat:
+    dependencies:
+      '@agent-profiler/adapters-vscode-chat':
+        specifier: workspace:*
+        version: link:../adapters-vscode-chat
       '@agent-profiler/core':
         specifier: workspace:*
         version: link:../core

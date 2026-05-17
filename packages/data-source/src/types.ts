@@ -7,7 +7,12 @@
 
 import type { Session } from '@agent-profiler/core';
 
-/** Supported adapter types for session parsing. */
+/**
+ * Supported adapter types for session parsing.
+ *
+ * @deprecated Secondary tools now use enrichment sources — see
+ * `@agent-profiler/source-vscode-chat` and `@agent-profiler/source-claude-code`.
+ */
 export type AdapterType = 'copilot-cli' | 'vscode-chat' | 'vscode-agent' | 'ctb' | 'application-insights';
 
 /**

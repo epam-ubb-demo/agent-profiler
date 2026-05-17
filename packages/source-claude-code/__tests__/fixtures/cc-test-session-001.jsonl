@@ -1,0 +1,10 @@
+{"type":"user","timestamp":"2026-05-01T10:00:00.000Z","uuid":"evt-001","session_id":"cc-test-session-001","cwd":"/home/user/my-project","message":{"role":"user","content":"Can you list all files in the current directory?"}}
+{"type":"assistant","timestamp":"2026-05-01T10:00:01.500Z","uuid":"evt-002","parent_uuid":"evt-001","message":{"role":"assistant","content":"I'll list the files for you.","model":"claude-opus-4-5"}}
+{"type":"tool_use","timestamp":"2026-05-01T10:00:01.600Z","uuid":"tc-001","parent_uuid":"evt-002","tool":{"name":"bash","input":{"command":"ls -la"}}}
+{"type":"tool_result","timestamp":"2026-05-01T10:00:01.800Z","uuid":"evt-003","parent_uuid":"tc-001","tool":{"name":"bash","result":"total 8\ndrwxr-xr-x  2 user user 4096 May  1 10:00 .\ndrwxr-xr-x 10 user user 4096 May  1 09:55 ..\n-rw-r--r--  1 user user    0 May  1 10:00 README.md","is_error":false,"duration_ms":205}}
+{"type":"assistant","timestamp":"2026-05-01T10:00:02.000Z","uuid":"evt-004","parent_uuid":"evt-003","message":{"role":"assistant","content":"The directory contains: README.md","model":"claude-opus-4-5"}}
+{"type":"user","timestamp":"2026-05-01T10:01:00.000Z","uuid":"evt-005","session_id":"cc-test-session-001","cwd":"/home/user/my-project","message":{"role":"user","content":"What is in the README?"}}
+{"type":"assistant","timestamp":"2026-05-01T10:01:01.000Z","uuid":"evt-006","parent_uuid":"evt-005","message":{"role":"assistant","content":"Let me read it.","model":"claude-opus-4-5"}}
+{"type":"tool_use","timestamp":"2026-05-01T10:01:01.100Z","uuid":"tc-002","parent_uuid":"evt-006","tool":{"name":"read_file","input":{"path":"README.md"}}}
+{"type":"tool_result","timestamp":"2026-05-01T10:01:01.300Z","uuid":"evt-007","parent_uuid":"tc-002","tool":{"name":"read_file","result":"# My Project\nHello world","is_error":false,"duration_ms":198}}
+{"type":"assistant","timestamp":"2026-05-01T10:01:02.000Z","uuid":"evt-008","parent_uuid":"evt-007","message":{"role":"assistant","content":"The README contains: # My Project\nHello world","model":"claude-opus-4-5"}}
