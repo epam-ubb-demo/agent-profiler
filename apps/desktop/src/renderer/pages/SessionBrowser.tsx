@@ -12,6 +12,7 @@ import styles from './SessionBrowser.module.css';
 import { CacheHitRateChart } from '@/components/CacheHitRateChart';
 import { CombinedAnalyticsChart } from '@/components/CombinedAnalyticsChart';
 import type { DailyAnalytics, Granularity } from '@/components/CombinedAnalyticsChart';
+import { EfficiencyChart } from '@/components/EfficiencyChart';
 import { EmptyState } from '@/components/EmptyState';
 import { FolderOpenIcon, SearchIcon } from '@/components/icons';
 import { ModelBreakdownTable } from '@/components/ModelBreakdownTable';
@@ -767,9 +768,18 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
                 </div>
               </div>
 
-              {/* Main chart: cost + model token areas */}
-              <div className={styles.fullWidthChartArea}>
-                <CombinedAnalyticsChart data={chartData} granularity={granularity} />
+              {/* Main chart: cost + model token areas, plus efficiency side-by-side */}
+              <div className={styles.chartRow}>
+                <div className={styles.chartHalf}>
+                  <CombinedAnalyticsChart data={chartData} granularity={granularity} />
+                </div>
+                <div className={styles.chartHalf}>
+                  <EfficiencyChart
+                    data={chartData}
+                    granularity={granularity}
+                    pricingTable={DEFAULT_PRICING_TABLE}
+                  />
+                </div>
               </div>
 
               {/* Cache hit rate + Model breakdown side-by-side */}

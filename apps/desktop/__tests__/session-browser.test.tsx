@@ -15,6 +15,11 @@ vi.mock('../src/renderer/components/CombinedAnalyticsChart', () => ({
   CombinedAnalyticsChart: () => <div data-testid="combined-analytics-chart-stub" />,
 }));
 
+// Stub EfficiencyChart to avoid SVG rendering complexity in SessionBrowser tests
+vi.mock('../src/renderer/components/EfficiencyChart', () => ({
+  EfficiencyChart: () => <div data-testid="efficiency-chart-stub" />,
+}));
+
 // ── Fixture factories ─────────────────────────────────────────────────────────
 
 function makeMetrics(overrides: Partial<SessionListMetricsIpc> = {}): SessionListMetricsIpc {

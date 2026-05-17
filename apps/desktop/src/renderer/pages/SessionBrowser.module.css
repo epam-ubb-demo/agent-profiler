@@ -326,6 +326,18 @@
   height: clamp(200px, 28vh, 360px);
 }
 
+/* ─── Side-by-side chart row ─── */
+.chartRow {
+  display: flex;
+  gap: 16px;
+  height: 100%;
+}
+
+.chartHalf {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 /* ─── Secondary row: cache chart + model table side-by-side ─── */
 .secondaryRow {
   display: flex;
