@@ -1,4 +1,5 @@
-import type { EnrichmentEvent, ToolId } from '@agent-profiler/enrichment-core';
+import type { EnrichmentEvent } from '@agent-profiler/enrichment-core';
+import { toolIdSchema } from '@agent-profiler/enrichment-core';
 
 import type { DcrRow } from './schema.js';
 
@@ -52,11 +53,14 @@ export function mapEventsToDcrRows(
  * @param row - The DCR row to reverse-map.
  */
 export function mapDcrRowToEvent(row: DcrRow): EnrichmentEvent {
+  if (row.SchemaVersion !== 1) {
+    throw new Error(`Unsupported schema version: ${row.SchemaVersion}`);
+  }
   return {
-    schemaVersion: row.SchemaVersion as 1,
+    schemaVersion: row.SchemaVersion,
     ...(row.TenantId !== '' ? { tenantId: row.TenantId } : {}),
     ...(row.SourceUser !== '' ? { userId: row.SourceUser } : {}),
-    tool: row.Tool as ToolId,
+    tool: toolIdSchema.parse(row.Tool),
     toolVersion: row.ToolVersion,
     sourceMachine: row.SourceMachine,
     sessionId: row.SessionId,

@@ -17,7 +17,7 @@
     "@agent-profiler/enrichment-core": "workspace:*",
     "@azure/identity": "^4.4.0",
     "@azure/monitor-ingestion": "^1.1.0",
-    "zod": "^3.0.0"
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@agent-profiler/tsconfig-base": "workspace:*",

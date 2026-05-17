@@ -10,9 +10,9 @@ import { z } from 'zod';
 
 export const dcrRowSchema = z.object({
   /** Timestamp used by Azure Monitor to ingest the row. */
-  TimeGenerated: z.string(),
+  TimeGenerated: z.string().datetime(),
   /** Original event timestamp (ISO 8601). */
-  EventTs: z.string(),
+  EventTs: z.string().datetime(),
   /** Unique identifier for this event. */
   EventId: z.string(),
   /** Session identifier. */
@@ -24,11 +24,11 @@ export const dcrRowSchema = z.object({
   /** Event category. */
   Category: z.string(),
   /** Ordinal position within the session (non-negative integer). */
-  Ordinal: z.number(),
+  Ordinal: z.number().int().nonnegative(),
   /** Payload schema identifier. */
   PayloadSchema: z.string(),
   /** Schema version of the envelope (currently always 1). */
-  SchemaVersion: z.number(),
+  SchemaVersion: z.literal(1),
   /** Source machine identifier. */
   SourceMachine: z.string(),
   /** User identifier (empty string when not set). */
@@ -38,7 +38,7 @@ export const dcrRowSchema = z.object({
   /** JSON-serialised event payload. */
   Payload: z.string(),
   /** Timestamp when the batch was pushed to this sink (ISO 8601). */
-  PushedAt: z.string(),
+  PushedAt: z.string().datetime(),
 });
 
 export type DcrRowParsed = z.infer<typeof dcrRowSchema>;
