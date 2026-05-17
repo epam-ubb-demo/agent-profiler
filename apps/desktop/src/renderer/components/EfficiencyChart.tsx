@@ -8,7 +8,7 @@ import { reversePathCommands, smoothPath } from './svg-path-utils';
 
 /* ─── Chart geometry ────────────────────────────────────────────────────────── */
 
-const MARGIN = { top: 16, right: 24, bottom: 32, left: 48 } as const;
+const MARGIN = { top: 16, right: 16, bottom: 32, left: 36 } as const;
 /** Fixed viewBox dimensions — SVG scales to its container via width="100%". */
 const VIEW_W = 800;
 const SVG_HEIGHT = 180;

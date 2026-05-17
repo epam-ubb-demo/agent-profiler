@@ -41,10 +41,10 @@ export interface CombinedAnalyticsChartProps {
 
 /* ─── Chart geometry ────────────────────────────────────────────────────────── */
 
-const MARGIN_TOP = 20;
-const MARGIN_RIGHT = 60; // right Y-axis (tokens)
-const MARGIN_BOTTOM = 40; // room for x-axis labels
-const MARGIN_LEFT = 60; // room for y-axis labels
+const MARGIN_TOP = 16;
+const MARGIN_RIGHT = 32; // right Y-axis (tokens)
+const MARGIN_BOTTOM = 36; // room for x-axis labels
+const MARGIN_LEFT = 36; // room for y-axis labels
 
 /** These are stable aliases for the fixed margins — they never change with container size. */
 const CHART_X = MARGIN_LEFT;

@@ -232,7 +232,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 0 12px 12px;
+  padding: 0 0 8px;
 }
 
 /* ─── Granularity toggle ─── */
@@ -329,7 +329,7 @@
 /* ─── Side-by-side chart row ─── */
 .chartRow {
   display: flex;
-  gap: 16px;
+  gap: 8px;
   height: clamp(200px, 28vh, 360px);
 }
 
