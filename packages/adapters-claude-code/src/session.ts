@@ -6,7 +6,7 @@
 
 import type { Session } from '@agent-profiler/core';
 
-import { finaliseSession, processEvents } from './event-mapper.js';
+import { createSessionBuilder, finaliseSession, processEvents } from './event-mapper.js';
 import { parseSessionFile } from './parser.js';
 
 /**
@@ -20,7 +20,21 @@ export async function parseClaudeCodeSession(
   filePath: string,
   sessionId?: string,
 ): Promise<Session> {
-  const { events, diagnostics } = await parseSessionFile(filePath);
+  let events: Awaited<ReturnType<typeof parseSessionFile>>['events'];
+  let diagnostics: Awaited<ReturnType<typeof parseSessionFile>>['diagnostics'];
+
+  try {
+    ({ events, diagnostics } = await parseSessionFile(filePath));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return finaliseSession(
+      {
+        ...createSessionBuilder(),
+        parseStatus: { status: 'failed', error: `I/O error: ${message}` },
+      },
+      sessionId ?? filePath,
+    );
+  }
 
   const sb = processEvents(events);
 

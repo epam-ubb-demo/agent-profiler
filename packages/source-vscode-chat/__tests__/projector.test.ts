@@ -164,14 +164,19 @@ describe('VsCodeChatSessionProjector', () => {
         expect(reconstructed.turns.length).toBe(original.turns.length);
       });
 
-      it('restores copilotVersion correctly', async () => {
+      it('restores the same number of toolCalls per turn as the original session', async () => {
         const { parseVsCodeChatSession } = await import('@agent-profiler/adapters-vscode-chat');
         const original = await parseVsCodeChatSession(FIXTURE_FILE);
 
         const events = await readAllEvents();
         const reconstructed = new VsCodeChatSessionProjector().project(events);
 
-        expect(reconstructed.copilotVersion).toBe(original.copilotVersion);
+        for (const [i, origTurn] of original.turns.entries()) {
+          const reconTurn = reconstructed.turns[i];
+          if (reconTurn !== undefined) {
+            expect(reconTurn.toolCalls.length).toBe(origTurn.toolCalls.length);
+          }
+        }
       });
     });
   });

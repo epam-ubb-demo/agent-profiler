@@ -110,6 +110,14 @@ function reconstructTurn(
     };
   });
 
+  const rawToolCalls = Array.isArray(payload['toolCalls'])
+    ? (payload['toolCalls'] as unknown[])
+    : [];
+  const toolCalls: ToolCall[] = rawToolCalls.map((raw) => {
+    const tc = toRecord(raw);
+    return reconstructToolCall(tc);
+  });
+
   // Suppress unused variable warning — sessionId is accepted for API consistency
   void sessionId;
 
@@ -119,7 +127,7 @@ function reconstructTurn(
     endTs,
     userMessage,
     assistantMessages,
-    toolCalls: [],
+    toolCalls,
     subagents: [],
   };
 

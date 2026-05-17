@@ -36,6 +36,8 @@ export interface ClaudeCodeSessionBuilder {
   currentTurnId: string | null;
   turnData: Map<string, TurnAccumulator>;
   parseStatus: ParseStatus;
+  /** Per-invocation counter used to generate deterministic turn IDs. */
+  turnCounter: number;
 }
 
 interface TurnAccumulator {
@@ -61,6 +63,7 @@ export function createSessionBuilder(): ClaudeCodeSessionBuilder {
     currentTurnId: null,
     turnData: new Map(),
     parseStatus: { status: 'ok', error: null },
+    turnCounter: 0,
   };
 }
 
@@ -126,17 +129,11 @@ export function processEvents(events: readonly RawClaudeCodeEvent[]): ClaudeCode
 
 // ── Individual event handlers ─────────────────────────────────────────────────
 
-let turnCounter = 0;
-
-function nextTurnId(): string {
-  return String(turnCounter++);
-}
-
 function handleUserEvent(sb: ClaudeCodeSessionBuilder, event: RawClaudeCodeEvent): void {
   const content = typeof event.message?.content === 'string' ? event.message.content : '';
 
-  // Each user event creates a synthetic turn
-  const turnId = nextTurnId();
+  // Each user event creates a synthetic turn; counter is per-builder, not module-scoped
+  const turnId = String(sb.turnCounter++);
   sb.currentTurnId = turnId;
 
   const userMsg: UserMessage = {

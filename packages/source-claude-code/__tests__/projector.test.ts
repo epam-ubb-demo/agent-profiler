@@ -150,6 +150,21 @@ describe('ClaudeCodeSessionProjector', () => {
         expect(reconstructed.turns.length).toBe(original.turns.length);
       });
 
+      it('restores the same number of toolCalls per turn as the original session', async () => {
+        const { parseClaudeCodeSession } = await import('@agent-profiler/adapters-claude-code');
+        const original = await parseClaudeCodeSession(FIXTURE_FILE, SESSION_ID);
+
+        const events = await readAllEvents();
+        const reconstructed = new ClaudeCodeSessionProjector().project(events);
+
+        for (const [i, origTurn] of original.turns.entries()) {
+          const reconTurn = reconstructed.turns[i];
+          if (reconTurn !== undefined) {
+            expect(reconTurn.toolCalls.length).toBe(origTurn.toolCalls.length);
+          }
+        }
+      });
+
       it('restores selectedModel correctly', async () => {
         const { parseClaudeCodeSession } = await import('@agent-profiler/adapters-claude-code');
         const original = await parseClaudeCodeSession(FIXTURE_FILE, SESSION_ID);

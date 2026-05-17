@@ -196,4 +196,24 @@ describe('parseClaudeCodeSession()', () => {
     const session = await parseClaudeCodeSession(FIXTURE_FILE, SESSION_ID);
     expect(session.cwd).toBe('/home/user/my-project');
   });
+
+  it('returns a failed parseStatus when the file does not exist', async () => {
+    const session = await parseClaudeCodeSession('/non-existent/path.jsonl', 'fallback-id');
+    expect(session.parseStatus.status).toBe('failed');
+    expect(session.parseStatus.error).toMatch(/I\/O error/);
+    expect(session.sessionId).toBe('fallback-id');
+  });
+});
+
+// ── processEvents() determinism ───────────────────────────────────────────────
+
+describe('processEvents() turn counter', () => {
+  it('produces identical turnIds on repeated calls with the same input', async () => {
+    const { events } = await parseSessionFile(FIXTURE_FILE);
+    const sb1 = processEvents(events);
+    const sb2 = processEvents(events);
+    const turnIds1 = [...sb1.turnData.keys()];
+    const turnIds2 = [...sb2.turnData.keys()];
+    expect(turnIds1).toEqual(turnIds2);
+  });
 });

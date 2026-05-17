@@ -138,6 +138,18 @@ export class ClaudeCodeEnrichmentSource implements SessionEnrichmentSource {
           model: m.model,
         })),
         toolCallCount: turn.toolCalls.length,
+        toolCalls: turn.toolCalls.map((tc) => ({
+          toolCallId: tc.toolCallId,
+          toolName: tc.toolName,
+          startTs: tc.startTs,
+          endTs: tc.endTs,
+          durationMs: tc.durationMs,
+          success: tc.success,
+          parentId: tc.parentId,
+          turnId: tc.turnId,
+          eventId: tc.eventId,
+          argumentsPreview: tc.argumentsPreview,
+        })),
       });
     }
   }

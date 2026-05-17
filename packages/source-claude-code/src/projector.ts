@@ -109,13 +109,21 @@ function reconstructTurn(
     };
   });
 
+  const rawToolCalls = Array.isArray(payload['toolCalls'])
+    ? (payload['toolCalls'] as unknown[])
+    : [];
+  const toolCalls: ToolCall[] = rawToolCalls.map((raw) => {
+    const tc = toRecord(raw);
+    return reconstructToolCall(tc);
+  });
+
   const turn: Turn = {
     turnId,
     startTs,
     endTs,
     userMessage,
     assistantMessages,
-    toolCalls: [],
+    toolCalls,
     subagents: [],
   };
 
