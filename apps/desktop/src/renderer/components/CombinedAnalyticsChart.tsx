@@ -46,7 +46,7 @@ const MARGIN_RIGHT = 44; // right Y-axis (tokens)
 const MARGIN_BOTTOM = 28; // room for x-axis labels
 const MARGIN_LEFT = 52; // room for y-axis labels (dual-axis: "$300.00" needs ~50px)
 
-const SVG_HEIGHT = 180;
+const SVG_HEIGHT = 360;
 
 /** These are stable aliases for the fixed margins — they never change with container size. */
 const CHART_X = MARGIN_LEFT;

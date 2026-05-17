@@ -9,7 +9,7 @@ import { reversePathCommands, smoothPath } from './svg-path-utils';
 /* ─── Chart geometry ────────────────────────────────────────────────────────── */
 
 const MARGIN = { top: 16, right: 16, bottom: 32, left: 36 } as const;
-const SVG_HEIGHT = 180;
+const SVG_HEIGHT = 360;
 const DOT_RADIUS = 3.5;
 
 const CHART_H = SVG_HEIGHT - MARGIN.top - MARGIN.bottom;

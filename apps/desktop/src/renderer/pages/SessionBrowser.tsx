@@ -531,9 +531,9 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
 
   // Rebucketed chart data (day/week/month), filtered to entries with cost data
   // so both CombinedAnalyticsChart and EfficiencyChart display continuous lines
-  // without gaps caused by days where cost is null.
+  // without gaps caused by days where cost is null or zero (no activity).
   const chartData = useMemo(
-    () => rebucket(dailyAnalytics, granularity).filter((d) => d.cost != null),
+    () => rebucket(dailyAnalytics, granularity).filter((d) => d.cost != null && d.cost > 0),
     [dailyAnalytics, granularity],
   );
 
