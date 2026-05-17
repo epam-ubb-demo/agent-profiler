@@ -14,6 +14,12 @@ export interface InMemorySinkOptions {
   readonly rejectEventIds?: ReadonlySet<string> | undefined;
   /** When true, push() throws RetriableSinkError. */
   readonly failOnPush?: boolean | undefined;
+  /**
+   * When set, push() throws RetriableSinkError once the total number of
+   * accepted events across all push() calls reaches this threshold.
+   * Simulates a crash mid-sync for resilience testing.
+   */
+  readonly failAfterPushCount?: number | undefined;
 }
 
 export class InMemorySink implements EnrichmentSink {
@@ -21,6 +27,7 @@ export class InMemorySink implements EnrichmentSink {
   private readonly supportedCategories: readonly string[];
   private readonly rejectEventIds: ReadonlySet<string>;
   private readonly failOnPush: boolean;
+  private readonly failAfterPushCount: number | undefined;
 
   /** All events accepted by the sink, in push order. */
   readonly pushedEvents: EnrichmentEvent[] = [];
@@ -32,6 +39,7 @@ export class InMemorySink implements EnrichmentSink {
     this.supportedCategories = options?.supportedCategories ?? ['*'];
     this.rejectEventIds = options?.rejectEventIds ?? new Set();
     this.failOnPush = options?.failOnPush ?? false;
+    this.failAfterPushCount = options?.failAfterPushCount;
   }
 
   async availability(): Promise<boolean> {
@@ -47,6 +55,10 @@ export class InMemorySink implements EnrichmentSink {
 
     if (this.failOnPush) {
       throw new RetriableSinkError('Sink unavailable', 100);
+    }
+
+    if (this.failAfterPushCount !== undefined && this.pushedEvents.length >= this.failAfterPushCount) {
+      throw new RetriableSinkError('Sink unavailable after limit', 100);
     }
 
     const accepted: number[] = [];
