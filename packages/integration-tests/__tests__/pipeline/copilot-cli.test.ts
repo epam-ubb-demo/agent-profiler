@@ -8,8 +8,8 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { createFakeMarkerStore } from '@agent-profiler/enrichment-core/testing';
 import type { EnrichmentEvent, SessionRef } from '@agent-profiler/enrichment-core';
+import { createFakeMarkerStore } from '@agent-profiler/enrichment-core/testing';
 import { CopilotCliEnrichmentSource } from '@agent-profiler/source-copilot-cli';
 import { DefaultSyncOrchestrator, DefaultSyncPlanner } from '@agent-profiler/sync-engine';
 import { beforeEach, describe, expect, it } from 'vitest';

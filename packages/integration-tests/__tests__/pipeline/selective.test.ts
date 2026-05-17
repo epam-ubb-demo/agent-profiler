@@ -12,8 +12,8 @@
 import { join } from 'node:path';
 
 import type { DiscoveredSession } from '@agent-profiler/adapters-claude-code';
-import { createFakeMarkerStore } from '@agent-profiler/enrichment-core/testing';
 import type { EnrichmentEvent, SessionRef } from '@agent-profiler/enrichment-core';
+import { createFakeMarkerStore } from '@agent-profiler/enrichment-core/testing';
 import { ClaudeCodeEnrichmentSource } from '@agent-profiler/source-claude-code';
 import { DefaultSyncOrchestrator, DefaultSyncPlanner } from '@agent-profiler/sync-engine';
 import { loadClaudeCodeFixture } from '@agent-profiler/test-fixtures';

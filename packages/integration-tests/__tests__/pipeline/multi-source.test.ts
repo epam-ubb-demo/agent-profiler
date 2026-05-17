@@ -12,13 +12,13 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { DiscoveredSession as VsCodeDiscoveredSession } from '@agent-profiler/adapters-vscode-chat';
 import type { DiscoveredSession as ClaudeDiscoveredSession } from '@agent-profiler/adapters-claude-code';
-import { createFakeMarkerStore } from '@agent-profiler/enrichment-core/testing';
+import type { DiscoveredSession as VsCodeDiscoveredSession } from '@agent-profiler/adapters-vscode-chat';
 import type { EnrichmentEvent, SessionRef } from '@agent-profiler/enrichment-core';
+import { createFakeMarkerStore } from '@agent-profiler/enrichment-core/testing';
+import { ClaudeCodeEnrichmentSource } from '@agent-profiler/source-claude-code';
 import { CopilotCliEnrichmentSource } from '@agent-profiler/source-copilot-cli';
 import { VsCodeChatEnrichmentSource } from '@agent-profiler/source-vscode-chat';
-import { ClaudeCodeEnrichmentSource } from '@agent-profiler/source-claude-code';
 import { DefaultSyncOrchestrator, DefaultSyncPlanner } from '@agent-profiler/sync-engine';
 import { loadVsCodeChatFixture, loadClaudeCodeFixture } from '@agent-profiler/test-fixtures';
 import { beforeEach, describe, expect, it } from 'vitest';

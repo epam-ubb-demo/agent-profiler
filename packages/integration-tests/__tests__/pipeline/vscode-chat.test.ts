@@ -11,8 +11,8 @@
 import { join } from 'node:path';
 
 import type { DiscoveredSession } from '@agent-profiler/adapters-vscode-chat';
-import { createFakeMarkerStore } from '@agent-profiler/enrichment-core/testing';
 import type { EnrichmentEvent, SessionRef } from '@agent-profiler/enrichment-core';
+import { createFakeMarkerStore } from '@agent-profiler/enrichment-core/testing';
 import { VsCodeChatEnrichmentSource } from '@agent-profiler/source-vscode-chat';
 import { DefaultSyncOrchestrator, DefaultSyncPlanner } from '@agent-profiler/sync-engine';
 import { loadVsCodeChatFixture } from '@agent-profiler/test-fixtures';
