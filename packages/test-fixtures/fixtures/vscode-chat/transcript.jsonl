@@ -1,0 +1,20 @@
+{"type":"session.start","data":{"sessionId":"golden-vscode-001","version":1,"producer":"copilot-agent","copilotVersion":"0.50.2025060100","vscodeVersion":"1.100.0","startTime":"2025-06-01T11:00:00.000Z"},"id":"evt-v001","timestamp":"2025-06-01T11:00:00.000Z","parentId":null}
+{"type":"user.message","data":{"content":"Explain what the config module does.","attachments":[]},"id":"evt-v002","timestamp":"2025-06-01T11:00:01.000Z","parentId":"evt-v001"}
+{"type":"assistant.turn_start","data":{"turnId":"0"},"id":"evt-v003","timestamp":"2025-06-01T11:00:01.100Z","parentId":"evt-v002"}
+{"type":"assistant.message","data":{"messageId":"msg-v001","content":"","toolRequests":[{"toolCallId":"tc-v001","name":"read_file","arguments":"{\"path\":\"src/config.ts\"}","type":"function"}]},"id":"evt-v004","timestamp":"2025-06-01T11:00:02.000Z","parentId":"evt-v003"}
+{"type":"assistant.turn_end","data":{"turnId":"0"},"id":"evt-v005","timestamp":"2025-06-01T11:00:02.001Z","parentId":"evt-v004"}
+{"type":"assistant.turn_start","data":{"turnId":"1"},"id":"evt-v006","timestamp":"2025-06-01T11:00:02.001Z","parentId":"evt-v005"}
+{"type":"tool.execution_start","data":{"toolCallId":"tc-v001"},"id":"evt-v007","timestamp":"2025-06-01T11:00:02.050Z","parentId":"evt-v006"}
+{"type":"tool.execution_complete","data":{"toolCallId":"tc-v001","success":true},"id":"evt-v008","timestamp":"2025-06-01T11:00:02.800Z","parentId":"evt-v007"}
+{"type":"assistant.message","data":{"messageId":"msg-v002","content":"The config module loads environment variables, validates them with Zod, and exports a typed `config` object consumed across the application.","toolRequests":[],"reasoningText":""},"id":"evt-v009","timestamp":"2025-06-01T11:00:04.000Z","parentId":"evt-v008"}
+{"type":"assistant.turn_end","data":{"turnId":"1"},"id":"evt-v010","timestamp":"2025-06-01T11:00:04.001Z","parentId":"evt-v009"}
+{"type":"user.message","data":{"content":"Add a missing DATABASE_URL field to the schema.","attachments":[]},"id":"evt-v011","timestamp":"2025-06-01T11:01:00.000Z","parentId":"evt-v010"}
+{"type":"assistant.turn_start","data":{"turnId":"2"},"id":"evt-v012","timestamp":"2025-06-01T11:01:00.100Z","parentId":"evt-v011"}
+{"type":"assistant.message","data":{"messageId":"msg-v003","content":"I will add the DATABASE_URL field now.","toolRequests":[{"toolCallId":"tc-v002","name":"edit_file","arguments":"{\"path\":\"src/config.ts\",\"old_str\":\"PORT: z.string()\",\"new_str\":\"PORT: z.string(),\\n  DATABASE_URL: z.string().url()\"}","type":"function"}]},"id":"evt-v013","timestamp":"2025-06-01T11:01:01.000Z","parentId":"evt-v012"}
+{"type":"assistant.turn_end","data":{"turnId":"2"},"id":"evt-v014","timestamp":"2025-06-01T11:01:01.001Z","parentId":"evt-v013"}
+{"type":"assistant.turn_start","data":{"turnId":"3"},"id":"evt-v015","timestamp":"2025-06-01T11:01:01.001Z","parentId":"evt-v014"}
+{"type":"tool.execution_start","data":{"toolCallId":"tc-v002"},"id":"evt-v016","timestamp":"2025-06-01T11:01:01.050Z","parentId":"evt-v015"}
+{"type":"tool.execution_complete","data":{"toolCallId":"tc-v002","success":true},"id":"evt-v017","timestamp":"2025-06-01T11:01:01.600Z","parentId":"evt-v016"}
+{"type":"assistant.message","data":{"messageId":"msg-v004","content":"Done. The DATABASE_URL field has been added to the config schema.","toolRequests":[]},"id":"evt-v018","timestamp":"2025-06-01T11:01:03.000Z","parentId":"evt-v017"}
+{"type":"assistant.turn_end","data":{"turnId":"3"},"id":"evt-v019","timestamp":"2025-06-01T11:01:03.001Z","parentId":"evt-v018"}
+{"type":"session.shutdown","data":{},"id":"evt-v020","timestamp":"2025-06-01T11:02:00.000Z","parentId":null}
