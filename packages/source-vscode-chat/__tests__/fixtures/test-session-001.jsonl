@@ -1,0 +1,14 @@
+{"type":"session.start","data":{"sessionId":"test-session-001","version":1,"producer":"copilot-agent","copilotVersion":"0.46.2026042704","vscodeVersion":"1.118.0-insider","startTime":"2026-04-30T18:42:14.034Z"},"id":"evt-001","timestamp":"2026-04-30T18:42:14.034Z","parentId":null}
+{"type":"user.message","data":{"content":"What is the weather like today?","attachments":[]},"id":"evt-002","timestamp":"2026-04-30T18:42:14.044Z","parentId":"evt-001"}
+{"type":"assistant.turn_start","data":{"turnId":"0"},"id":"evt-003","timestamp":"2026-04-30T18:42:14.045Z","parentId":"evt-002"}
+{"type":"assistant.message","data":{"messageId":"msg-001","content":"","toolRequests":[{"toolCallId":"tc-001","name":"run_in_terminal","arguments":"{\"command\":\"curl wttr.in\",\"explanation\":\"Check weather\"}","type":"function"}]},"id":"evt-004","timestamp":"2026-04-30T18:42:17.377Z","parentId":"evt-003"}
+{"type":"assistant.turn_end","data":{"turnId":"0"},"id":"evt-005","timestamp":"2026-04-30T18:42:17.377Z","parentId":"evt-004"}
+{"type":"assistant.turn_start","data":{"turnId":"1"},"id":"evt-006","timestamp":"2026-04-30T18:42:17.377Z","parentId":"evt-005"}
+{"type":"tool.execution_start","data":{"toolCallId":"tc-001"},"id":"evt-007","timestamp":"2026-04-30T18:42:17.402Z","parentId":"evt-006"}
+{"type":"tool.execution_complete","data":{"toolCallId":"tc-001","success":true},"id":"evt-008","timestamp":"2026-04-30T18:42:59.110Z","parentId":"evt-007"}
+{"type":"assistant.message","data":{"messageId":"msg-002","content":"The weather today is sunny with a high of 22°C.","toolRequests":[],"reasoningText":"Looking at the terminal output..."},"id":"evt-009","timestamp":"2026-04-30T18:43:01.000Z","parentId":"evt-008"}
+{"type":"assistant.turn_end","data":{"turnId":"1"},"id":"evt-010","timestamp":"2026-04-30T18:43:01.001Z","parentId":"evt-009"}
+{"type":"user.message","data":{"content":"Thanks!","attachments":[]},"id":"evt-011","timestamp":"2026-04-30T18:44:42.495Z","parentId":"evt-010"}
+{"type":"assistant.turn_start","data":{"turnId":"2"},"id":"evt-012","timestamp":"2026-04-30T18:44:42.495Z","parentId":"evt-011"}
+{"type":"assistant.message","data":{"messageId":"msg-003","content":"You are welcome! Let me know if there is anything else I can help with.","toolRequests":[]},"id":"evt-013","timestamp":"2026-04-30T18:44:44.000Z","parentId":"evt-012"}
+{"type":"assistant.turn_end","data":{"turnId":"2"},"id":"evt-014","timestamp":"2026-04-30T18:44:44.001Z","parentId":"evt-013"}
