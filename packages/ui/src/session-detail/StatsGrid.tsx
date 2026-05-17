@@ -15,14 +15,12 @@ export interface StatsGridProps {
 
 /**
  * Ordered keys for the supplementary stats not shown in the compact
- * header strip: Assistant msgs | Compactions | Avg tokens/tool call |
- * Premium requests | API time
+ * header strip: Assistant msgs | Compactions | Avg tokens/tool call | API time
  */
 const STAT_ORDER: readonly (keyof SessionStats)[] = [
   'assistantMessageCount',
   'compactionCount',
   'avgTokensPerToolCall',
-  'premiumRequests',
   'apiTime',
 ] as const;
 

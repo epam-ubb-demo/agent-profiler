@@ -17,6 +17,7 @@ export interface CompactKpiStripProps {
 /** Keys of the 6 stats shown in the compact strip, in display order. */
 const COMPACT_STAT_KEYS: readonly (keyof SessionStats)[] = [
   'estimatedCost',
+  'avgTokensPerCost',
   'turnCount',
   'duration',
   'subagentCount',

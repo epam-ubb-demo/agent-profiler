@@ -78,6 +78,11 @@ describe('extractSessionListMetrics', () => {
     expect(result?.totalCacheReadTokens).toBe(300);
     expect(result?.totalCacheWriteTokens).toBe(150);
     expect(result?.totalCostUsd).toBeTypeOf('number');
+    if ((result?.totalCostUsd ?? 0) > 0) {
+      expect(result?.avgTokensPerCost).toBeTypeOf('number');
+    } else {
+      expect(result?.avgTokensPerCost).toBeNull();
+    }
     expect(result?.modelUsage).toEqual([
       {
         model: 'claude-sonnet-4-20250514',
@@ -134,6 +139,11 @@ describe('extractSessionListMetrics', () => {
     expect(result?.totalCacheReadTokens).toBe(50);
     expect(result?.totalCacheWriteTokens).toBe(10);
     expect(result?.totalCostUsd).toBeTypeOf('number');
+    if ((result?.totalCostUsd ?? 0) > 0) {
+      expect(result?.avgTokensPerCost).toBeTypeOf('number');
+    } else {
+      expect(result?.avgTokensPerCost).toBeNull();
+    }
     expect(['known', 'estimated', 'unknown']).toContain(result?.costConfidence);
     expect(result?.modelUsage).toEqual([
       {
@@ -254,5 +264,31 @@ describe('extractSessionListMetrics', () => {
 
     expect(result).not.toBeNull();
     expect(result?.modelUsage).toEqual([]);
+    expect(result?.avgTokensPerCost).toBeNull();
+  });
+
+  it('computes avgTokensPerCost as total tokens divided by cost', () => {
+    const session = makeSession({
+      shutdown: makeShutdown({
+        modelMetrics: [
+          makeModelMetrics({
+            inputTokens: 1000,
+            outputTokens: 500,
+            cacheReadTokens: 200,
+            cacheWriteTokens: 100,
+          }),
+        ],
+      }),
+    });
+
+    const result = extractSessionListMetrics(session);
+
+    expect(result).not.toBeNull();
+    if ((result?.totalCostUsd ?? 0) > 0) {
+      const expected = (1000 + 500 + 200 + 100) / (result?.totalCostUsd ?? 1);
+      expect(result?.avgTokensPerCost).toBeCloseTo(expected, 6);
+    } else {
+      expect(result?.avgTokensPerCost).toBeNull();
+    }
   });
 });

@@ -137,7 +137,7 @@ function makeTurn(
 // ---------------------------------------------------------------------------
 
 describe('computeSessionStats', () => {
-  it('returns all 11 stat entries for a basic session', () => {
+  it('returns all stat entries for a basic session', () => {
     const session = makeSession({
       toolCalls: [makeToolCall('read_file'), makeToolCall('write_file')],
       assistantMessages: [makeAssistantMessage(), makeAssistantMessage()],
@@ -155,11 +155,11 @@ describe('computeSessionStats', () => {
 
     const stats = computeSessionStats(session);
 
-    // Verify all 11 fields exist
+    // Verify all fields exist
     const keys = [
       'duration', 'toolCallCount', 'assistantMessageCount', 'turnCount',
       'compactionCount', 'subagentCount', 'estimatedCost',
-      'avgTokensPerToolCall', 'premiumRequests', 'apiTime', 'taskSuccess',
+      'avgTokensPerCost', 'avgTokensPerToolCall', 'apiTime', 'taskSuccess',
     ] as const;
     for (const key of keys) {
       expect(stats[key]).toBeDefined();
@@ -200,10 +200,10 @@ describe('computeSessionStats', () => {
     expect(stats.subagentCount.value).toBe(0);
     expect(stats.estimatedCost.value).toBeNull();
     expect(stats.estimatedCost.display).toBe('—');
+    expect(stats.avgTokensPerCost.value).toBeNull();
+    expect(stats.avgTokensPerCost.display).toBe('—');
     expect(stats.avgTokensPerToolCall.value).toBeNull();
     expect(stats.avgTokensPerToolCall.display).toBe('—');
-    expect(stats.premiumRequests.value).toBeNull();
-    expect(stats.premiumRequests.display).toBe('—');
     expect(stats.apiTime.value).toBeNull();
     expect(stats.apiTime.display).toBe('—');
     expect(stats.taskSuccess.value).toBeNull();
@@ -220,11 +220,14 @@ describe('computeSessionStats', () => {
 
     const stats = computeSessionStats(session);
 
-    expect(stats.premiumRequests.value).toBe(42);
-    expect(stats.premiumRequests.display).toBe('42');
     expect(stats.apiTime.value).toBe(12345);
     // Cost should be a non-null number (exact value depends on pricing table)
     expect(stats.estimatedCost.value).toBeTypeOf('number');
+    if ((stats.estimatedCost.value ?? 0) > 0) {
+      expect(stats.avgTokensPerCost.value).toBeTypeOf('number');
+    } else {
+      expect(stats.avgTokensPerCost.value).toBeNull();
+    }
   });
 
   it('falls back gracefully when shutdown is null', () => {
@@ -233,7 +236,7 @@ describe('computeSessionStats', () => {
     const stats = computeSessionStats(session);
 
     expect(stats.estimatedCost.value).toBeNull();
-    expect(stats.premiumRequests.value).toBeNull();
+    expect(stats.avgTokensPerCost.value).toBeNull();
     expect(stats.apiTime.value).toBeNull();
     expect(stats.avgTokensPerToolCall.value).toBeNull();
   });
@@ -253,13 +256,13 @@ describe('computeSessionStats', () => {
     // Cost should now be a number (derived from messages)
     expect(stats.estimatedCost.value).toBeTypeOf('number');
     expect(stats.estimatedCost.value).toBeGreaterThan(0);
+    expect(stats.avgTokensPerCost.value).toBeTypeOf('number');
+    expect(stats.avgTokensPerCost.value).toBeGreaterThan(0);
 
     // Avg tokens: 30000 total output / 2 tool calls = 15000
     expect(stats.avgTokensPerToolCall.value).toBe(15000);
 
-    // Premium requests and API time remain unavailable
-    expect(stats.premiumRequests.value).toBeNull();
-    expect(stats.premiumRequests.display).toBe('—');
+    // API time remains unavailable
     expect(stats.apiTime.value).toBeNull();
     expect(stats.apiTime.display).toBe('—');
   });
@@ -275,6 +278,7 @@ describe('computeSessionStats', () => {
     const stats = computeSessionStats(session);
 
     expect(stats.estimatedCost.value).toBeNull();
+    expect(stats.avgTokensPerCost.value).toBeNull();
   });
 
   it('formats task success: true → "✓", false → "✗", null → "—"', () => {
@@ -377,9 +381,6 @@ describe('computeModelSpend', () => {
     expect(row.cacheWriteTokens).toBe(150);
     expect(row.requestCount).toBe(7);
     // premiumRequests is null when premiumRequestCost is 0 (data not available)
-    expect(row.premiumRequests).toBeNull();
-    // premiumRequestCostUsd comes from ModelMetrics.premiumRequestCost (0 in fixture)
-    expect(row.premiumRequestCostUsd).toBe(0);
     // estimatedUsd comes from the token-based pricing calculator (may be 0 for small token counts)
     expect(row.estimatedUsd).toBeGreaterThanOrEqual(0);
   });
@@ -418,10 +419,6 @@ describe('computeModelSpend', () => {
     expect(result.totals.cacheReadTokens).toBe(300);
     expect(result.totals.cacheWriteTokens).toBe(150);
     expect(result.totals.requestCount).toBe(8);
-    // premiumRequests = totalPremiumRequests from shutdown (default 10)
-    expect(result.totals.premiumRequests).toBe(10);
-    // premiumRequestCostUsd = totalPremiumRequests × $0.04 (default totalPremiumRequests=10)
-    expect(result.totals.premiumRequestCostUsd).toBeCloseTo(0.4, 6);
   });
 
   it('includes confidence from the pricing calculator', () => {
@@ -498,18 +495,6 @@ describe('computeModelSpend', () => {
     expect(result.rows[0]!.model).toBe('model-from-shutdown');
   });
 
-  it('computes premiumRequestCostUsd from totalPremiumRequests × $0.04', () => {
-    const session = makeSession({
-      shutdown: makeShutdown({
-        totalPremiumRequests: 25,
-      }),
-    });
-
-    const result = computeModelSpend(session)!;
-    expect(result.totals.premiumRequests).toBe(25);
-    expect(result.totals.premiumRequestCostUsd).toBeCloseTo(1.0, 6); // 25 × 0.04
-  });
-
   it('sets premiumRequestCostUsd to 0 when using message fallback', () => {
     const session = makeSession({
       shutdown: null,
@@ -519,10 +504,6 @@ describe('computeModelSpend', () => {
     });
 
     const result = computeModelSpend(session)!;
-    // Per-model rows have null premiumRequests in message fallback
-    expect(result.rows[0]!.premiumRequests).toBeNull();
-    expect(result.totals.premiumRequests).toBe(0);
-    expect(result.totals.premiumRequestCostUsd).toBe(0);
     // Token-based estimate should still be computed (may be 0 for small token counts)
     expect(result.totals.estimatedUsd).toBeGreaterThanOrEqual(0);
   });

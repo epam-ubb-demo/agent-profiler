@@ -15,6 +15,8 @@ export interface DailyAnalytics {
   readonly date: string;
   /** Null when no session in this day had cost data. */
   readonly cost: number | null;
+  /** Average tokens per cost (total tokens / cost). Null when cost is 0 or null. */
+  readonly avgTokensPerCost: number | null;
   /** Null when no session in this day had wall-time data. */
   readonly wallTimeMs: number | null;
   readonly inputTokens: number;
@@ -59,7 +61,7 @@ const MODEL_PALETTE = [
 ];
 
 const OTHER_COLOUR = '#9ca3af';
-const COST_SERIES_KEY = '__cost__';
+const AVG_TK_COST_SERIES_KEY = '__avg_tk_cost__';
 
 function modelColour(model: string): string {
   let hash = 0;
@@ -107,6 +109,12 @@ function formatMs(ms: number): string {
   if (hours > 0) return `${hours}h ${minutes}m`;
   if (minutes > 0) return `${minutes}m`;
   return '<1m';
+}
+
+function formatTokensPerCost(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M/$`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K/$`;
+  return `${value}/$`;
 }
 
 function formatTk(n: number): string {
@@ -191,14 +199,14 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
 
     const n = data.length;
 
-    // ── Cost axis ─────────────────────────────────────────────────────────────
-    const maxCost = Math.max(...data.map((d) => d.cost ?? 0));
-    const costNiceStep = computeNiceStep(maxCost > 0 ? maxCost * 1.1 : 0.01);
-    const costYMax =
-      maxCost > 0 ? Math.ceil((maxCost * 1.1) / costNiceStep) * costNiceStep : costNiceStep;
-    const costYTicks: number[] = [];
-    for (let v = 0; v <= costYMax + costNiceStep * 0.5; v += costNiceStep) {
-      costYTicks.push(v);
+    // ── Avg tokens per cost axis ─────────────────────────────────────────────
+    const maxAvgTkCost = Math.max(...data.map((d) => d.avgTokensPerCost ?? 0));
+    const avgTkCostNiceStep = computeNiceStep(maxAvgTkCost > 0 ? maxAvgTkCost * 1.1 : 100);
+    const avgTkCostYMax =
+      maxAvgTkCost > 0 ? Math.ceil((maxAvgTkCost * 1.1) / avgTkCostNiceStep) * avgTkCostNiceStep : avgTkCostNiceStep;
+    const avgTkCostYTicks: number[] = [];
+    for (let v = 0; v <= avgTkCostYMax + avgTkCostNiceStep * 0.5; v += avgTkCostNiceStep) {
+      avgTkCostYTicks.push(v);
     }
 
     // ── Model ordering ────────────────────────────────────────────────────────
@@ -218,10 +226,24 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
     const hasOther = sortedModels.length > TOP_N;
     const stackOrder: string[] = [...topModels, ...(hasOther ? ['Other'] : [])];
 
-    // ── Token axis ────────────────────────────────────────────────────────────
-    const dayTokenTotals = data.map((day) =>
-      day.modelBreakdown.reduce((sum, mb) => sum + mb.totalTokens, 0),
-    );
+    // ── Per-day token counts per model key (top or "Other") ──────────────────
+    const dayModelTokens = data.map((day) => {
+      const tokens = new Map<string, number>();
+      for (const mb of day.modelBreakdown) {
+        const key = topModelSet.has(mb.model) ? mb.model : 'Other';
+        tokens.set(key, (tokens.get(key) ?? 0) + mb.totalTokens);
+      }
+      return tokens;
+    });
+
+    // ── Token axis (based on max stacked height) ──────────────────────────────
+    const dayTokenTotals = data.map((_, dayIdx) => {
+      let total = 0;
+      for (const modelKey of stackOrder) {
+        total += dayModelTokens[dayIdx]!.get(modelKey) ?? 0;
+      }
+      return total;
+    });
     const maxTokens = Math.max(...dayTokenTotals, 0);
     const tokenNiceStep = computeNiceStep(maxTokens > 0 ? maxTokens * 1.1 : 1000);
     const tokenYMax =
@@ -232,9 +254,9 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
     }
 
     // ── Empty check (keep axis domains for all data; only skip render if truly empty) ──
-    const hasAnyCost = maxCost > 0;
+    const hasAnyAvgTkCost = maxAvgTkCost > 0;
     const hasAnyTokens = maxTokens > 0;
-    if (!hasAnyCost && !hasAnyTokens) return null;
+    if (!hasAnyAvgTkCost && !hasAnyTokens) return null;
 
     // ── X positions ───────────────────────────────────────────────────────────
     const slotW = n > 1 ? CHART_W / (n - 1) : 0;
@@ -242,48 +264,30 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
       n > 1 ? CHART_X + slotW * i : CHART_X + CHART_W / 2,
     );
 
-    // ── Cost line segments (break on null) ────────────────────────────────────
-    const costPointsY = data.map((item) =>
-      item.cost != null ? CHART_Y + CHART_H - (item.cost / costYMax) * CHART_H : null,
+    // ── Avg tokens per cost line segments (break on null) ────────────────────
+    const avgTkCostPointsY = data.map((item) =>
+      item.avgTokensPerCost != null ? CHART_Y + CHART_H - (item.avgTokensPerCost / avgTkCostYMax) * CHART_H : null,
     );
 
-    const costSegments: Array<Array<{ x: number; y: number }>> = [];
+    const avgTkCostSegments: Array<Array<{ x: number; y: number }>> = [];
     let currentSeg: Array<{ x: number; y: number }> = [];
     for (let i = 0; i < n; i++) {
-      const y = costPointsY[i];
+      const y = avgTkCostPointsY[i];
       if (y !== null && y !== undefined) {
         currentSeg.push({ x: xPositions[i]!, y });
       } else if (currentSeg.length > 0) {
-        costSegments.push(currentSeg);
+        avgTkCostSegments.push(currentSeg);
         currentSeg = [];
       }
     }
-    if (currentSeg.length > 0) costSegments.push(currentSeg);
+    if (currentSeg.length > 0) avgTkCostSegments.push(currentSeg);
 
-    const costLinePaths = costSegments.map((seg) => smoothPath(seg));
-    const costAreaPaths = costSegments.map((seg) => {
-      if (seg.length === 0) return '';
-      return (
-        smoothPath(seg) +
-        ` L${seg[seg.length - 1]!.x},${CHART_Y + CHART_H}` +
-        ` L${seg[0]!.x},${CHART_Y + CHART_H} Z`
-      );
-    });
+    const avgTkCostLinePaths = avgTkCostSegments.map((seg) => smoothPath(seg));
 
     // ── Stacked model areas ───────────────────────────────────────────────────
     function tokenToY(tokens: number): number {
       return CHART_Y + CHART_H - (tokens / tokenYMax) * CHART_H;
     }
-
-    // Per-day token counts per model key (top or "Other")
-    const dayModelTokens = data.map((day) => {
-      const tokens = new Map<string, number>();
-      for (const mb of day.modelBreakdown) {
-        const key = topModelSet.has(mb.model) ? mb.model : 'Other';
-        tokens.set(key, (tokens.get(key) ?? 0) + mb.totalTokens);
-      }
-      return tokens;
-    });
 
     // Cumulative stacks: cumulTokens[dayIdx][0] = 0 (baseline),
     //                    cumulTokens[dayIdx][k+1] = bottom of model k+1
@@ -296,6 +300,20 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
       return cumul;
     });
 
+    // Generate smooth paths for ALL cumulative levels first (ensures alignment between layers)
+    const cumulativePaths = Array.from({ length: stackOrder.length + 1 }, (_, levelIdx) => {
+      if (n === 1) {
+        const x = xPositions[0]!;
+        const y = tokenToY(cumulTokens[0]![levelIdx]!);
+        return { path: `M${x},${y}`, points: [{ x, y }] };
+      }
+      const points = data.map((_, dayIdx) => ({
+        x: xPositions[dayIdx]!,
+        y: tokenToY(cumulTokens[dayIdx]![levelIdx]!),
+      }));
+      return { path: smoothPath(points), points };
+    });
+
     const modelAreaPaths = stackOrder.map((_, mIdx) => {
       if (n === 1) {
         const top = tokenToY(cumulTokens[0]![mIdx + 1]!);
@@ -303,16 +321,10 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
         const x = xPositions[0]!;
         return `M${x - 3},${top} L${x + 3},${top} L${x + 3},${bottom} L${x - 3},${bottom} Z`;
       }
-      const topEdge = data.map((_, dayIdx) => ({
-        x: xPositions[dayIdx]!,
-        y: tokenToY(cumulTokens[dayIdx]![mIdx + 1]!),
-      }));
-      const bottomEdge = data.map((_, dayIdx) => ({
-        x: xPositions[dayIdx]!,
-        y: tokenToY(cumulTokens[dayIdx]![mIdx]!),
-      }));
-      const topPath = smoothPath(topEdge);
-      const bottomPath = smoothPathReverse(bottomEdge);
+      // Use pre-generated smooth paths for both edges (ensures layers align perfectly)
+      const topPath = cumulativePaths[mIdx + 1]!.path;
+      const bottomPath = smoothPathReverse(cumulativePaths[mIdx]!.points);
+      
       return `${topPath}${bottomPath} Z`;
     });
 
@@ -333,13 +345,12 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
     });
 
     return {
-      costYTicks,
-      costYMax,
+      avgTkCostYTicks,
+      avgTkCostYMax,
       tokenYTicks,
       tokenYMax,
-      costLinePaths,
-      costAreaPaths,
-      costPointsY,
+      avgTkCostLinePaths,
+      avgTkCostPointsY,
       modelAreaPaths,
       stackOrder,
       topModelSet,
@@ -358,13 +369,12 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
   }
 
   const {
-    costYTicks,
-    costYMax,
+    avgTkCostYTicks,
+    avgTkCostYMax,
     tokenYTicks,
     tokenYMax,
-    costLinePaths,
-    costAreaPaths,
-    costPointsY,
+    avgTkCostLinePaths,
+    avgTkCostPointsY,
     modelAreaPaths,
     stackOrder,
     topModelSet,
@@ -376,7 +386,7 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
   const axisBaseY = CHART_Y + CHART_H;
 
   const legendItems: Array<{ key: string; label: string; colour: string }> = [
-    { key: COST_SERIES_KEY, label: 'Cost', colour: 'var(--uui-primary-50)' },
+    { key: AVG_TK_COST_SERIES_KEY, label: 'Avg tokens per cost', colour: 'var(--uui-primary-50)' },
     ...stackOrder.map((model) => ({
       key: model,
       label: model,
@@ -396,12 +406,19 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
         height={svgH}
         style={{ display: 'block' }}
         role="img"
-        aria-label="Combined analytics chart: daily cost and model token usage"
+        aria-label="Combined analytics chart: daily avgTokensPerCost and model token usage"
         data-testid="combined-analytics-chart"
       >
-        {/* Left Y-axis gridlines + labels (cost USD) */}
-        {costYTicks.map((v) => {
-          const y = CHART_Y + CHART_H - (v / costYMax) * CHART_H;
+        {/* Clip path to enforce chart bounds */}
+        <defs>
+          <clipPath id="chart-clip">
+            <rect x={CHART_X} y={CHART_Y} width={CHART_W} height={CHART_H} />
+          </clipPath>
+        </defs>
+
+        {/* Left Y-axis gridlines + labels (avg tokens per cost) */}
+        {avgTkCostYTicks.map((v) => {
+          const y = CHART_Y + CHART_H - (v / avgTkCostYMax) * CHART_H;
           return (
             <g key={v}>
               <line
@@ -420,7 +437,7 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
                 fontSize={10}
                 fill="var(--uui-primary-50)"
               >
-                {formatUsd(v)}
+                {formatTokensPerCost(v)}
               </text>
             </g>
           );
@@ -453,46 +470,42 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
           strokeWidth={1}
         />
 
-        {/* Stacked model areas (bottom layer) */}
-        {stackOrder.map((model, mIdx) => {
-          if (hiddenSeries.has(model)) return null;
-          const colour = model === 'Other' ? OTHER_COLOUR : modelColour(model);
-          return (
-            <path
-              key={model}
-              d={modelAreaPaths[mIdx]!}
-              fill={colour}
-              opacity={0.6}
-              data-testid={`model-area-${mIdx}`}
-            />
-          );
-        })}
+        {/* Chart content with clipping */}
+        <g clipPath="url(#chart-clip)">
+          {/* Stacked model areas (bottom layer) */}
+          {stackOrder.map((model, mIdx) => {
+            if (hiddenSeries.has(model)) return null;
+            const colour = model === 'Other' ? OTHER_COLOUR : modelColour(model);
+            return (
+              <path
+                key={model}
+                d={modelAreaPaths[mIdx]!}
+                fill={colour}
+                opacity={0.6}
+                data-testid={`model-area-${mIdx}`}
+              />
+            );
+          })}
 
-        {/* Cost area fill */}
-        {!hiddenSeries.has(COST_SERIES_KEY) &&
-          costAreaPaths.map((d, i) => (
-            <path key={i} d={d} fill="var(--uui-primary-50)" opacity={0.15} />
-          ))}
+          {/* Avg tokens per cost line — first segment gets the testid */}
+          {!hiddenSeries.has(AVG_TK_COST_SERIES_KEY) &&
+            avgTkCostLinePaths.map((d, i) => (
+              <path
+                key={i}
+                d={d}
+                fill="none"
+                stroke="var(--uui-primary-50)"
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                {...(i === 0 ? { 'data-testid': 'avg-tk-cost-line' } : {})}
+              />
+            ))}
 
-        {/* Cost line — first segment gets the testid */}
-        {!hiddenSeries.has(COST_SERIES_KEY) &&
-          costLinePaths.map((d, i) => (
-            <path
-              key={i}
-              d={d}
-              fill="none"
-              stroke="var(--uui-primary-50)"
-              strokeWidth={2}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              {...(i === 0 ? { 'data-testid': 'cost-line' } : {})}
-            />
-          ))}
-
-        {/* Cost data points (visible dots for non-null cost) */}
-        {!hiddenSeries.has(COST_SERIES_KEY) &&
+        {/* Avg tokens per cost data points (visible dots for non-null avgTokensPerCost) */}
+        {!hiddenSeries.has(AVG_TK_COST_SERIES_KEY) &&
           xPositions.map((x, i) => {
-            const y = costPointsY[i];
+            const y = avgTkCostPointsY[i];
             if (y == null) return null;
             return (
               <circle
@@ -503,10 +516,11 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
                 fill="var(--uui-primary-50)"
                 stroke="#fff"
                 strokeWidth={2}
-                data-testid="cost-point"
+                data-testid="avg-tk-cost-point"
               />
             );
           })}
+        </g> {/* End chart content clipping */}
 
         {/* Invisible hit targets — one per date column, full chart height */}
         {xPositions.map((_, i) => {
@@ -590,6 +604,9 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
         >
           <div style={{ fontWeight: 600, marginBottom: 4 }}>
             {formatBucketTooltip(tooltip.item.date, granularity)}
+          </div>
+          <div>
+            Avg tokens per cost: {tooltip.item.avgTokensPerCost != null ? formatTokensPerCost(tooltip.item.avgTokensPerCost) : '—'}
           </div>
           <div>Cost: {tooltip.item.cost != null ? formatUsd(tooltip.item.cost) : '—'}</div>
           <div>
