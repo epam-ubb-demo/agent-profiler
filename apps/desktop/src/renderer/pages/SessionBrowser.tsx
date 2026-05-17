@@ -529,9 +529,11 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
       });
   }, [filteredSessions]);
 
-  // Rebucketed chart data (day/week/month)
+  // Rebucketed chart data (day/week/month), filtered to entries with cost data
+  // so both CombinedAnalyticsChart and EfficiencyChart display continuous lines
+  // without gaps caused by days where cost is null.
   const chartData = useMemo(
-    () => rebucket(dailyAnalytics, granularity),
+    () => rebucket(dailyAnalytics, granularity).filter((d) => d.cost != null),
     [dailyAnalytics, granularity],
   );
 
