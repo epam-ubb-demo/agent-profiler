@@ -7,7 +7,7 @@ import { Steps } from '@astrojs/starlight/components';
 
 ## Overview
 
-The multi-tenant isolation tests exercise the KQL filter helpers in [`enrichment-core/src/kql-helpers.ts`](https://github.com/epam-ubb-demo/agent-profiler/blob/main/packages/enrichment-core/src/kql-helpers.ts) against a live Azure Log Analytics workspace to confirm that data is correctly partitioned by tenant and by user.
+The multi-tenant isolation tests exercise the KQL filter helpers in [`packages/enrichment-core/src/kql-helpers.ts`](https://github.com/epam-ubb-demo/agent-profiler/blob/main/packages/enrichment-core/src/kql-helpers.ts) against a live Azure Log Analytics workspace to confirm that data is correctly partitioned by tenant and by user.
 
 | Test file | Task | What is verified |
 |---|---|---|
@@ -104,7 +104,7 @@ An admin view requires neither filter — all tenants' data is visible to a call
 
 4. **Review output**
 
-   The `beforeAll` block pushes events for both tenants (up to 60 seconds).  Each assertion test then polls for ingestion independently, with up to 5 minutes per test.  Total wall-clock time for all four tests is typically 6–8 minutes when Azure credentials are present.
+   The `beforeAll` block pushes events for both tenants (up to 60 seconds).  Each of the three assertion tests then polls for ingestion independently, with up to 5 minutes per test.  Total wall-clock time for the suite is typically 6–8 minutes when Azure credentials are present.
 </Steps>
 
 ## Expected Results

@@ -98,8 +98,14 @@ describe.skipIf(!AZURE_AVAILABLE)('Multi-tenant isolation', () => {
     async () => {
       const queryClient = createTestQueryClient();
 
-      // Alice's events are a subset of tenant-A; counts must match exactly.
-      const kql = [AGENT_SESSION_EVENTS_TABLE, buildUserViewFilter(userAlice)].join('\n');
+      // Chain tenant and user filters: validates the "team member sees only own
+      // sessions within their tenant" scenario and guards against a matching
+      // SourceUser appearing in an unrelated tenant.
+      const kql = [
+        AGENT_SESSION_EVENTS_TABLE,
+        buildTeamViewFilter(tenantA),
+        buildUserViewFilter(userAlice),
+      ].join('\n');
       const rows = await waitForIngestion(queryClient, kql, copilotEventCount);
 
       expect(rows).toHaveLength(copilotEventCount);
