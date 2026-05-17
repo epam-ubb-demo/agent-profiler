@@ -12,6 +12,7 @@ import styles from './SessionBrowser.module.css';
 import { CacheHitRateChart } from '@/components/CacheHitRateChart';
 import { CombinedAnalyticsChart } from '@/components/CombinedAnalyticsChart';
 import type { DailyAnalytics, Granularity } from '@/components/CombinedAnalyticsChart';
+import { EfficiencyChart } from '@/components/EfficiencyChart';
 import { EmptyState } from '@/components/EmptyState';
 import { FolderOpenIcon, SearchIcon } from '@/components/icons';
 import { ModelBreakdownTable } from '@/components/ModelBreakdownTable';
@@ -528,9 +529,11 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
       });
   }, [filteredSessions]);
 
-  // Rebucketed chart data (day/week/month)
+  // Rebucketed chart data (day/week/month), filtered to entries with cost data
+  // so both CombinedAnalyticsChart and EfficiencyChart display continuous lines
+  // without gaps caused by days where cost is null or zero (no activity).
   const chartData = useMemo(
-    () => rebucket(dailyAnalytics, granularity),
+    () => rebucket(dailyAnalytics, granularity).filter((d) => d.cost != null && d.cost > 0),
     [dailyAnalytics, granularity],
   );
 
@@ -767,9 +770,18 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
                 </div>
               </div>
 
-              {/* Main chart: cost + model token areas */}
-              <div className={styles.fullWidthChartArea}>
-                <CombinedAnalyticsChart data={chartData} granularity={granularity} />
+              {/* Main chart: cost + model token areas, plus efficiency side-by-side */}
+              <div className={styles.chartRow}>
+                <div className={styles.chartHalf}>
+                  <CombinedAnalyticsChart data={chartData} granularity={granularity} />
+                </div>
+                <div className={styles.chartHalf}>
+                  <EfficiencyChart
+                    data={chartData}
+                    granularity={granularity}
+                    pricingTable={DEFAULT_PRICING_TABLE}
+                  />
+                </div>
               </div>
 
               {/* Cache hit rate + Model breakdown side-by-side */}

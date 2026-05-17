@@ -31,6 +31,8 @@ declare const styles: {
   readonly granularityBtnActive: string;
   readonly chartArea: string;
   readonly fullWidthChartArea: string;
+  readonly chartRow: string;
+  readonly chartHalf: string;
   readonly secondaryRow: string;
   readonly cacheChartArea: string;
   readonly tableArea: string;

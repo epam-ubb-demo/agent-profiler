@@ -232,7 +232,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 0 12px 12px;
+  padding: 0 12px 8px;
 }
 
 /* ─── Granularity toggle ─── */
@@ -324,6 +324,17 @@
   width: 100%;
   min-width: 0;
   height: clamp(200px, 28vh, 360px);
+}
+
+/* ─── Side-by-side chart row ─── */
+.chartRow {
+  display: flex;
+  gap: 8px;
+}
+
+.chartHalf {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 /* ─── Secondary row: cache chart + model table side-by-side ─── */

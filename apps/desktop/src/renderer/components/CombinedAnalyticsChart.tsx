@@ -41,10 +41,12 @@ export interface CombinedAnalyticsChartProps {
 
 /* ─── Chart geometry ────────────────────────────────────────────────────────── */
 
-const MARGIN_TOP = 20;
-const MARGIN_RIGHT = 60; // right Y-axis (tokens)
-const MARGIN_BOTTOM = 40; // room for x-axis labels
-const MARGIN_LEFT = 60; // room for y-axis labels
+const MARGIN_TOP = 16;
+const MARGIN_RIGHT = 44; // right Y-axis (tokens)
+const MARGIN_BOTTOM = 28; // room for x-axis labels
+const MARGIN_LEFT = 52; // room for y-axis labels (dual-axis: "$300.00" needs ~50px)
+
+const SVG_HEIGHT = 360;
 
 /** These are stable aliases for the fixed margins — they never change with container size. */
 const CHART_X = MARGIN_LEFT;
@@ -154,18 +156,14 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [hiddenSeries, setHiddenSeries] = useState<ReadonlySet<string>>(new Set());
-  const [dims, setDims] = useState({ w: 800, h: 200 });
+  const [chartWidth, setChartWidth] = useState(800);
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
-      const { width, height } = entries[0]!.contentRect;
-      if (width > 0 && height > 0) {
-        const w = Math.round(width);
-        const h = Math.round(height);
-        setDims((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
-      }
+      const w = Math.round(entries[0]!.contentRect.width);
+      if (w > 0) setChartWidth((prev) => (prev === w ? prev : w));
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -188,10 +186,8 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
   }, []);
 
   // ── Derived geometry from current container dimensions ─────────────────────
-  /** Fixed height reserved for the legend row below the SVG. */
-  const LEGEND_H = 40;
-  const svgH = Math.max(dims.h - LEGEND_H, 100);
-  const CHART_W = Math.max(dims.w - MARGIN_LEFT - MARGIN_RIGHT, 1);
+  const svgH = SVG_HEIGHT;
+  const CHART_W = Math.max(chartWidth - MARGIN_LEFT - MARGIN_RIGHT, 1);
   const CHART_H = Math.max(svgH - MARGIN_TOP - MARGIN_BOTTOM, 1);
 
   const computed = useMemo(() => {
@@ -397,12 +393,22 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
   return (
     <div
       ref={containerRef}
-      style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%' }}
+      style={{ position: 'relative', width: '100%' }}
     >
+      <Text
+        cx="block"
+        fontSize="14"
+        fontWeight="600"
+        rawProps={{ style: { marginBottom: 4 } }}
+      >
+        Timeline
+      </Text>
+      <Text cx="block" fontSize="12" color="secondary" rawProps={{ style: { marginBottom: 8 } }}>
+        Cost and model token usage over time
+      </Text>
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${dims.w} ${svgH}`}
-        width="100%"
+        width={chartWidth}
         height={svgH}
         style={{ display: 'block' }}
         role="img"

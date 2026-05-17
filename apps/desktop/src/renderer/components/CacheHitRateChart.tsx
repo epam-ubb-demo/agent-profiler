@@ -7,7 +7,7 @@ import { smoothPath } from './svg-path-utils';
 /* ─── Chart geometry ────────────────────────────────────────────────────────── */
 
 const MARGIN = { top: 16, right: 24, bottom: 32, left: 48 } as const;
-const SVG_HEIGHT = 180;
+const SVG_HEIGHT = 360;
 const DOT_RADIUS = 3.5;
 
 const CACHE_COLOUR = '#06b6d4'; // cyan-500
