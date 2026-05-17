@@ -330,12 +330,13 @@
 .chartRow {
   display: flex;
   gap: 16px;
-  height: 100%;
+  height: clamp(200px, 28vh, 360px);
 }
 
 .chartHalf {
   flex: 1 1 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 /* ─── Secondary row: cache chart + model table side-by-side ─── */
