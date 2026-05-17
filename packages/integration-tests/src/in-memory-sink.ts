@@ -10,8 +10,8 @@ import type { EnrichmentEvent, EnrichmentSink, PushResult, RejectInfo } from '@a
 export interface InMemorySinkOptions {
   readonly id?: string | undefined;
   readonly supportedCategories?: readonly string[] | undefined;
-  /** When set, the sink rejects events at these ordinals. */
-  readonly rejectOrdinals?: ReadonlySet<number> | undefined;
+  /** When set, the sink rejects events whose eventId is in this set. */
+  readonly rejectEventIds?: ReadonlySet<string> | undefined;
   /** When true, push() throws RetriableSinkError. */
   readonly failOnPush?: boolean | undefined;
 }
@@ -19,7 +19,7 @@ export interface InMemorySinkOptions {
 export class InMemorySink implements EnrichmentSink {
   readonly id: string;
   private readonly supportedCategories: readonly string[];
-  private readonly rejectOrdinals: ReadonlySet<number>;
+  private readonly rejectEventIds: ReadonlySet<string>;
   private readonly failOnPush: boolean;
 
   /** All events accepted by the sink, in push order. */
@@ -29,8 +29,8 @@ export class InMemorySink implements EnrichmentSink {
 
   constructor(options?: InMemorySinkOptions) {
     this.id = options?.id ?? 'in-memory-sink';
-    this.supportedCategories = options?.supportedCategories ?? [];
-    this.rejectOrdinals = options?.rejectOrdinals ?? new Set();
+    this.supportedCategories = options?.supportedCategories ?? ['*'];
+    this.rejectEventIds = options?.rejectEventIds ?? new Set();
     this.failOnPush = options?.failOnPush ?? false;
   }
 
@@ -38,9 +38,8 @@ export class InMemorySink implements EnrichmentSink {
     return !this.failOnPush;
   }
 
-  supportsCategory(_category: string): boolean {
-    // Empty array = support all categories
-    return this.supportedCategories.length === 0 || this.supportedCategories.includes(_category);
+  supportsCategory(category: string): boolean {
+    return this.supportedCategories.includes('*') || this.supportedCategories.includes(category);
   }
 
   async push(batch: readonly EnrichmentEvent[]): Promise<PushResult> {
@@ -54,7 +53,7 @@ export class InMemorySink implements EnrichmentSink {
     const rejected: RejectInfo[] = [];
 
     for (const event of batch) {
-      if (this.rejectOrdinals.has(event.ordinal)) {
+      if (this.rejectEventIds.has(event.eventId)) {
         rejected.push({ ordinal: event.ordinal, reason: 'Rejected by test configuration' });
       } else {
         accepted.push(event.ordinal);

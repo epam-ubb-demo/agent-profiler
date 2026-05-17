@@ -119,4 +119,51 @@ describe('incremental sync deduplication', () => {
 
     expect(sink2.pushedEvents.length).toBe(totalSourceCount);
   });
+
+  it('resetting a category cursor causes only that category to be re-delivered on next incremental run', async () => {
+    // Establish ground-truth count
+    const allSourceEvents = await readAllSourceEvents();
+    expect(allSourceEvents.length).toBeGreaterThan(0);
+
+    // Shared state across all runs
+    const markerStore = createFakeMarkerStore();
+    const orchestrator = new DefaultSyncOrchestrator(markerStore);
+
+    // --- First run: full incremental sync (delivers everything) ---
+    const sink1 = new InMemorySink();
+    const source1 = new VsCodeChatEnrichmentSource([overrideSession]);
+    const planner1 = new DefaultSyncPlanner(markerStore, source1);
+    const refs = await collectRefs(source1);
+
+    for (const ref of refs) {
+      const plan = await planner1.planIncremental(ref);
+      await orchestrator.runPlan(plan, source1, [sink1]);
+    }
+
+    expect(sink1.pushedEvents.length).toBe(allSourceEvents.length);
+
+    // --- Simulate new data arriving: reset the 'metadata' cursor so the next
+    //     incremental run re-delivers only 'metadata' events. This mimics the
+    //     scenario where the marker is behind the source (new data appended). ---
+    for (const ref of refs) {
+      await markerStore.resetCategories(ref, ['metadata']);
+    }
+
+    // --- Second run: incremental after cursor reset ---
+    const sink2 = new InMemorySink();
+    const source2 = new VsCodeChatEnrichmentSource([overrideSession]);
+    const planner2 = new DefaultSyncPlanner(markerStore, source2);
+
+    for (const ref of await collectRefs(source2)) {
+      const plan = await planner2.planIncremental(ref);
+      await orchestrator.runPlan(plan, source2, [sink2]);
+    }
+
+    // Only 'metadata' events should have been re-delivered (delta delivery)
+    expect(sink2.pushedEvents.length).toBeGreaterThan(0);
+    expect(sink2.pushedEvents.length).toBeLessThan(allSourceEvents.length);
+    for (const event of sink2.pushedEvents) {
+      expect(event.category).toBe('metadata');
+    }
+  });
 });

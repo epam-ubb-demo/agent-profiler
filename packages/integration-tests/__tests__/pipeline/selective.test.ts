@@ -13,7 +13,7 @@ import { join } from 'node:path';
 
 import type { DiscoveredSession } from '@agent-profiler/adapters-claude-code';
 import { createFakeMarkerStore } from '@agent-profiler/enrichment-core/testing';
-import type { SessionRef } from '@agent-profiler/enrichment-core';
+import type { EnrichmentEvent, SessionRef } from '@agent-profiler/enrichment-core';
 import { ClaudeCodeEnrichmentSource } from '@agent-profiler/source-claude-code';
 import { DefaultSyncOrchestrator, DefaultSyncPlanner } from '@agent-profiler/sync-engine';
 import { loadClaudeCodeFixture } from '@agent-profiler/test-fixtures';
@@ -37,6 +37,21 @@ describe('selective sync', () => {
       refs.push(ref);
     }
     return refs;
+  }
+
+  /**
+   * Read all events from the source directly (bypassing the orchestrator)
+   * to establish the ground-truth event count for pipeline assertions.
+   */
+  async function readAllSourceEvents(): Promise<EnrichmentEvent[]> {
+    const source = new ClaudeCodeEnrichmentSource([overrideSession]);
+    const events: EnrichmentEvent[] = [];
+    for await (const ref of source.discoverSessions()) {
+      for await (const event of source.readEvents(ref, {})) {
+        events.push(event);
+      }
+    }
+    return events;
   }
 
   it('planSelective with ["metadata"] only delivers metadata events', async () => {
@@ -102,6 +117,10 @@ describe('selective sync', () => {
     const markerStore = createFakeMarkerStore();
     const orchestrator = new DefaultSyncOrchestrator(markerStore);
 
+    // Establish ground-truth count from direct source read
+    const totalSourceCount = (await readAllSourceEvents()).length;
+    expect(totalSourceCount).toBeGreaterThan(0);
+
     // First: selective metadata-only sync
     const sink1 = new InMemorySink();
     const source1 = new ClaudeCodeEnrichmentSource([overrideSession]);
@@ -125,6 +144,6 @@ describe('selective sync', () => {
       await orchestrator.runPlan(plan, source2, [sink2]);
     }
 
-    expect(sink2.pushedEvents.length).toBe(fixture.expectedEvents.length);
+    expect(sink2.pushedEvents.length).toBe(totalSourceCount);
   });
 });
