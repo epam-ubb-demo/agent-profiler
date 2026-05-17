@@ -17,8 +17,9 @@ afterEach(() => {
 function makeDay(
   overrides: Partial<DailyAnalytics> & { date: string },
 ): DailyAnalytics {
-  return {
+  const base = {
     cost: null,
+    avgTokensPerCost: null,
     wallTimeMs: null,
     inputTokens: 0,
     outputTokens: 0,
@@ -27,6 +28,14 @@ function makeDay(
     modelBreakdown: [],
     ...overrides,
   };
+  
+  // Auto-compute avgTokensPerCost if cost is provided
+  if (base.cost != null && base.cost > 0) {
+    const totalTokens = base.inputTokens + base.outputTokens + base.cacheReadTokens + base.cacheWriteTokens;
+    base.avgTokensPerCost = totalTokens / base.cost;
+  }
+  
+  return base;
 }
 
 describe('CombinedAnalyticsChart', () => {
@@ -56,8 +65,8 @@ describe('CombinedAnalyticsChart', () => {
     await render(
       <CombinedAnalyticsChart
         data={[
-          makeDay({ date: '2024-05-01', cost: 0.10 }),
-          makeDay({ date: '2024-05-02', cost: 0.20 }),
+          makeDay({ date: '2024-05-01', cost: 0.10, inputTokens: 1000 }),
+          makeDay({ date: '2024-05-02', cost: 0.20, inputTokens: 2000 }),
         ]}
       />,
     );
@@ -65,42 +74,44 @@ describe('CombinedAnalyticsChart', () => {
     expect(screen.getByTestId('combined-analytics-chart')).toBeDefined();
   });
 
-  // ── Test 4: cost-line test-id is on first segment ─────────────────────────
-  it('renders cost-line element when cost data is present', async () => {
+  // ── Test 4: avg-tk-cost-line test-id is on first segment ──────────────────
+  it('renders avg-tk-cost-line element when avgTokensPerCost data is present', async () => {
     await render(
       <CombinedAnalyticsChart
         data={[
-          makeDay({ date: '2024-05-01', cost: 0.10 }),
-          makeDay({ date: '2024-05-02', cost: 0.20 }),
+          makeDay({ date: '2024-05-01', cost: 0.10, inputTokens: 1000 }),
+          makeDay({ date: '2024-05-02', cost: 0.20, inputTokens: 2000 }),
         ]}
       />,
     );
 
-    expect(screen.getByTestId('cost-line')).toBeDefined();
+    expect(screen.getByTestId('avg-tk-cost-line')).toBeDefined();
   });
 
-  // ── Test 5: no cost-line when all costs null but tokens present ───────────
-  it('omits cost-line when all cost values are null', async () => {
+  // ── Test 5: no avg-tk-cost-line when all costs null but tokens present ────
+  it('omits avg-tk-cost-line when all cost values are null', async () => {
     await render(
       <CombinedAnalyticsChart
         data={[
           makeDay({
             date: '2024-05-01',
             cost: null,
+            inputTokens: 1000,
             modelBreakdown: [{ model: 'gpt-4o', totalTokens: 1000, costUsd: null }],
           }),
           makeDay({
             date: '2024-05-02',
             cost: null,
+            inputTokens: 2000,
             modelBreakdown: [{ model: 'gpt-4o', totalTokens: 2000, costUsd: null }],
           }),
         ]}
       />,
     );
 
-    // Chart should render (tokens present), but no cost-line
+    // Chart should render (tokens present), but no avg-tk-cost-line
     expect(screen.getByTestId('combined-analytics-chart')).toBeDefined();
-    expect(screen.queryByTestId('cost-line')).toBeNull();
+    expect(screen.queryByTestId('avg-tk-cost-line')).toBeNull();
   });
 
   // ── Test 6: model-area elements rendered for each model ───────────────────
@@ -128,26 +139,27 @@ describe('CombinedAnalyticsChart', () => {
   it('renders the chart legend', async () => {
     await render(
       <CombinedAnalyticsChart
-        data={[makeDay({ date: '2024-05-01', cost: 0.10 })]}
+        data={[makeDay({ date: '2024-05-01', cost: 0.10, inputTokens: 1000, outputTokens: 500 })]}
       />,
     );
 
     expect(screen.getByTestId('chart-legend')).toBeDefined();
   });
 
-  // ── Test 8: legend includes Cost entry ────────────────────────────────────
-  it('legend contains a Cost toggle button', async () => {
+  // ── Test 8: legend includes avg tokens per cost entry ─────────────────────
+  it('legend contains an Avg tokens per cost toggle button', async () => {
     await render(
       <CombinedAnalyticsChart
-        data={[makeDay({ date: '2024-05-01', cost: 0.10 })]}
+        data={[makeDay({ date: '2024-05-01', cost: 0.10, inputTokens: 1000, outputTokens: 500 })]}
       />,
     );
 
     const legend = screen.getByTestId('chart-legend');
-    const costBtn = legend.querySelector('button');
-    expect(costBtn).toBeDefined();
+    const avgTkCostBtn = legend.querySelector('button');
+    expect(avgTkCostBtn).toBeDefined();
+    expect(avgTkCostBtn?.textContent).toContain('Avg tokens per cost');
     // aria-pressed = true when visible (active)
-    expect(costBtn?.getAttribute('aria-pressed')).toBe('true');
+    expect(avgTkCostBtn?.getAttribute('aria-pressed')).toBe('true');
   });
 
   // ── Test 9: model legend buttons present ──────────────────────────────────
@@ -158,6 +170,7 @@ describe('CombinedAnalyticsChart', () => {
           makeDay({
             date: '2024-05-01',
             cost: 0.10,
+            inputTokens: 1000,
             modelBreakdown: [
               { model: 'gpt-4o', totalTokens: 1000, costUsd: 0.025 },
               { model: 'claude-opus', totalTokens: 500, costUsd: null },
@@ -169,36 +182,36 @@ describe('CombinedAnalyticsChart', () => {
 
     const legend = screen.getByTestId('chart-legend');
     const buttons = legend.querySelectorAll('button');
-    // Cost + 2 models = 3
+    // Avg tokens per cost + 2 models = 3
     expect(buttons.length).toBe(3);
   });
 
-  // ── Test 10: clicking Cost legend hides cost-line ─────────────────────────
-  it('toggles cost line visibility when Cost legend button is clicked', async () => {
+  // ── Test 10: clicking avg tokens per cost legend hides line ───────────────
+  it('toggles avg tokens per cost line visibility when legend button is clicked', async () => {
     await render(
       <CombinedAnalyticsChart
         data={[
-          makeDay({ date: '2024-05-01', cost: 0.10 }),
-          makeDay({ date: '2024-05-02', cost: 0.20 }),
+          makeDay({ date: '2024-05-01', cost: 0.10, inputTokens: 1000 }),
+          makeDay({ date: '2024-05-02', cost: 0.20, inputTokens: 2000 }),
         ]}
       />,
     );
 
     // Initially visible
-    expect(screen.getByTestId('cost-line')).toBeDefined();
+    expect(screen.getByTestId('avg-tk-cost-line')).toBeDefined();
 
     const legend = screen.getByTestId('chart-legend');
-    const costBtn = legend.querySelector('button')!;
+    const avgTkCostBtn = legend.querySelector('button')!;
 
     // Click to hide
-    fireEvent.click(costBtn);
-    expect(screen.queryByTestId('cost-line')).toBeNull();
-    expect(costBtn.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(avgTkCostBtn);
+    expect(screen.queryByTestId('avg-tk-cost-line')).toBeNull();
+    expect(avgTkCostBtn.getAttribute('aria-pressed')).toBe('false');
 
     // Click to show again
-    fireEvent.click(costBtn);
-    expect(screen.getByTestId('cost-line')).toBeDefined();
-    expect(costBtn.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(avgTkCostBtn);
+    expect(screen.getByTestId('avg-tk-cost-line')).toBeDefined();
+    expect(avgTkCostBtn.getAttribute('aria-pressed')).toBe('true');
   });
 
   // ── Test 11: clicking model legend button hides area ─────────────────────
@@ -230,9 +243,9 @@ describe('CombinedAnalyticsChart', () => {
     await render(
       <CombinedAnalyticsChart
         data={[
-          makeDay({ date: '2024-05-01', cost: 0.10 }),
-          makeDay({ date: '2024-05-02', cost: 0.20 }),
-          makeDay({ date: '2024-05-03', cost: 0.15 }),
+          makeDay({ date: '2024-05-01', cost: 0.10, inputTokens: 1000 }),
+          makeDay({ date: '2024-05-02', cost: 0.20, inputTokens: 2000 }),
+          makeDay({ date: '2024-05-03', cost: 0.15, inputTokens: 1500 }),
         ]}
       />,
     );
@@ -247,8 +260,8 @@ describe('CombinedAnalyticsChart', () => {
     await render(
       <CombinedAnalyticsChart
         data={[
-          makeDay({ date: '2024-05-01', cost: 0.10, wallTimeMs: 120_000 }),
-          makeDay({ date: '2024-05-02', cost: 0.20, wallTimeMs: 60_000 }),
+          makeDay({ date: '2024-05-01', cost: 0.10, wallTimeMs: 120_000, inputTokens: 1000 }),
+          makeDay({ date: '2024-05-02', cost: 0.20, wallTimeMs: 60_000, inputTokens: 2000 }),
         ]}
       />,
     );
@@ -265,8 +278,8 @@ describe('CombinedAnalyticsChart', () => {
     await render(
       <CombinedAnalyticsChart
         data={[
-          makeDay({ date: '2024-05-01', cost: 0.10 }),
-          makeDay({ date: '2024-05-02', cost: 0.20 }),
+          makeDay({ date: '2024-05-01', cost: 0.10, inputTokens: 1000 }),
+          makeDay({ date: '2024-05-02', cost: 0.20, inputTokens: 2000 }),
         ]}
       />,
     );
@@ -278,21 +291,21 @@ describe('CombinedAnalyticsChart', () => {
     expect(screen.queryByTestId('chart-tooltip')).toBeNull();
   });
 
-  // ── Test 15: null-cost break creates separate cost-line segment ───────────
-  it('still renders the chart SVG when some cost values are null (null-break)', async () => {
+  // ── Test 15: null-avgTokensPerCost break creates separate line segment ────
+  it('still renders the chart SVG when some avgTokensPerCost values are null (null-break)', async () => {
     await render(
       <CombinedAnalyticsChart
         data={[
-          makeDay({ date: '2024-05-01', cost: 0.10 }),
-          makeDay({ date: '2024-05-02', cost: null }),
-          makeDay({ date: '2024-05-03', cost: 0.30 }),
+          makeDay({ date: '2024-05-01', cost: 0.10, inputTokens: 1000 }),
+          makeDay({ date: '2024-05-02', cost: null, inputTokens: 2000 }),
+          makeDay({ date: '2024-05-03', cost: 0.30, inputTokens: 3000 }),
         ]}
       />,
     );
 
     // Chart renders; first segment carries the testid
     expect(screen.getByTestId('combined-analytics-chart')).toBeDefined();
-    expect(screen.getByTestId('cost-line')).toBeDefined();
+    expect(screen.getByTestId('avg-tk-cost-line')).toBeDefined();
   });
 
   // ── Test 16: tooltip shows per-model cost alongside token count ───────────

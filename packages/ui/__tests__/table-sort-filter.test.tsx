@@ -28,8 +28,6 @@ const MODEL_SPEND_RESULT: ModelSpendResult = {
     {
       model: 'claude-sonnet-4',
       requestCount: 10,
-      premiumRequests: null,
-      premiumRequestCostUsd: 0.50,
       inputTokens: 50_000,
       outputTokens: 20_000,
       cacheReadTokens: 10_000,
@@ -43,8 +41,6 @@ const MODEL_SPEND_RESULT: ModelSpendResult = {
     {
       model: 'gpt-4o',
       requestCount: 5,
-      premiumRequests: null,
-      premiumRequestCostUsd: 0.30,
       inputTokens: 30_000,
       outputTokens: 10_000,
       cacheReadTokens: 5_000,
@@ -58,8 +54,6 @@ const MODEL_SPEND_RESULT: ModelSpendResult = {
     {
       model: 'claude-haiku-3',
       requestCount: 20,
-      premiumRequests: null,
-      premiumRequestCostUsd: 0.10,
       inputTokens: 100_000,
       outputTokens: 40_000,
       cacheReadTokens: 30_000,
@@ -73,8 +67,6 @@ const MODEL_SPEND_RESULT: ModelSpendResult = {
   ],
   totals: {
     requestCount: 35,
-    premiumRequests: 0,
-    premiumRequestCostUsd: 0.90,
     inputTokens: 180_000,
     outputTokens: 70_000,
     cacheReadTokens: 45_000,

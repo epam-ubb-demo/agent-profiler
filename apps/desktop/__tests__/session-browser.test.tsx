@@ -24,6 +24,7 @@ function makeMetrics(overrides: Partial<SessionListMetricsIpc> = {}): SessionLis
     totalCacheReadTokens: 1000,
     totalCacheWriteTokens: 500,
     totalCostUsd: 0.15,
+    avgTokensPerCost: (5000 + 3000 + 1000 + 500) / 0.15,
     costConfidence: 'known' as const,
     wallTimeMs: 120_000,
     repository: 'owner/repo',

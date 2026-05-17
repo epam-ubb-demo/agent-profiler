@@ -46,6 +46,7 @@ export const sessionListMetricsSchema = z.object({
   totalCacheReadTokens: z.number(),
   totalCacheWriteTokens: z.number(),
   totalCostUsd: z.number().nullable(),
+  avgTokensPerCost: z.number().nullable(),
   costConfidence: costConfidenceSchema,
   wallTimeMs: z.number().nullable(),
   repository: z.string(),

@@ -11,6 +11,12 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
+function formatTokensPerCost(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M/$`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K/$`;
+  return `${value}/$`;
+}
+
 function formatUsd(value: number): string {
   if (value === 0) return '$0.00';
   if (value < 0.01) return `$${value.toFixed(4)}`;
@@ -42,6 +48,7 @@ interface ModelRow {
   readonly cacheReadTokens: number;
   readonly cacheWriteTokens: number;
   readonly costUsd: number | null;
+  readonly avgTokensPerCost: number | null;
   readonly sessionCount: number;
 }
 
@@ -103,16 +110,24 @@ export const ModelBreakdownTable = memo(function ModelBreakdownTable({
     }
 
     const result: ModelRow[] = Array.from(map.entries())
-      .map(([model, d]) => ({
-        model,
-        inputTokens: d.inputTokens,
-        outputTokens: d.outputTokens,
-        totalTokens: d.inputTokens + d.outputTokens,
-        cacheReadTokens: d.cacheReadTokens,
-        cacheWriteTokens: d.cacheWriteTokens,
-        costUsd: d.costUsd,
-        sessionCount: d.sessionCount,
-      }))
+      .map(([model, d]) => {
+        const totalTokens = d.inputTokens + d.outputTokens + d.cacheReadTokens + d.cacheWriteTokens;
+        const avgTokensPerCost =
+          d.costUsd != null && d.costUsd > 0
+            ? Math.round(totalTokens / d.costUsd)
+            : null;
+        return {
+          model,
+          inputTokens: d.inputTokens,
+          outputTokens: d.outputTokens,
+          totalTokens,
+          cacheReadTokens: d.cacheReadTokens,
+          cacheWriteTokens: d.cacheWriteTokens,
+          costUsd: d.costUsd,
+          avgTokensPerCost,
+          sessionCount: d.sessionCount,
+        };
+      })
       .sort((a, b) => b.totalTokens - a.totalTokens);
 
     return result;
@@ -130,7 +145,7 @@ export const ModelBreakdownTable = memo(function ModelBreakdownTable({
         fontWeight="600"
         rawProps={{ style: { marginBottom: 8 } }}
       >
-        By model
+        Model cost breakdown
       </Text>
       <table
         style={{
@@ -151,6 +166,7 @@ export const ModelBreakdownTable = memo(function ModelBreakdownTable({
             <th style={{ padding: '6px 8px', fontWeight: 600, textAlign: 'right' }}>Tokens</th>
             <th style={{ padding: '6px 8px', fontWeight: 600, textAlign: 'right' }}>Share</th>
             <th style={{ padding: '6px 8px', fontWeight: 600, textAlign: 'right' }}>Est. cost</th>
+            <th style={{ padding: '6px 8px', fontWeight: 600, textAlign: 'right' }}>Avg tk/$</th>
           </tr>
         </thead>
         <tbody>
@@ -189,6 +205,9 @@ export const ModelBreakdownTable = memo(function ModelBreakdownTable({
                 </td>
                 <td style={{ padding: '6px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                   {row.costUsd != null ? formatUsd(row.costUsd) : '—'}
+                </td>
+                <td style={{ padding: '6px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  {row.avgTokensPerCost != null ? formatTokensPerCost(row.avgTokensPerCost) : '—'}
                 </td>
               </tr>
             );

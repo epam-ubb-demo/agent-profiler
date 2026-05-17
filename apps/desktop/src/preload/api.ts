@@ -88,6 +88,7 @@ export interface SessionListMetricsIpc {
   totalCacheReadTokens: number;
   totalCacheWriteTokens: number;
   totalCostUsd: number | null;
+  avgTokensPerCost: number | null;
   costConfidence: 'known' | 'estimated' | 'unknown';
   wallTimeMs: number | null;
   repository: string;

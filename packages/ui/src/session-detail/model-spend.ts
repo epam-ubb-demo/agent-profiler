@@ -15,9 +15,6 @@ import type { AssistantMessage, Session } from '@agent-profiler/core';
 import { calculateCost, DEFAULT_PRICING_TABLE } from '@agent-profiler/pricing';
 import type { CostConfidence, TokenUsage } from '@agent-profiler/pricing';
 
-/** GitHub Copilot premium request rate: $0.04 per request. */
-const PREMIUM_REQUEST_RATE_USD = 0.04;
-
 /* ------------------------------------------------------------------ */
 /*  Public interfaces                                                  */
 /* ------------------------------------------------------------------ */
@@ -28,10 +25,6 @@ export interface ModelSpendRow {
   readonly model: string;
   /** Number of API requests made to this model. */
   readonly requestCount: number;
-  /** Number of premium requests (derived from premiumRequestCost / $0.04 when available, null if unknown). */
-  readonly premiumRequests: number | null;
-  /** Cost based on premium requests × $0.04/request. */
-  readonly premiumRequestCostUsd: number;
   /** Total input tokens sent to the model. */
   readonly inputTokens: number;
   /** Total output tokens received from the model. */
@@ -56,10 +49,6 @@ export interface ModelSpendRow {
 export interface ModelSpendTotals {
   /** Sum of request counts across all models. */
   readonly requestCount: number;
-  /** Total premium request count from shutdown data. */
-  readonly premiumRequests: number;
-  /** Total premium request cost = totalPremiumRequests × $0.04. */
-  readonly premiumRequestCostUsd: number;
   /** Sum of input tokens across all models. */
   readonly inputTokens: number;
   /** Sum of output tokens across all models. */
@@ -181,8 +170,6 @@ export function computeModelSpend(
       return {
         model: m.model,
         requestCount: m.requestCount,
-        premiumRequests: m.premiumRequestCost > 0 ? Math.round(m.premiumRequestCost / PREMIUM_REQUEST_RATE_USD) : null,
-        premiumRequestCostUsd: m.premiumRequestCost,
         inputTokens: m.inputTokens,
         outputTokens: m.outputTokens,
         cacheReadTokens: m.cacheReadTokens,
@@ -198,7 +185,7 @@ export function computeModelSpend(
     rows.sort((a, b) => b.estimatedUsd - a.estimatedUsd);
 
     return {
-      ...buildTotals(rows, shutdown.totalPremiumRequests),
+      ...buildTotals(rows),
       confidence: costBreakdown.confidence,
       source: 'shutdown',
     };
@@ -216,8 +203,6 @@ export function computeModelSpend(
     return {
       model: m.model,
       requestCount: aggregated.requestCounts[m.model] ?? 0,
-      premiumRequests: null,
-      premiumRequestCostUsd: 0,
       inputTokens: m.inputTokens,
       outputTokens: m.outputTokens,
       cacheReadTokens: m.cacheReadTokens,
@@ -233,7 +218,7 @@ export function computeModelSpend(
   rows.sort((a, b) => b.estimatedUsd - a.estimatedUsd);
 
   return {
-    ...buildTotals(rows, 0),
+    ...buildTotals(rows),
     confidence: costBreakdown.confidence,
     source: 'messages',
   };
@@ -242,7 +227,7 @@ export function computeModelSpend(
 /**
  * Sum row values into footer totals.
  */
-function buildTotals(rows: readonly ModelSpendRow[], totalPremiumRequests: number): {
+function buildTotals(rows: readonly ModelSpendRow[]): {
   rows: readonly ModelSpendRow[];
   totals: ModelSpendTotals;
 } {
@@ -274,8 +259,6 @@ function buildTotals(rows: readonly ModelSpendRow[], totalPremiumRequests: numbe
     rows,
     totals: {
       requestCount,
-      premiumRequests: totalPremiumRequests,
-      premiumRequestCostUsd: totalPremiumRequests * PREMIUM_REQUEST_RATE_USD,
       inputTokens,
       outputTokens,
       cacheReadTokens,

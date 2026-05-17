@@ -42,6 +42,7 @@ vi.mock('../session-list-metrics', () => ({
     totalCacheReadTokens: 0,
     totalCacheWriteTokens: 0,
     totalCostUsd: 0.001,
+    avgTokensPerCost: 150_000,
     costConfidence: 'known' as const,
     wallTimeMs: 1000,
     repository: 'https://example.com/repo.git',

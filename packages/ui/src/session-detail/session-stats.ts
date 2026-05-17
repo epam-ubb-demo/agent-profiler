@@ -35,8 +35,8 @@ export interface SessionStats {
   readonly compactionCount: StatEntry;
   readonly subagentCount: StatEntry;
   readonly estimatedCost: StatEntry;
+  readonly avgTokensPerCost: StatEntry;
   readonly avgTokensPerToolCall: StatEntry;
-  readonly premiumRequests: StatEntry;
   readonly apiTime: StatEntry;
   readonly taskSuccess: StatEntry;
 }
@@ -127,6 +127,30 @@ function totalOutputTokensFromMessages(
   return sum;
 }
 
+function totalTokensFromUsage(
+  modelMetrics: readonly {
+    readonly inputTokens: number;
+    readonly outputTokens: number;
+    readonly cacheReadTokens: number;
+    readonly cacheWriteTokens: number;
+  }[],
+): number {
+  return modelMetrics.reduce(
+    (sum, m) =>
+      sum
+      + m.inputTokens
+      + m.outputTokens
+      + m.cacheReadTokens
+      + m.cacheWriteTokens,
+    0,
+  );
+}
+
+function formatTokensPerCost(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return NO_DATA;
+  return `${formatTokenCount(Math.round(value))}/$`;
+}
+
 /**
  * Derive all 11 KPI stat entries from a session.
  *
@@ -144,14 +168,12 @@ export function computeSessionStats(session: Session, options?: { isLive?: boole
     : computeDurationMs(session.startTs, session.endTs);
 
   const shutdown = session.shutdown;
+  const tokenUsage = shutdown ?? buildTokenUsageFromMessages(session.assistantMessages);
 
   const costBreakdown =
-    shutdown !== null
-      ? calculateCost(shutdown, DEFAULT_PRICING_TABLE)
-      : (() => {
-          const usage = buildTokenUsageFromMessages(session.assistantMessages);
-          return usage !== null ? calculateCost(usage, DEFAULT_PRICING_TABLE) : null;
-        })();
+    tokenUsage !== null
+      ? calculateCost(tokenUsage, DEFAULT_PRICING_TABLE)
+      : null;
 
   const toolCount = session.toolCalls.length;
 
@@ -166,6 +188,14 @@ export function computeSessionStats(session: Session, options?: { isLive?: boole
       : outputTotal !== null
         ? 0
         : null;
+
+  const avgTokensPerCost =
+    !isLive
+      && tokenUsage !== null
+      && costBreakdown !== null
+      && costBreakdown.totalUsd > 0
+      ? totalTokensFromUsage(tokenUsage.modelMetrics) / costBreakdown.totalUsd
+      : null;
 
   return {
     duration: {
@@ -206,19 +236,17 @@ export function computeSessionStats(session: Session, options?: { isLive?: boole
       label: 'Estimated Cost',
       pending: isLive,
     },
+    avgTokensPerCost: {
+      value: avgTokensPerCost,
+      display: formatTokensPerCost(avgTokensPerCost),
+      label: 'Avg Tokens / $',
+      pending: isLive,
+    },
     avgTokensPerToolCall: {
       value: avgTokens !== null ? avgTokens : null,
       display:
         avgTokens !== null ? formatTokenCount(avgTokens) : NO_DATA,
       label: 'Avg Tokens / Tool Call',
-    },
-    premiumRequests: {
-      value: shutdown !== null ? shutdown.totalPremiumRequests : null,
-      display:
-        shutdown !== null
-          ? String(shutdown.totalPremiumRequests)
-          : NO_DATA,
-      label: 'Premium Requests',
     },
     apiTime: {
       value: shutdown !== null ? shutdown.totalApiDurationMs : null,

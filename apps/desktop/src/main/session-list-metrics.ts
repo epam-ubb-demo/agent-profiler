@@ -72,6 +72,13 @@ export function extractSessionListMetrics(session: Session) {
     costConfidence = breakdown.confidence;
   }
 
+  const totalTokensForCost =
+    totalInput + totalOutput + totalCacheRead + totalCacheWrite;
+  const avgTokensPerCost =
+    totalCostUsd !== null && totalCostUsd > 0
+      ? totalTokensForCost / totalCostUsd
+      : null;
+
   let wallTimeMs: number | null = null;
   if (session.startTs && session.endTs) {
     const diff = new Date(session.endTs).getTime() - new Date(session.startTs).getTime();
@@ -103,6 +110,7 @@ export function extractSessionListMetrics(session: Session) {
     totalCacheReadTokens: totalCacheRead,
     totalCacheWriteTokens: totalCacheWrite,
     totalCostUsd,
+    avgTokensPerCost,
     costConfidence,
     wallTimeMs,
     repository: session.repository ?? '',

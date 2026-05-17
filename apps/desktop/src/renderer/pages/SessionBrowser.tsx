@@ -279,20 +279,25 @@ function rebucket(data: ReadonlyArray<DailyAnalytics>, granularity: Granularity)
 
   return Array.from(map.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([date, d]) => ({
-      date,
-      cost: d.cost,
-      wallTimeMs: d.wallTimeMs,
-      inputTokens: d.inputTokens,
-      outputTokens: d.outputTokens,
-      cacheReadTokens: d.cacheReadTokens,
-      cacheWriteTokens: d.cacheWriteTokens,
-      modelBreakdown: Array.from(d.modelTokens.entries()).map(([model, t]) => ({
-        model,
-        totalTokens: t.totalTokens,
-        costUsd: t.costUsd,
-      })),
-    }));
+    .map(([date, d]) => {
+      const totalTokens = d.inputTokens + d.outputTokens + d.cacheReadTokens + d.cacheWriteTokens;
+      const avgTokensPerCost = d.cost != null && d.cost > 0 ? totalTokens / d.cost : null;
+      return {
+        date,
+        cost: d.cost,
+        avgTokensPerCost,
+        wallTimeMs: d.wallTimeMs,
+        inputTokens: d.inputTokens,
+        outputTokens: d.outputTokens,
+        cacheReadTokens: d.cacheReadTokens,
+        cacheWriteTokens: d.cacheWriteTokens,
+        modelBreakdown: Array.from(d.modelTokens.entries()).map(([model, t]) => ({
+          model,
+          totalTokens: t.totalTokens,
+          costUsd: t.costUsd,
+        })),
+      };
+    });
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -500,9 +505,12 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
           })),
         };
         const costBreakdown = d.modelTokens.size > 0 ? calculateCost(tokenUsage, pricingTable) : null;
+        const totalTokens = d.inputTokens + d.outputTokens + d.cacheReadTokens + d.cacheWriteTokens;
+        const avgTokensPerCost = d.cost != null && d.cost > 0 ? totalTokens / d.cost : null;
         return {
           date,
           cost: d.cost,
+          avgTokensPerCost,
           wallTimeMs: d.wallTimeMs,
           inputTokens: d.inputTokens,
           outputTokens: d.outputTokens,
@@ -760,7 +768,7 @@ export function SessionBrowser({ onSelectSession }: SessionBrowserProps) {
               </div>
 
               {/* Main chart: cost + model token areas */}
-              <div className={styles.chartArea}>
+              <div className={styles.fullWidthChartArea}>
                 <CombinedAnalyticsChart data={chartData} granularity={granularity} />
               </div>
 

@@ -94,8 +94,6 @@ function makeModelSpend(overrides?: Partial<ModelSpendResult>): ModelSpendResult
       {
         model: 'claude-sonnet-4-20250514',
         requestCount: 5,
-        premiumRequests: null,
-        premiumRequestCostUsd: 3.5,
         inputTokens: 1000,
         outputTokens: 500,
         cacheReadTokens: 200,
@@ -109,8 +107,6 @@ function makeModelSpend(overrides?: Partial<ModelSpendResult>): ModelSpendResult
     ],
     totals: {
       requestCount: 5,
-      premiumRequests: 0,
-      premiumRequestCostUsd: 3.5,
       inputTokens: 1000,
       outputTokens: 500,
       cacheReadTokens: 200,
@@ -178,60 +174,42 @@ function makeFrequencyRows(callCount: number): readonly ToolFrequencyRow[] {
 
 describe('computeCostKpis', () => {
   it('returns correct labels, values, and display for happy path', () => {
-    const result = computeCostKpis(makeModelSpend(), makeHotConsumption(), false);
-    expect(result).toHaveLength(5);
+    const result = computeCostKpis(makeModelSpend(), makeHotConsumption());
+    expect(result).toHaveLength(4);
 
-    expect(result[0]!.label).toBe('Total Cost');
-    expect(result[0]!.value).toBe(3.5);
-    expect(result[0]!.display).toBe('$3.50');
+    expect(result[0]!.label).toBe('Models Used');
+    expect(result[0]!.value).toBe(1);
 
-    expect(result[1]!.label).toBe('Models Used');
-    expect(result[1]!.value).toBe(1);
+    expect(result[1]!.label).toBe('API Requests');
+    expect(result[1]!.value).toBe(5);
 
-    expect(result[2]!.label).toBe('API Requests');
-    expect(result[2]!.value).toBe(5);
-
-    expect(result[3]!.label).toBe('Cache Hit Rate');
+    expect(result[2]!.label).toBe('Cache Hit Rate');
     // 200 / 1000 = 20%
-    expect(result[3]!.value).toBeCloseTo(20, 0);
-    expect(result[3]!.display).toBe('20%');
+    expect(result[2]!.value).toBeCloseTo(20, 0);
+    expect(result[2]!.display).toBe('20%');
 
-    expect(result[4]!.label).toBe('Hottest Turn');
-    expect(result[4]!.value).toBe(5000);
-    expect(result[4]!.display).toBe('5K');
+    expect(result[3]!.label).toBe('Hottest Turn');
+    expect(result[3]!.value).toBe(5000);
+    expect(result[3]!.display).toBe('5K');
   });
 
   it('handles null modelSpend gracefully', () => {
-    const result = computeCostKpis(null, makeHotConsumption(), false);
+    const result = computeCostKpis(null, makeHotConsumption());
 
-    expect(result[0]!.value).toBeNull();
-    expect(result[0]!.display).toBe('—');
-
+    expect(result[0]!.value).toBe(0);
     expect(result[1]!.value).toBe(0);
-    expect(result[2]!.value).toBe(0);
 
-    expect(result[3]!.value).toBeNull();
-    expect(result[3]!.display).toBe('—');
+    expect(result[2]!.value).toBeNull();
+    expect(result[2]!.display).toBe('—');
   });
 
   it('handles empty hotConsumption entries', () => {
     const result = computeCostKpis(
       makeModelSpend(),
       makeHotConsumption({ entries: [] }),
-      false,
     );
-    expect(result[4]!.value).toBeNull();
-    expect(result[4]!.display).toBe('—');
-  });
-
-  it('marks Total Cost as pending when isLive', () => {
-    const result = computeCostKpis(makeModelSpend(), makeHotConsumption(), true);
-    expect(result[0]!.pending).toBe(true);
-  });
-
-  it('does not mark Total Cost as pending when not live', () => {
-    const result = computeCostKpis(makeModelSpend(), makeHotConsumption(), false);
-    expect(result[0]!.pending).toBeUndefined();
+    expect(result[3]!.value).toBeNull();
+    expect(result[3]!.display).toBe('—');
   });
 
   describe('cache hit rate edge cases', () => {
@@ -239,8 +217,6 @@ describe('computeCostKpis', () => {
       const spend = makeModelSpend({
         totals: {
           requestCount: 0,
-          premiumRequests: 0,
-          premiumRequestCostUsd: 0,
           inputTokens: 0,
           outputTokens: 0,
           cacheReadTokens: 0,
@@ -252,17 +228,15 @@ describe('computeCostKpis', () => {
           outputCostUsd: 0,
         },
       });
-      const result = computeCostKpis(spend, makeHotConsumption(), false);
-      expect(result[3]!.value).toBeNull();
-      expect(result[3]!.display).toBe('—');
+      const result = computeCostKpis(spend, makeHotConsumption());
+      expect(result[2]!.value).toBeNull();
+      expect(result[2]!.display).toBe('—');
     });
 
     it('returns 100% when all input is cache read', () => {
       const spend = makeModelSpend({
         totals: {
           requestCount: 1,
-          premiumRequests: 0,
-          premiumRequestCostUsd: 0,
           inputTokens: 500,
           outputTokens: 100,
           cacheReadTokens: 500,
@@ -274,17 +248,15 @@ describe('computeCostKpis', () => {
           outputCostUsd: 0,
         },
       });
-      const result = computeCostKpis(spend, makeHotConsumption(), false);
-      expect(result[3]!.value).toBe(100);
-      expect(result[3]!.display).toBe('100%');
+      const result = computeCostKpis(spend, makeHotConsumption());
+      expect(result[2]!.value).toBe(100);
+      expect(result[2]!.display).toBe('100%');
     });
 
     it('returns 0% when no cache reads', () => {
       const spend = makeModelSpend({
         totals: {
           requestCount: 1,
-          premiumRequests: 0,
-          premiumRequestCostUsd: 0,
           inputTokens: 500,
           outputTokens: 100,
           cacheReadTokens: 0,
@@ -296,9 +268,9 @@ describe('computeCostKpis', () => {
           outputCostUsd: 0,
         },
       });
-      const result = computeCostKpis(spend, makeHotConsumption(), false);
-      expect(result[3]!.value).toBe(0);
-      expect(result[3]!.display).toBe('0%');
+      const result = computeCostKpis(spend, makeHotConsumption());
+      expect(result[2]!.value).toBe(0);
+      expect(result[2]!.display).toBe('0%');
     });
   });
 });
@@ -308,41 +280,21 @@ describe('computeCostKpis', () => {
 // ===========================================================================
 
 describe('costKpiSeverity', () => {
-  it('returns pending class for index 0 when pending', () => {
-    const stat: StatEntry = { value: 1, display: '$1.00', label: 'Total Cost', pending: true };
-    expect(costKpiSeverity(0, stat)).toBe('statCardPending');
-  });
-
-  it('returns critical for index 0 when cost > $20', () => {
-    const stat: StatEntry = { value: 25, display: '$25.00', label: 'Total Cost' };
-    expect(costKpiSeverity(0, stat)).toBe('statCardCritical');
-  });
-
-  it('returns warning for index 0 when cost > $5 but <= $20', () => {
-    const stat: StatEntry = { value: 10, display: '$10.00', label: 'Total Cost' };
-    expect(costKpiSeverity(0, stat)).toBe('statCardWarning');
-  });
-
-  it('returns empty for index 0 when cost <= $5', () => {
-    const stat: StatEntry = { value: 3, display: '$3.00', label: 'Total Cost' };
-    expect(costKpiSeverity(0, stat)).toBe('');
-  });
-
-  it('returns warning for index 3 when cache hit rate < 30', () => {
+  it('returns warning for index 2 when cache hit rate < 30', () => {
     const stat: StatEntry = { value: 15, display: '15%', label: 'Cache Hit Rate' };
-    expect(costKpiSeverity(3, stat)).toBe('statCardWarning');
+    expect(costKpiSeverity(2, stat)).toBe('statCardWarning');
   });
 
-  it('returns empty for index 3 when cache hit rate >= 30', () => {
+  it('returns empty for index 2 when cache hit rate >= 30', () => {
     const stat: StatEntry = { value: 50, display: '50%', label: 'Cache Hit Rate' };
-    expect(costKpiSeverity(3, stat)).toBe('');
+    expect(costKpiSeverity(2, stat)).toBe('');
   });
 
   it('returns empty for unhandled indices', () => {
     const stat: StatEntry = { value: 999, display: '999', label: 'Other' };
+    expect(costKpiSeverity(0, stat)).toBe('');
     expect(costKpiSeverity(1, stat)).toBe('');
-    expect(costKpiSeverity(2, stat)).toBe('');
-    expect(costKpiSeverity(4, stat)).toBe('');
+    expect(costKpiSeverity(3, stat)).toBe('');
   });
 });
 
