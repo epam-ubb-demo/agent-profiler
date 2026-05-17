@@ -1,4 +1,5 @@
 import type { EnrichmentEvent } from '@agent-profiler/enrichment-core';
+import { toolIdSchema } from '@agent-profiler/enrichment-core';
 
 import type { DcrRow } from './schema.js';
 
@@ -39,4 +40,35 @@ export function mapEventsToDcrRows(
   pushTimestamp: string,
 ): DcrRow[] {
   return events.map(event => mapEventToDcrRow(event, pushTimestamp));
+}
+
+/**
+ * Reverse-maps a single {@link DcrRow} back to an {@link EnrichmentEvent}.
+ *
+ * `TimeGenerated` and `PushedAt` are sink-level columns (not present on
+ * {@link EnrichmentEvent}) and are intentionally dropped. `TenantId` and
+ * `SourceUser` use empty string as a sentinel for "not set"; they are omitted
+ * from the result to honour `exactOptionalPropertyTypes`.
+ *
+ * @param row - The DCR row to reverse-map.
+ */
+export function mapDcrRowToEvent(row: DcrRow): EnrichmentEvent {
+  if (row.SchemaVersion !== 1) {
+    throw new Error(`Unsupported schema version: ${row.SchemaVersion}`);
+  }
+  return {
+    schemaVersion: row.SchemaVersion,
+    ...(row.TenantId !== '' ? { tenantId: row.TenantId } : {}),
+    ...(row.SourceUser !== '' ? { userId: row.SourceUser } : {}),
+    tool: toolIdSchema.parse(row.Tool),
+    toolVersion: row.ToolVersion,
+    sourceMachine: row.SourceMachine,
+    sessionId: row.SessionId,
+    category: row.Category,
+    ordinal: row.Ordinal,
+    eventId: row.EventId,
+    eventTs: row.EventTs,
+    payloadSchema: row.PayloadSchema,
+    payload: JSON.parse(row.Payload) as Record<string, unknown>,
+  };
 }

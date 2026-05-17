@@ -1,0 +1,9 @@
+{
+  "extends": "@agent-profiler/tsconfig-base",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "./dist",
+    "types": ["node"]
+  },
+  "include": ["__tests__"]
+}
