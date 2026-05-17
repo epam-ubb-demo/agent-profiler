@@ -4,29 +4,7 @@ import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import type { PricingTable } from '@agent-profiler/pricing';
 
 import type { DailyAnalytics, Granularity } from './CombinedAnalyticsChart';
-import { smoothPath } from './svg-path-utils';
-
-/* ─── SVG path helpers ───────────────────────────────────────────────────────── */
-
-/** Simple linear SVG path — no Bézier smoothing. For area fills where shared
- *  boundaries must match exactly. */
-function linearPath(pts: ReadonlyArray<{ x: number; y: number }>): string {
-  if (pts.length === 0) return '';
-  let d = `M${pts[0]!.x},${pts[0]!.y}`;
-  for (let i = 1; i < pts.length; i++) {
-    d += ` L${pts[i]!.x},${pts[i]!.y}`;
-  }
-  return d;
-}
-
-function linearPathReverse(pts: ReadonlyArray<{ x: number; y: number }>): string {
-  if (pts.length <= 1) return '';
-  let d = '';
-  for (let i = pts.length - 1; i >= 0; i--) {
-    d += ` L${pts[i]!.x},${pts[i]!.y}`;
-  }
-  return d;
-}
+import { reversePathCommands, smoothPath } from './svg-path-utils';
 
 /* ─── Chart geometry ────────────────────────────────────────────────────────── */
 
@@ -342,7 +320,7 @@ export const EfficiencyChart = memo(function EfficiencyChart({
           {/* Cache savings area (green, bottom layer) */}
           {cacheAreaSegments.map((seg, si) => {
             const topPts = seg.map(({ x, yTop }) => ({ x, y: yTop }));
-            const topPath = linearPath(topPts);
+            const topPath = smoothPath(topPts);
             const bottomY = MARGIN.top + CHART_H;
             const areaPath =
               topPts.length > 0
@@ -355,9 +333,10 @@ export const EfficiencyChart = memo(function EfficiencyChart({
           {routingAreaSegments.map((seg, si) => {
             const topPts = seg.map(({ x, yTop }) => ({ x, y: yTop }));
             const bottomPts = seg.map(({ x, yBottom }) => ({ x, y: yBottom }));
-            const topPath = linearPath(topPts);
-            const bottomPath = linearPathReverse(bottomPts);
-            const areaPath = topPts.length > 0 ? `${topPath}${bottomPath} Z` : '';
+            const topPath = smoothPath(topPts);
+            const bottomSmoothPath = smoothPath(bottomPts);
+            const reversedBottom = reversePathCommands(bottomSmoothPath);
+            const areaPath = topPts.length > 0 ? `${topPath}${reversedBottom} Z` : '';
             return <path key={`routing-${si}`} d={areaPath} fill={ROUTING_FILL} />;
           })}
 
@@ -537,7 +516,7 @@ export const EfficiencyChart = memo(function EfficiencyChart({
               height: 10,
               background: CACHE_FILL,
               border: `1.5px solid ${CACHE_COLOUR}`,
-              borderRadius: 2,
+              borderRadius: '50%',
               flexShrink: 0,
             }}
           />
@@ -551,7 +530,7 @@ export const EfficiencyChart = memo(function EfficiencyChart({
               height: 10,
               background: ROUTING_FILL,
               border: `1.5px solid ${ROUTING_COLOUR}`,
-              borderRadius: 2,
+              borderRadius: '50%',
               flexShrink: 0,
             }}
           />

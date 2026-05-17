@@ -60,3 +60,59 @@ export function smoothPathReverse(pts: ReadonlyArray<{ x: number; y: number }>):
   // Strip the leading "Mx,y " — the caller already has a cursor position
   return full.replace(/^M[\d.eE+-]+,[\d.eE+-]+\s*/, '').replace(/^C/, ' C');
 }
+
+/**
+ * Reverse an SVG path produced by smoothPath() so it traces the same curve
+ * backwards.  Returns only the continuation portion (no leading M) so the
+ * caller can append it to an existing sub-path.
+ *
+ * Only handles the `M…C…C…` output of smoothPath(). For n ≤ 2 points
+ * (where smoothPath outputs M…L…), the reversal is a simple L command.
+ */
+export function reversePathCommands(pathStr: string): string {
+  if (!pathStr) return '';
+
+  // Parse the M command to get the starting point
+  const mMatch = pathStr.match(/^M([\d.eE+-]+),([\d.eE+-]+)/);
+  if (!mMatch) return '';
+  const startX = mMatch[1]!;
+  const startY = mMatch[2]!;
+
+  // Parse all C commands: each has 3 coordinate pairs (cp1, cp2, end)
+  const cRegex = /C([\d.eE+-]+),([\d.eE+-]+)\s+([\d.eE+-]+),([\d.eE+-]+)\s+([\d.eE+-]+),([\d.eE+-]+)/g;
+  const segments: Array<{
+    cp1x: string; cp1y: string;
+    cp2x: string; cp2y: string;
+    endX: string; endY: string;
+  }> = [];
+
+  let match: RegExpExecArray | null;
+  while ((match = cRegex.exec(pathStr)) !== null) {
+    segments.push({
+      cp1x: match[1]!, cp1y: match[2]!,
+      cp2x: match[3]!, cp2y: match[4]!,
+      endX: match[5]!, endY: match[6]!,
+    });
+  }
+
+  if (segments.length === 0) {
+    // smoothPath with 2 points produces M…L… — just return L to start
+    return ` L${startX},${startY}`;
+  }
+
+  // Reverse: iterate segments backwards, swap cp1↔cp2, and adjust endpoints.
+  // For segment i (from pointI to pointI+1 via cp1, cp2):
+  //   reversed = from pointI+1 to pointI via cp2, cp1
+  let d = '';
+  for (let i = segments.length - 1; i >= 0; i--) {
+    const seg = segments[i]!;
+    // The "start" of the original segment i is:
+    //   - segments[i-1].end for i > 0
+    //   - the M point for i === 0
+    const prevX = i > 0 ? segments[i - 1]!.endX : startX;
+    const prevY = i > 0 ? segments[i - 1]!.endY : startY;
+    d += ` C${seg.cp2x},${seg.cp2y} ${seg.cp1x},${seg.cp1y} ${prevX},${prevY}`;
+  }
+
+  return d;
+}

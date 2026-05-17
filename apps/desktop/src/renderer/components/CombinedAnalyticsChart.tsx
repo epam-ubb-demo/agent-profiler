@@ -399,6 +399,17 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
       ref={containerRef}
       style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%' }}
     >
+      <Text
+        cx="block"
+        fontSize="14"
+        fontWeight="600"
+        rawProps={{ style: { marginBottom: 4 } }}
+      >
+        Timeline
+      </Text>
+      <Text cx="block" fontSize="12" color="secondary" rawProps={{ style: { marginBottom: 8 } }}>
+        Cost and model token usage over time
+      </Text>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${dims.w} ${svgH}`}
