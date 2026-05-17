@@ -10,7 +10,7 @@
  *      0 events — confirming the marker written by planFull is valid.
  */
 
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -125,5 +125,44 @@ describe('marker corruption', () => {
     }
 
     expect(sink2.pushedEvents.length).toBe(0);
+  });
+
+  it('recovery path: delete corrupt marker then re-sync succeeds', async () => {
+    // Production note: a more robust production implementation might move the
+    // corrupt file to a quarantine path before deletion, but for integration
+    // tests a simple unlink is sufficient to verify the recovery behaviour.
+    const markerPath = join(tmpDir, MARKER_FILE_NAME);
+
+    // Write a corrupt marker file to simulate disk corruption
+    await writeFile(markerPath, '{corrupt json!!', 'utf8');
+
+    const markerStore = new FileMarkerStore(tmpDir);
+    const source = new CopilotCliEnrichmentSource(COPILOT_SESSIONS_ROOT);
+
+    const refs = await collectRefs(source);
+    expect(refs.length).toBeGreaterThan(0);
+    const ref = refs[0]!;
+
+    // Confirm reading the corrupt marker throws
+    await expect(markerStore.read(ref)).rejects.toThrow();
+
+    // Recovery: delete the corrupt file so the next read returns undefined
+    await unlink(markerPath);
+
+    // After deletion, read() returns undefined (no prior marker — clean slate)
+    const markerAfterDelete = await markerStore.read(ref);
+    expect(markerAfterDelete).toBeUndefined();
+
+    // Create a fresh store pointing at the same (now clean) directory and re-sync
+    const freshStore = new FileMarkerStore(tmpDir);
+    const orchestrator = new DefaultSyncOrchestrator(freshStore, { batchSize: 10 });
+    const planner = new DefaultSyncPlanner(freshStore, source);
+    const sink = new InMemorySink();
+
+    const plan = await planner.planFull(ref);
+    await expect(orchestrator.runPlan(plan, source, [sink])).resolves.toBeDefined();
+
+    // All events delivered — recovery from corruption is complete
+    expect(sink.pushedEvents.length).toBeGreaterThan(0);
   });
 });

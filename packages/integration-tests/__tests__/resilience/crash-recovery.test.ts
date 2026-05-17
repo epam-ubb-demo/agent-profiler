@@ -61,13 +61,14 @@ describe('crash recovery', () => {
 
     const markerStore = new FileMarkerStore(tmpDir);
 
-    // --- Run 1: crash after accepting 2 events ---
-    // batchSize:1 so each event is committed individually; failAfterPushCount:2
-    // means the first 2 events are committed (each in its own batch/marker write),
-    // then the 3rd push throws RetriableSinkError → category error, orchestrator continues.
+    // --- Run 1: crash after accepting some events ---
+    // Default batchSize means each category is processed as one batch.
+    // failAfterPushCount:2 causes a throw at the start of the third category's
+    // push (once ≥2 events have already been accepted across prior batches).
+    // The first two categories' cursors are committed; the rest are not.
     const sink1 = new InMemorySink({ failAfterPushCount: 2 });
     const source1 = new CopilotCliEnrichmentSource(COPILOT_SESSIONS_ROOT);
-    const orchestrator1 = new DefaultSyncOrchestrator(markerStore, { batchSize: 1, maxRetries: 0 });
+    const orchestrator1 = new DefaultSyncOrchestrator(markerStore, { maxRetries: 0 });
     const planner1 = new DefaultSyncPlanner(markerStore, source1);
 
     for (const ref of await collectRefs(source1)) {
@@ -82,7 +83,7 @@ describe('crash recovery', () => {
     // --- Run 2: fresh sink, same FileMarkerStore — recovery ---
     const sink2 = new InMemorySink();
     const source2 = new CopilotCliEnrichmentSource(COPILOT_SESSIONS_ROOT);
-    const orchestrator2 = new DefaultSyncOrchestrator(markerStore, { batchSize: 1 });
+    const orchestrator2 = new DefaultSyncOrchestrator(markerStore);
     const planner2 = new DefaultSyncPlanner(markerStore, source2);
 
     for (const ref of await collectRefs(source2)) {
@@ -105,10 +106,10 @@ describe('crash recovery', () => {
   it('markers reflect only committed batches after crash', async () => {
     const markerStore = new FileMarkerStore(tmpDir);
 
-    // --- Run 1: crash after 2 committed events ---
+    // --- Run 1: crash after committed events ---
     const sink1 = new InMemorySink({ failAfterPushCount: 2 });
     const source1 = new CopilotCliEnrichmentSource(COPILOT_SESSIONS_ROOT);
-    const orchestrator1 = new DefaultSyncOrchestrator(markerStore, { batchSize: 1, maxRetries: 0 });
+    const orchestrator1 = new DefaultSyncOrchestrator(markerStore, { maxRetries: 0 });
     const planner1 = new DefaultSyncPlanner(markerStore, source1);
 
     const refs = await collectRefs(source1);
@@ -129,7 +130,7 @@ describe('crash recovery', () => {
     // advance all the way to the end of the source (it stopped at the crash point).
     const sink2 = new InMemorySink();
     const source2 = new CopilotCliEnrichmentSource(COPILOT_SESSIONS_ROOT);
-    const orchestrator2 = new DefaultSyncOrchestrator(markerStore, { batchSize: 1 });
+    const orchestrator2 = new DefaultSyncOrchestrator(markerStore);
     const planner2 = new DefaultSyncPlanner(markerStore, source2);
 
     for (const ref2 of await collectRefs(source2)) {

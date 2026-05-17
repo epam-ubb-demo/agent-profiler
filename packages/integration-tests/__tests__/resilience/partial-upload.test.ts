@@ -14,10 +14,12 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { SessionRef } from '@agent-profiler/enrichment-core';
+import type { EnrichmentEvent, EnrichmentSink, PushResult, SessionRef } from '@agent-profiler/enrichment-core';
+import { RetriableSinkError } from '@agent-profiler/enrichment-core';
+import { createFakeMarkerStore } from '@agent-profiler/enrichment-core/testing';
 import { CopilotCliEnrichmentSource } from '@agent-profiler/source-copilot-cli';
 import { DefaultSyncOrchestrator, DefaultSyncPlanner, FileMarkerStore } from '@agent-profiler/sync-engine';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InMemorySink } from '../../src/in-memory-sink.js';
 
@@ -107,5 +109,45 @@ describe('partial upload', () => {
 
     // And run 2 must still deliver something (the un-committed categories)
     expect(sink2.pushedEvents.length).toBeGreaterThan(0);
+  });
+
+  it('orchestrator retries and accepts events when sink throws RetriableSinkError transiently', async () => {
+    // Uses a vi.fn() push that throws RetriableSinkError on its very first
+    // invocation then succeeds on all subsequent calls. Verifies that the
+    // orchestrator's retry logic kicks in and events are ultimately accepted.
+    const markerStore = createFakeMarkerStore();
+    const orchestrator = new DefaultSyncOrchestrator(markerStore, {
+      batchSize: 10,
+      maxRetries: 3,
+      baseRetryDelayMs: 0,
+    });
+    const source = new CopilotCliEnrichmentSource(COPILOT_SESSIONS_ROOT);
+    const planner = new DefaultSyncPlanner(markerStore, source);
+
+    let invocationCount = 0;
+    const pushFn = vi.fn(async (batch: readonly EnrichmentEvent[]): Promise<PushResult> => {
+      if (invocationCount++ === 0) {
+        throw new RetriableSinkError('Transient failure', 0);
+      }
+      return { acceptedOrdinals: batch.map((e) => e.ordinal), rejected: [] };
+    });
+
+    const retrySink: EnrichmentSink = {
+      id: 'retry-test-sink',
+      availability: async () => true,
+      supportsCategory: () => true,
+      push: pushFn,
+    };
+
+    let lastUpdate: Awaited<ReturnType<typeof orchestrator.runPlan>> | undefined;
+    for (const ref of await collectRefs(source)) {
+      const plan = await planner.planFull(ref);
+      lastUpdate = await orchestrator.runPlan(plan, source, [retrySink]);
+    }
+
+    // push was called more than once — at least one retry occurred
+    expect(pushFn.mock.calls.length).toBeGreaterThan(1);
+    // Events were eventually accepted despite the initial transient failure
+    expect(lastUpdate?.eventsAccepted).toBeGreaterThan(0);
   });
 });

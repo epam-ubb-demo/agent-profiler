@@ -15,9 +15,11 @@ export interface InMemorySinkOptions {
   /** When true, push() throws RetriableSinkError. */
   readonly failOnPush?: boolean | undefined;
   /**
-   * When set, push() throws RetriableSinkError once the total number of
-   * accepted events across all push() calls reaches this threshold.
-   * Simulates a crash mid-sync for resilience testing.
+   * When set, push() throws RetriableSinkError before processing any events
+   * in a call once this many events have already been accepted in prior push()
+   * calls. The throw happens at the start of the call (before any events in
+   * that batch are added to pushedEvents). Simulates a crash mid-sync for
+   * resilience testing.
    */
   readonly failAfterPushCount?: number | undefined;
 }
@@ -53,12 +55,12 @@ export class InMemorySink implements EnrichmentSink {
   async push(batch: readonly EnrichmentEvent[]): Promise<PushResult> {
     this.pushCallCount++;
 
-    if (this.failOnPush) {
-      throw new RetriableSinkError('Sink unavailable', 100);
-    }
-
     if (this.failAfterPushCount !== undefined && this.pushedEvents.length >= this.failAfterPushCount) {
       throw new RetriableSinkError('Sink unavailable after limit', 100);
+    }
+
+    if (this.failOnPush) {
+      throw new RetriableSinkError('Sink unavailable', 100);
     }
 
     const accepted: number[] = [];

@@ -152,4 +152,37 @@ describe('source unavailability', () => {
     // Working source delivers all events normally
     expect(sink.pushedEvents.length).toBeGreaterThan(0);
   });
+
+  it('working source delivers events when run in the same sync loop as a failing source', async () => {
+    // Verifies that a failing source does not prevent a working source from
+    // delivering its events when both are processed by the same orchestrator
+    // and sink within a single sync cycle.
+    const markerStore = createFakeMarkerStore();
+    const orchestrator = new DefaultSyncOrchestrator(markerStore, { batchSize: 10 });
+    const sink = new InMemorySink();
+
+    // Run failing source first — orchestrator must not crash
+    const failingSource = new AlwaysFailingSource();
+    const failingPlanner = new DefaultSyncPlanner(markerStore, failingSource);
+    let failingJobUpdate: Awaited<ReturnType<typeof orchestrator.runPlan>> | undefined;
+    for await (const ref of failingSource.discoverSessions()) {
+      const plan = await failingPlanner.planFull(ref);
+      failingJobUpdate = await orchestrator.runPlan(plan, failingSource, [sink]);
+    }
+
+    // Failing source must report error state and deliver no events
+    expect(failingJobUpdate?.state).toBe('error');
+    expect(sink.pushedEvents.length).toBe(0);
+
+    // Run working source next — same orchestrator, same sink
+    const workingSource = new CopilotCliEnrichmentSource(COPILOT_SESSIONS_ROOT);
+    const workingPlanner = new DefaultSyncPlanner(markerStore, workingSource);
+    for (const ref of await collectRefs(workingSource)) {
+      const plan = await workingPlanner.planFull(ref);
+      await orchestrator.runPlan(plan, workingSource, [sink]);
+    }
+
+    // Working source delivers its events unaffected by the earlier failure
+    expect(sink.pushedEvents.length).toBeGreaterThan(0);
+  });
 });

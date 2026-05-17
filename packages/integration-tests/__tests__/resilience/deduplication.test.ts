@@ -129,4 +129,50 @@ describe('deduplication', () => {
     const ids2 = sink2.pushedEvents.map((e) => e.eventId).sort();
     expect(ids2).toEqual(ids1);
   });
+
+  it('each eventId is delivered exactly twice when resetAll is called between runs with the same sink', async () => {
+    // Note: this test demonstrates that the orchestrator re-delivers events
+    // faithfully after resetAll(). Deduplication of re-delivered events is
+    // the responsibility of the sink layer, not the orchestrator.
+    const markerStore = createFakeMarkerStore();
+    const orchestrator = new DefaultSyncOrchestrator(markerStore, { batchSize: 10 });
+
+    // Use a single sink across both runs to collect all deliveries
+    const sink = new InMemorySink();
+    const source1 = new CopilotCliEnrichmentSource(COPILOT_SESSIONS_ROOT);
+    const planner1 = new DefaultSyncPlanner(markerStore, source1);
+    const refs = await collectRefs(source1);
+
+    // Run 1 — full sync, cursors committed
+    for (const ref of refs) {
+      const plan = await planner1.planIncremental(ref);
+      await orchestrator.runPlan(plan, source1, [sink]);
+    }
+
+    const firstRunCount = sink.pushedEvents.length;
+    expect(firstRunCount).toBeGreaterThan(0);
+
+    // Reset all markers so the next run re-delivers from ordinal 0
+    for (const ref of refs) {
+      await markerStore.resetAll(ref);
+    }
+
+    // Run 2 — same sink, markers reset → full re-delivery
+    const source2 = new CopilotCliEnrichmentSource(COPILOT_SESSIONS_ROOT);
+    const planner2 = new DefaultSyncPlanner(markerStore, source2);
+    for (const ref of await collectRefs(source2)) {
+      const plan = await planner2.planIncremental(ref);
+      await orchestrator.runPlan(plan, source2, [sink]);
+    }
+
+    // Each event was delivered exactly twice (once per run)
+    expect(sink.pushedEvents.length).toBe(firstRunCount * 2);
+    const idCounts = new Map<string, number>();
+    for (const event of sink.pushedEvents) {
+      idCounts.set(event.eventId, (idCounts.get(event.eventId) ?? 0) + 1);
+    }
+    for (const [, count] of idCounts) {
+      expect(count).toBe(2);
+    }
+  });
 });

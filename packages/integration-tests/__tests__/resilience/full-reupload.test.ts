@@ -74,9 +74,9 @@ describe('full re-upload', () => {
     // Same total count
     expect(sink2.pushedEvents.length).toBe(sink1.pushedEvents.length);
 
-    // Same event IDs (order-independent)
-    const ids1 = sink1.pushedEvents.map((e) => e.eventId).sort();
-    const ids2 = sink2.pushedEvents.map((e) => e.eventId).sort();
+    // Same event IDs in the same delivery order — planFull preserves ordinal order
+    const ids1 = sink1.pushedEvents.map((e) => e.eventId);
+    const ids2 = sink2.pushedEvents.map((e) => e.eventId);
     expect(ids2).toEqual(ids1);
   });
 
@@ -158,5 +158,46 @@ describe('full re-upload', () => {
 
     // Full re-upload delivers all events from ordinal 0
     expect(sink2.pushedEvents.length).toBe(sink1.pushedEvents.length);
+  });
+
+  it('resetAll() on a FileMarkerStore forces complete re-delivery with a fresh sink', async () => {
+    // Verifies the resetAll() recovery path: all category cursors are wiped,
+    // a subsequent incremental run behaves like a planFull (re-delivers everything).
+    const markerStore = new FileMarkerStore(tmpDir);
+    const orchestrator = new DefaultSyncOrchestrator(markerStore, { batchSize: 10 });
+
+    // Run 1 — full incremental sync, cursors committed to disk
+    const source1 = new CopilotCliEnrichmentSource(COPILOT_SESSIONS_ROOT);
+    const planner1 = new DefaultSyncPlanner(markerStore, source1);
+    const sink1 = new InMemorySink();
+    const refs = await collectRefs(source1);
+
+    for (const ref of refs) {
+      const plan = await planner1.planIncremental(ref);
+      await orchestrator.runPlan(plan, source1, [sink1]);
+    }
+
+    expect(sink1.pushedEvents.length).toBeGreaterThan(0);
+    const baselineIds = sink1.pushedEvents.map((e) => e.eventId);
+
+    // Reset all markers for each discovered ref
+    for (const ref of refs) {
+      await markerStore.resetAll(ref);
+    }
+
+    // Run 2 — new sink, same store (now reset) → full re-delivery
+    const source2 = new CopilotCliEnrichmentSource(COPILOT_SESSIONS_ROOT);
+    const planner2 = new DefaultSyncPlanner(markerStore, source2);
+    const sink2 = new InMemorySink();
+
+    for (const ref of await collectRefs(source2)) {
+      const plan = await planner2.planIncremental(ref);
+      await orchestrator.runPlan(plan, source2, [sink2]);
+    }
+
+    // All events re-delivered in the same order as the original run
+    expect(sink2.pushedEvents.length).toBe(sink1.pushedEvents.length);
+    const redeliveredIds = sink2.pushedEvents.map((e) => e.eventId);
+    expect(redeliveredIds).toEqual(baselineIds);
   });
 });
