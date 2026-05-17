@@ -1,0 +1,169 @@
+---
+title: Tenant Isolation Verification
+description: How to verify that tenant and user data partitioning is enforced correctly in Azure Log Analytics.
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+## Overview
+
+The multi-tenant isolation tests exercise the KQL filter helpers in [`packages/enrichment-core/src/kql-helpers.ts`](https://github.com/epam-ubb-demo/agent-profiler/blob/main/packages/enrichment-core/src/kql-helpers.ts) against a live Azure Log Analytics workspace to confirm that data is correctly partitioned by tenant and by user.
+
+| Test file | Task | What is verified |
+|---|---|---|
+| `multi-tenant-isolation.test.ts` | T12.5.1 | Events for two different tenants are pushed without rejection. |
+| `multi-tenant-isolation.test.ts` | T12.5.2 | `buildTeamViewFilter(tenantId)` returns **only** rows whose `TenantId` matches the requested tenant. |
+| `multi-tenant-isolation.test.ts` | T12.5.3 | `buildUserViewFilter(userId)` returns **only** rows whose `SourceUser` matches the requested user. |
+| `multi-tenant-isolation.test.ts` | T12.5.4 | An unfiltered admin query returns rows from **both** tenants simultaneously. |
+
+Each test run generates unique tenant and user identifiers via `crypto.randomUUID()` so concurrent runs and leftover data from previous runs never interfere with assertions.
+
+## Prerequisites
+
+- An active **Azure subscription** with a Log Analytics workspace deployed.
+- A **Data Collection Endpoint (DCE)** and **Data Collection Rule (DCR)** configured to ingest into the `AgentSessionEvents_CL` custom table with the stream name `Custom-AgentSessionEvents_CL`.
+- Infrastructure deployed via the Pulumi stack in [`infra/otel/`](https://github.com/epam-ubb-demo/agent-profiler/blob/main/infra/otel/README.md).
+- The same Azure credentials required by the [E2E Azure tests](./e2e-azure-testing).
+
+## Environment Setup
+
+Export the following environment variables before running the tests:
+
+| Variable | Description |
+|---|---|
+| `AZURE_DCE_ENDPOINT` | Data Collection Endpoint ingestion URL, e.g. `https://my-dce-abc123.eastus-1.ingest.monitor.azure.com` |
+| `AZURE_DCR_RULE_ID` | Immutable ID of the Data Collection Rule, e.g. `dcr-00000000000000000000000000000000` |
+| `AZURE_WORKSPACE_ID` | Log Analytics workspace ID (GUID), e.g. `00000000-0000-0000-0000-000000000000` |
+| `AZURE_TENANT_ID` | *(Optional)* Azure Entra ID tenant ID — required for service principal auth |
+| `AZURE_CLIENT_ID` | *(Optional)* Service principal client ID — required for service principal auth |
+| `AZURE_CLIENT_SECRET` | *(Optional)* Service principal client secret — required for service principal auth |
+
+## How the KQL Filter Helpers Work
+
+The filter helpers live in [`packages/enrichment-core/src/kql-helpers.ts`](https://github.com/epam-ubb-demo/agent-profiler/blob/main/packages/enrichment-core/src/kql-helpers.ts):
+
+### `buildTeamViewFilter(tenantId)`
+
+Returns a KQL `| where` clause that restricts results to a single tenant:
+
+```kusto
+| where TenantId == "acme-corp"
+```
+
+Use this to build a team-level view showing **all sessions** belonging to an organisation without exposing data from other tenants.
+
+### `buildUserViewFilter(userId)`
+
+Returns a KQL `| where` clause that restricts results to a single user:
+
+```kusto
+| where SourceUser == "alice@example.com"
+```
+
+Use this for a per-user view showing only sessions owned by a specific identity.
+
+### Composing filters
+
+Both helpers can be chained to narrow results to a single user within a specific tenant:
+
+```kusto
+AgentSessionEvents_CL
+| where TenantId == "acme-corp"
+| where SourceUser == "alice@example.com"
+| order by EventTs desc
+```
+
+An admin view requires neither filter — all tenants' data is visible to a caller with workspace-level read access.
+
+## Running the Tests
+
+<Steps>
+1. **Export environment variables**
+
+   ```bash
+   export AZURE_DCE_ENDPOINT="https://my-dce-abc123.eastus-1.ingest.monitor.azure.com"
+   export AZURE_DCR_RULE_ID="dcr-00000000000000000000000000000000"
+   export AZURE_WORKSPACE_ID="00000000-0000-0000-0000-000000000000"
+   # Service principal (if not using az login):
+   export AZURE_TENANT_ID="..."
+   export AZURE_CLIENT_ID="..."
+   export AZURE_CLIENT_SECRET="..."
+   ```
+
+2. **Run the isolation tests**
+
+   ```bash
+   pnpm --filter @agent-profiler/integration-tests test -- __tests__/e2e/multi-tenant-isolation.test.ts
+   ```
+
+3. **Or run the full E2E suite**
+
+   ```bash
+   pnpm --filter @agent-profiler/integration-tests test -- __tests__/e2e/
+   ```
+
+4. **Review output**
+
+   The `beforeAll` block pushes events for both tenants (up to 60 seconds).  Each of the three assertion tests then polls for ingestion independently, with up to 5 minutes per test.  Total wall-clock time for the suite is typically 6–8 minutes when Azure credentials are present.
+</Steps>
+
+## Expected Results
+
+### Passing run
+
+```
+✓ Multi-tenant isolation
+  ✓ team view filter (buildTeamViewFilter) returns only tenant-A rows
+  ✓ user view filter (buildUserViewFilter) returns only Alice rows
+  ✓ admin query (no tenant filter) returns rows from both tenant-A and tenant-B
+```
+
+### Without Azure credentials (CI behaviour)
+
+```
+↓ Multi-tenant isolation (skipped — AZURE_AVAILABLE is false)
+```
+
+All three assertion tests are skipped in under a millisecond when any required environment variable is missing.
+
+## Interpreting Failures
+
+### Team view returns rows for the wrong tenant
+
+`buildTeamViewFilter` is generating an incorrect `TenantId` comparison, or the DCR transformation is discarding or overwriting the `TenantId` column.  Inspect the stream mapping in the Data Collection Rule and run:
+
+```kusto
+AgentSessionEvents_CL
+| where TimeGenerated > ago(30m)
+| summarize count() by TenantId
+| order by count_ desc
+```
+
+### User view returns rows for other users
+
+`buildUserViewFilter` is producing an incorrect `SourceUser` comparison.  Also check whether the `SourceUser` column is correctly populated — the DCR sink writes `event.userId ?? ''` so an empty string sentinel is used when no user identity is set.
+
+### Admin query returns fewer rows than expected
+
+Both tenants' events were pushed but one set may not have been ingested yet.  Increase the polling timeout or retry manually:
+
+```kusto
+AgentSessionEvents_CL
+| where TimeGenerated > ago(1h)
+| summarize count() by TenantId
+| order by TimeGenerated desc
+```
+
+### Tests time out
+
+See the [Troubleshooting section in the E2E Azure Testing guide](./e2e-azure-testing#troubleshooting) for general ingestion timeout advice.
+
+## Security Model Context
+
+The isolation enforced by these tests reflects the intended access control model:
+
+- **Tenant boundary** — enforced at the KQL query layer via `TenantId`.  Every event ingested by the DCR sink carries the `tenantId` from the `EnrichmentEvent` envelope.  Organisation-level dashboards and APIs **must** always include a `buildTeamViewFilter` clause.
+- **User boundary** — enforced by `SourceUser`.  Personal views and per-developer analytics **must** always include a `buildUserViewFilter` clause.
+- **Admin access** — Callers who hold the **Log Analytics Reader** role on the workspace can query across all tenants.  This role should be restricted to infrastructure operators; application service principals should be scoped to query roles that enforce tenant filters at the application layer.
+
+The tests in this suite verify that the filter helpers produce correct KQL.  They do **not** test Azure RBAC enforcement — role assignment is an infrastructure concern covered by the Pulumi stack in [`infra/otel/`](https://github.com/epam-ubb-demo/agent-profiler/blob/main/infra/otel/README.md).
