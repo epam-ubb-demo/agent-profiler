@@ -495,7 +495,7 @@ describe('computeModelSpend', () => {
     expect(result.rows[0]!.model).toBe('model-from-shutdown');
   });
 
-  it('sets premiumRequestCostUsd to 0 when using message fallback', () => {
+  it('computes token-based estimate when using message fallback', () => {
     const session = makeSession({
       shutdown: null,
       assistantMessages: [

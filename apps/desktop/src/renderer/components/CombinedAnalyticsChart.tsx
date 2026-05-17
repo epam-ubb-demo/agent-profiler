@@ -406,7 +406,7 @@ function CombinedAnalyticsChartInner({ data, granularity = 'day' }: CombinedAnal
         height={svgH}
         style={{ display: 'block' }}
         role="img"
-        aria-label="Combined analytics chart: daily avgTokensPerCost and model token usage"
+        aria-label="Combined analytics chart: daily average tokens per cost and model token usage"
         data-testid="combined-analytics-chart"
       >
         {/* Clip path to enforce chart bounds */}

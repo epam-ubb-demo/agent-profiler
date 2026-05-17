@@ -14,9 +14,6 @@ vi.mock('../src/renderer/pages/SessionBrowser.module.css', () => ({
 vi.mock('../src/renderer/components/CombinedAnalyticsChart', () => ({
   CombinedAnalyticsChart: () => <div data-testid="combined-analytics-chart-stub" />,
 }));
-vi.mock('../src/renderer/components/AvgTokensPerCostChart', () => ({
-  AvgTokensPerCostChart: () => <div data-testid="avg-token-cost-chart-stub" />,
-}));
 
 // ── Fixture factories ─────────────────────────────────────────────────────────
 

@@ -855,8 +855,6 @@ describe('TokenCompositionChart', () => {
       rows: [],
       totals: {
         requestCount: 1,
-        premiumRequests: 0,
-        premiumRequestCostUsd: 0,
         estimatedUsd: totals.estimatedUsd ?? 0,
         inputCostUsd: totals.inputCostUsd ?? 0,
         cacheReadCostUsd: totals.cacheReadCostUsd ?? 0,

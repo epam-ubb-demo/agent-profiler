@@ -120,7 +120,7 @@ export const ModelBreakdownTable = memo(function ModelBreakdownTable({
           model,
           inputTokens: d.inputTokens,
           outputTokens: d.outputTokens,
-          totalTokens: d.inputTokens + d.outputTokens,
+          totalTokens,
           cacheReadTokens: d.cacheReadTokens,
           cacheWriteTokens: d.cacheWriteTokens,
           costUsd: d.costUsd,
