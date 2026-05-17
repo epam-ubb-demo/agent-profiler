@@ -1,0 +1,126 @@
+---
+title: "E2E Azure Testing"
+description: "How to run end-to-end tests against a live Azure Log Analytics workspace."
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+## Overview
+
+The E2E Azure validation tests exercise the full DCR push → ingestion → KQL query-back round-trip against a live Azure Log Analytics workspace.  They cover:
+
+| Test file | Test ID | What is validated |
+|---|---|---|
+| `dcr-push.test.ts` | T12.4.2 | Golden fixture events for all three tools (Copilot CLI, VS Code Chat, Claude Code) reach the DCR sink with zero rejections. |
+| `kql-query-back.test.ts` | T12.4.3 | Every envelope field (`EventId`, `SessionId`, `Tool`, `ToolVersion`, `Category`, `Ordinal`, `PayloadSchema`, `SchemaVersion`, `SourceMachine`, `SourceUser`, `TenantId`, `Payload`) round-trips without corruption. |
+| `time-generated.test.ts` | T12.4.4 | `TimeGenerated` reflects the push time, `EventTs` preserves the original event timestamp, and `PushedAt` ≈ `TimeGenerated`. |
+
+Each test run uses a unique `tenantId` (`e2e-<timestamp>`) to isolate data and avoid collisions with other runs or production traffic.
+
+## Prerequisites
+
+- An active **Azure subscription** with a Log Analytics workspace deployed.
+- A **Data Collection Endpoint (DCE)** and **Data Collection Rule (DCR)** configured to ingest into the `AgentSessionEvents_CL` custom table with the stream name `Custom-AgentSessionEvents_CL`.
+- Infrastructure deployed via the Pulumi stack in [`infra/otel/`](../../../../infra/otel/README.md).
+- Azure credentials — either:
+  - A **service principal** (`AZURE_TENANT_ID` + `AZURE_CLIENT_ID` + `AZURE_CLIENT_SECRET`), or
+  - An **interactive login** via `az login` (resolved automatically by `DefaultAzureCredential`).
+
+## Environment Setup
+
+Export the following environment variables before running the tests:
+
+| Variable | Description |
+|---|---|
+| `AZURE_DCE_ENDPOINT` | Data Collection Endpoint ingestion URL, e.g. `https://my-dce-abc123.eastus-1.ingest.monitor.azure.com` |
+| `AZURE_DCR_RULE_ID` | Immutable ID of the Data Collection Rule, e.g. `dcr-00000000000000000000000000000000` |
+| `AZURE_WORKSPACE_ID` | Log Analytics workspace ID (GUID), e.g. `00000000-0000-0000-0000-000000000000` |
+| `AZURE_TENANT_ID` | *(Optional)* Azure Entra ID tenant ID — required for service principal auth |
+| `AZURE_CLIENT_ID` | *(Optional)* Service principal client ID — required for service principal auth |
+| `AZURE_CLIENT_SECRET` | *(Optional)* Service principal client secret — required for service principal auth |
+
+These values are output by the Pulumi deployment.  See the [Azure Workspace Setup](#azure-workspace-setup) section for instructions.
+
+## Running Tests
+
+<Steps>
+1. **Export environment variables**
+
+   ```bash
+   export AZURE_DCE_ENDPOINT="https://my-dce-abc123.eastus-1.ingest.monitor.azure.com"
+   export AZURE_DCR_RULE_ID="dcr-00000000000000000000000000000000"
+   export AZURE_WORKSPACE_ID="00000000-0000-0000-0000-000000000000"
+   # Service principal (if not using az login):
+   export AZURE_TENANT_ID="..."
+   export AZURE_CLIENT_ID="..."
+   export AZURE_CLIENT_SECRET="..."
+   ```
+
+2. **Run the E2E tests**
+
+   ```bash
+   pnpm --filter @agent-profiler/integration-tests test -- --testPathPattern e2e
+   ```
+
+3. **Review output**
+
+   Expect to see the tests skipped in under a second if credentials are absent, or running for up to 6 minutes while awaiting ingestion when credentials are present.
+</Steps>
+
+## Azure Workspace Setup
+
+The Log Analytics workspace, Data Collection Endpoint, and Data Collection Rule are provisioned by the Pulumi stack in `infra/otel/`.  Follow the deployment guide in [`infra/otel/README.md`](../../../../infra/otel/README.md) to:
+
+- Deploy or update the infrastructure stack.
+- Retrieve the DCE endpoint URL, DCR rule ID, and workspace ID from Pulumi outputs.
+- Grant the service principal (or your user principal) the **Monitoring Metrics Publisher** role on the DCR, and the **Log Analytics Reader** role on the workspace.
+
+## CI Behaviour
+
+The E2E tests guard themselves with `describe.skipIf(!AZURE_AVAILABLE)`.  When any of `AZURE_DCE_ENDPOINT`, `AZURE_DCR_RULE_ID`, or `AZURE_WORKSPACE_ID` is missing or empty, the entire describe block is skipped — no Azure calls are made and the test suite exits in milliseconds.
+
+Standard CI pipelines (pull request checks, branch builds) do **not** set Azure credentials, so these tests never block merges.  They are intended to be run manually or in a dedicated integration environment.
+
+## Test Isolation
+
+Each test run tags its events with a unique `tenantId` of the form `e2e-<Unix timestamp in ms>`, e.g. `e2e-1748736000000`.  All KQL queries filter on this value:
+
+```kusto
+AgentSessionEvents_CL
+| where TenantId == "e2e-1748736000000"
+| order by Ordinal asc
+```
+
+This means:
+
+- Multiple test runs can execute concurrently without interfering with each other.
+- Stale data from previous runs does not affect assertions.
+- You can query past runs by their `TenantId` prefix for debugging.
+
+## Troubleshooting
+
+### Tests time out without finding rows
+
+Azure Monitor ingestion typically completes within 5 minutes but can take longer under high load.  The tests allow up to 5 minutes (`INGESTION_DELAY_MS = 300_000`).  If they time out:
+
+1. Verify the DCE endpoint and DCR rule ID are correct.
+2. Check that the custom table `AgentSessionEvents_CL` exists in the workspace and has the expected column schema.
+3. Inspect the DCR transformation if one is configured — a faulty transformation may silently drop rows.
+4. Query the workspace directly with a broad time range to look for recent rows:
+   ```kusto
+   AgentSessionEvents_CL
+   | where TimeGenerated > ago(1h)
+   | order by TimeGenerated desc
+   | take 10
+   ```
+
+### Authentication errors
+
+- Confirm the service principal credentials are exported correctly.
+- Ensure the service principal has the **Monitoring Metrics Publisher** role on the DCR for ingestion.
+- Ensure the service principal has the **Log Analytics Reader** role on the workspace for KQL queries.
+- Run `az account show` to verify the active subscription.
+
+### Stale data appearing in results
+
+If tests assert exact row counts and find more rows than expected, an earlier test run may have pushed to the same workspace.  The `TenantId` filter ensures isolation — if you still see unexpected data, check that the `testRunId` is truly unique.  The format `e2e-${Date.now()}` uses millisecond precision, which is sufficient for sequential runs on a single machine but may collide in truly parallel runs.  For parallel CI jobs, consider appending `Math.random()` or the job ID.
