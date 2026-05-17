@@ -7,8 +7,9 @@ import type {
   PushResult,
   SessionEnrichmentSource,
   SyncPlan,
+  TenantConfig,
 } from '@agent-profiler/enrichment-core';
-import { RetriableSinkError } from '@agent-profiler/enrichment-core';
+import { buildEventId, RetriableSinkError } from '@agent-profiler/enrichment-core';
 
 export interface JobUpdate {
   readonly sessionId: string;
@@ -28,6 +29,8 @@ export interface SyncOrchestratorOptions {
   readonly maxRetries?: number | undefined;
   /** Base backoff delay in ms. Default 1000. Uses exponential backoff. */
   readonly baseRetryDelayMs?: number | undefined;
+  /** Cross-cutting tenant/user identity injected into every event before push. */
+  readonly tenantConfig?: TenantConfig | undefined;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -93,8 +96,37 @@ export class DefaultSyncOrchestrator {
       let categoryError: string | undefined;
 
       const flushBatch = async (batchToFlush: readonly EnrichmentEvent[]): Promise<void> => {
-        const lastEvent = batchToFlush.at(-1);
-        if (lastEvent === undefined) return;
+        const lastRaw = batchToFlush.at(-1);
+        if (lastRaw === undefined) return;
+
+        // Enrich events with tenant/user config if provided.
+        // Creates new event objects — originals are never mutated.
+        const configTenantId = this.options?.tenantConfig?.tenantId;
+        const configUserId = this.options?.tenantConfig?.userId;
+        const pushBatch: readonly EnrichmentEvent[] =
+          configTenantId !== undefined || configUserId !== undefined
+            ? batchToFlush.map((event) => {
+                const newTenantId = configTenantId ?? event.tenantId;
+                const newUserId = configUserId ?? event.userId;
+                return {
+                  ...event,
+                  ...(configTenantId !== undefined ? { tenantId: configTenantId } : {}),
+                  ...(configUserId !== undefined ? { userId: configUserId } : {}),
+                  eventId: buildEventId({
+                    ...(newTenantId !== undefined ? { tenantId: newTenantId } : {}),
+                    ...(newUserId !== undefined ? { userId: newUserId } : {}),
+                    tool: event.tool,
+                    sessionId: event.sessionId,
+                    category: event.category,
+                    ordinal: event.ordinal,
+                  }),
+                };
+              })
+            : batchToFlush;
+
+        // lastRaw is always defined (batch non-empty), and pushBatch has the same
+        // length, so the fallback to lastRaw is purely for TypeScript's benefit.
+        const lastEvent = pushBatch.at(-1) ?? lastRaw;
 
         let firstResult: PushResult | undefined;
 
@@ -107,7 +139,7 @@ export class DefaultSyncOrchestrator {
           while (true) {
             try {
               sendUpdate('pushing');
-              const result = await sink.push(batchToFlush);
+              const result = await sink.push(pushBatch);
               if (firstResult === undefined) {
                 firstResult = result;
               }

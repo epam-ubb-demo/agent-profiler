@@ -42,3 +42,15 @@ export { SourceRegistry, SinkRegistry, ProjectorRegistry } from './registries/in
 
 // Shared errors
 export { DuplicateRegistrationError, NotFoundError } from './errors.js';
+
+// Multi-tenant configuration
+export type { TenantConfig } from './tenant-config.js';
+
+// KQL helpers for tenant/user partitioned queries
+export {
+  AGENT_SESSION_EVENTS_TABLE,
+  escapeKqlString,
+  buildTeamViewFilter,
+  buildUserViewFilter,
+  buildScopedSessionListKql,
+} from './kql-helpers.js';

@@ -1,0 +1,227 @@
+---
+title: "Multi-Tenant Configuration"
+description: Configure tenant and user identifiers so every synced session is labelled with the correct partition keys, enabling team-wide and per-user analytics in Azure Monitor.
+---
+
+import { Steps, Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Agent Profiler supports **multi-tenant partitioning** via two optional partition keys —
+`tenantId` and `userId` — that are stamped on every outbound enrichment event before it
+reaches Azure Monitor. This lets you share a single Log Analytics workspace across a whole
+team whilst still querying data by workspace, team, or individual contributor.
+
+## Overview
+
+When you configure `tenantId` and/or `userId` in the sync orchestrator options, the
+sync engine injects those values as a cross-cutting concern: every event from every
+source adapter is enriched before it is pushed to the DCR sink. The original event
+objects produced by sources are never mutated — enrichment creates new copies.
+
+The partition keys are stored in two Azure Monitor columns:
+
+| Column | Maps to | Purpose |
+|--------|---------|---------|
+| `TenantId` | `tenantConfig.tenantId` | Workspace or team identifier |
+| `SourceUser` | `tenantConfig.userId` | Individual contributor identifier |
+
+## Configuring Tenant and User Identifiers
+
+Pass `tenantConfig` when constructing `DefaultSyncOrchestrator`:
+
+<Tabs>
+  <TabItem label="Team workspace">
+```typescript
+import { DefaultSyncOrchestrator } from '@agent-profiler/sync-engine';
+
+const orchestrator = new DefaultSyncOrchestrator(markerStore, {
+  tenantConfig: {
+    tenantId: 'acme-corp',      // shared across the whole team
+    userId: 'alice@acme.com',   // individual contributor
+  },
+});
+```
+  </TabItem>
+  <TabItem label="Personal workspace">
+```typescript
+// No tenantConfig — sessions are fully personal
+const orchestrator = new DefaultSyncOrchestrator(markerStore);
+
+// Or with only a userId (no team partitioning):
+const orchestrator = new DefaultSyncOrchestrator(markerStore, {
+  tenantConfig: { userId: 'alice@acme.com' },
+});
+```
+  </TabItem>
+</Tabs>
+
+<Aside type="note">
+Both `tenantId` and `userId` are optional. Omit either or both if you do not need that
+level of partitioning. Events without a `tenantId` are visible to anyone who can query
+the workspace — use `tenantId` whenever sessions from multiple teams land in the same
+Log Analytics workspace.
+</Aside>
+
+## Access Patterns
+
+The table below describes the four main query scopes and the KQL filter required for each:
+
+| Pattern | `tenantId` | `userId` | KQL filter |
+|---------|-----------|---------|------------|
+| Personal workspace (own machine only) | absent | absent | _(none)_ |
+| Personal with identity (own sessions) | absent | present | `| where SourceUser == "alice@acme.com"` |
+| Team — own sessions | present | present | `| where TenantId == "acme-corp" \| where SourceUser == "alice@acme.com"` |
+| Team — all sessions (analytics) | present | absent | `| where TenantId == "acme-corp"` |
+
+## KQL Helper Reference
+
+`@agent-profiler/enrichment-core` exports three helper functions that generate
+safe, injection-resistant KQL clauses for the `AgentSessionEvents_CL` table.
+
+### `buildTeamViewFilter(tenantId)`
+
+Returns a KQL `| where` clause that filters to all sessions belonging to the given tenant.
+
+```typescript
+import { buildTeamViewFilter } from '@agent-profiler/enrichment-core';
+
+buildTeamViewFilter('acme-corp');
+// => '| where TenantId == "acme-corp"'
+```
+
+### `buildUserViewFilter(userId)`
+
+Returns a KQL `| where` clause that filters to all sessions belonging to a single user.
+
+```typescript
+import { buildUserViewFilter } from '@agent-profiler/enrichment-core';
+
+buildUserViewFilter('alice@acme.com');
+// => '| where SourceUser == "alice@acme.com"'
+```
+
+### `buildScopedSessionListKql(scope)`
+
+Builds a complete session-list query with optional tenant and user filters.  
+Both scope fields are optional. Omit either to broaden the scope.
+
+```typescript
+import { buildScopedSessionListKql } from '@agent-profiler/enrichment-core';
+
+const kql = buildScopedSessionListKql({
+  tenantId: 'acme-corp',
+  userId: 'alice@acme.com',
+  limit: 100,          // optional, defaults to 200
+});
+```
+
+Produces:
+
+```kusto
+AgentSessionEvents_CL
+| where TenantId == "acme-corp"
+| where SourceUser == "alice@acme.com"
+| summarize 
+    Tool = take_any(Tool),
+    EventCount = count(),
+    FirstEventTs = min(EventTs),
+    LastEventTs = max(EventTs),
+    SourceMachine = take_any(SourceMachine)
+  by SessionId
+| order by LastEventTs desc
+| take 100
+```
+
+### `escapeKqlString(value)`
+
+Escapes a raw string so it can be safely embedded inside a KQL double-quoted string
+literal. Protects against injection via backslashes, quotes, and newlines.
+
+```typescript
+import { escapeKqlString } from '@agent-profiler/enrichment-core';
+
+escapeKqlString('org"name');     // => 'org\\"name'
+escapeKqlString('path\\file');   // => 'path\\\\file'
+```
+
+## Example KQL Queries
+
+### List all sessions for a team
+
+```kusto
+AgentSessionEvents_CL
+| where TenantId == "acme-corp"
+| summarize
+    Tool = take_any(Tool),
+    EventCount = count(),
+    FirstEventTs = min(EventTs),
+    LastEventTs = max(EventTs),
+    SourceMachine = take_any(SourceMachine),
+    SourceUser = take_any(SourceUser)
+  by SessionId
+| order by LastEventTs desc
+| take 200
+```
+
+### List sessions for a specific contributor
+
+```kusto
+AgentSessionEvents_CL
+| where TenantId == "acme-corp"
+| where SourceUser == "alice@acme.com"
+| summarize
+    Tool = take_any(Tool),
+    EventCount = count(),
+    LastEventTs = max(EventTs)
+  by SessionId
+| order by LastEventTs desc
+| take 50
+```
+
+### Count sessions per contributor (team analytics)
+
+```kusto
+AgentSessionEvents_CL
+| where TenantId == "acme-corp"
+| summarize SessionCount = dcount(SessionId) by SourceUser
+| order by SessionCount desc
+```
+
+### Tool-usage breakdown for a team
+
+```kusto
+AgentSessionEvents_CL
+| where TenantId == "acme-corp"
+| summarize SessionCount = dcount(SessionId) by Tool
+| order by SessionCount desc
+```
+
+## Security Model
+
+<Aside type="caution">
+Multi-tenant partitioning in Agent Profiler is **application-level filtering**, not
+row-level security. Anyone who holds a valid Azure Monitor Reader role for the Log
+Analytics workspace can query all rows regardless of `TenantId` or `SourceUser`.
+</Aside>
+
+To enforce true data isolation between tenants, use **separate Log Analytics workspaces**
+(one per tenant) and scope each DCR endpoint to the corresponding workspace. The
+`tenantId` / `userId` partition keys are then most useful for organising queries
+_within_ a workspace that is already scoped to a single trusted team.
+
+## Gradual Rollout
+
+<Steps>
+1. **Start with personal mode** — deploy without `tenantConfig`. All sessions land in
+   the workspace with empty `TenantId` and `SourceUser` columns.
+
+2. **Add `userId`** — set only `tenantConfig.userId`. Individual sessions become
+   attributable, but all contributors still share the same query scope.
+
+3. **Add `tenantId`** — once the team is onboarded, set `tenantConfig.tenantId` to
+   segment the workspace by team. Existing events (written without a `tenantId`) can
+   still be queried with explicit `| where TenantId == ""` if needed.
+
+4. **Separate workspaces** — for strict isolation, provision a dedicated Log Analytics
+   workspace and DCR endpoint per team, and remove `tenantId` filtering from queries
+   (the workspace boundary provides the isolation).
+</Steps>
