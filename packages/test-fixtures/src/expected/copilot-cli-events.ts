@@ -40,13 +40,14 @@ export const expectedCopilotCliEvents: readonly EnrichmentEvent[] = [
         modelMetrics: [
           {
             model: 'claude-sonnet-4-20250514',
-            requests: 4,
-            cost: 1,
             inputTokens: 7500,
             outputTokens: 495,
             cacheReadTokens: 5550,
             cacheWriteTokens: 40,
             reasoningTokens: 0,
+            requestCount: 4,
+            premiumRequestCost: 1,
+            apiDurationMs: 0,
           },
         ],
         currentTokens: 6200,
@@ -54,9 +55,10 @@ export const expectedCopilotCliEvents: readonly EnrichmentEvent[] = [
         conversationTokens: 4000,
         toolDefinitionsTokens: 400,
         codeChanges: { 'src/index.ts': 1 },
+        timestamp: '2025-06-01T10:00:15.000Z',
       },
       modelChanges: [
-        { model: 'claude-sonnet-4-20250514', newModel: 'claude-sonnet-4-20250514', timestamp: '2025-06-01T10:00:07.000Z' },
+        { timestamp: '2025-06-01T10:00:07.000Z', model: 'claude-sonnet-4-20250514' },
       ],
     },
   },
