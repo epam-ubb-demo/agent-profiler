@@ -174,7 +174,7 @@ function makeFrequencyRows(callCount: number): readonly ToolFrequencyRow[] {
 
 describe('computeCostKpis', () => {
   it('returns correct labels, values, and display for happy path', () => {
-    const result = computeCostKpis(makeModelSpend(), makeHotConsumption(), false);
+    const result = computeCostKpis(makeModelSpend(), makeHotConsumption());
     expect(result).toHaveLength(4);
 
     expect(result[0]!.label).toBe('Models Used');
@@ -194,7 +194,7 @@ describe('computeCostKpis', () => {
   });
 
   it('handles null modelSpend gracefully', () => {
-    const result = computeCostKpis(null, makeHotConsumption(), false);
+    const result = computeCostKpis(null, makeHotConsumption());
 
     expect(result[0]!.value).toBe(0);
     expect(result[1]!.value).toBe(0);
@@ -207,7 +207,6 @@ describe('computeCostKpis', () => {
     const result = computeCostKpis(
       makeModelSpend(),
       makeHotConsumption({ entries: [] }),
-      false,
     );
     expect(result[3]!.value).toBeNull();
     expect(result[3]!.display).toBe('—');
@@ -229,7 +228,7 @@ describe('computeCostKpis', () => {
           outputCostUsd: 0,
         },
       });
-      const result = computeCostKpis(spend, makeHotConsumption(), false);
+      const result = computeCostKpis(spend, makeHotConsumption());
       expect(result[2]!.value).toBeNull();
       expect(result[2]!.display).toBe('—');
     });
@@ -249,7 +248,7 @@ describe('computeCostKpis', () => {
           outputCostUsd: 0,
         },
       });
-      const result = computeCostKpis(spend, makeHotConsumption(), false);
+      const result = computeCostKpis(spend, makeHotConsumption());
       expect(result[2]!.value).toBe(100);
       expect(result[2]!.display).toBe('100%');
     });
@@ -269,7 +268,7 @@ describe('computeCostKpis', () => {
           outputCostUsd: 0,
         },
       });
-      const result = computeCostKpis(spend, makeHotConsumption(), false);
+      const result = computeCostKpis(spend, makeHotConsumption());
       expect(result[2]!.value).toBe(0);
       expect(result[2]!.display).toBe('0%');
     });
