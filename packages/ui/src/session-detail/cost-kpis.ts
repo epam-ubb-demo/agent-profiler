@@ -4,7 +4,7 @@
  * Derives 5 stat entries from model spend and hot-consumption data.
  */
 
-import { formatCost, formatTokenCount } from '../comparative/format';
+import { formatTokenCount } from '../comparative/format';
 
 import type { HotConsumptionResult } from './hot-consumption';
 import type { ModelSpendResult } from './model-spend';
@@ -24,7 +24,6 @@ import type { StatEntry } from './session-stats';
 export function computeCostKpis(
   modelSpend: ModelSpendResult | null,
   hotConsumption: HotConsumptionResult,
-  isLive: boolean,
 ): readonly StatEntry[] {
   /* 0 — Models Used */
   const modelsUsed: StatEntry = {

@@ -115,8 +115,8 @@ function SessionDetailViewInner({ session, onBack, onSessionNavigate }: SessionD
 
   /* --- per-tab KPI strips ------------------------------------------ */
   const costKpis = useMemo(
-    () => computeCostKpis(modelSpend, hotConsumption, isLive),
-    [modelSpend, hotConsumption, isLive],
+    () => computeCostKpis(modelSpend, hotConsumption),
+    [modelSpend, hotConsumption],
   );
   const toolKpis = useMemo(
     () => computeToolKpis(toolStats, toolStats.frequencyStats, toolInventory),
