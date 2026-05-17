@@ -3,11 +3,10 @@
  * decomposed into cache savings (green) and routing savings (blue) stacked areas.
  */
 
+import type { PricingTable } from '@agent-profiler/pricing';
+import { screen, cleanup, fireEvent } from '@testing-library/react';
 import { describe, it, expect, afterEach } from 'vitest';
 
-import { screen, cleanup, fireEvent } from '@testing-library/react';
-
-import type { PricingTable } from '@agent-profiler/pricing';
 import type { DailyAnalytics } from '../src/renderer/components/CombinedAnalyticsChart';
 import { EfficiencyChart } from '../src/renderer/components/EfficiencyChart';
 
@@ -33,6 +32,7 @@ function makeDay(
 ): DailyAnalytics {
   return {
     cost: null,
+    avgTokensPerCost: null,
     wallTimeMs: null,
     inputTokens: 0,
     outputTokens: 0,

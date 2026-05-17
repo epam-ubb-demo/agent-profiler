@@ -1,7 +1,6 @@
+import type { PricingTable } from '@agent-profiler/pricing';
 import { Text } from '@epam/uui';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
-import type { PricingTable } from '@agent-profiler/pricing';
 
 import type { DailyAnalytics, Granularity } from './CombinedAnalyticsChart';
 import { reversePathCommands, smoothPath } from './svg-path-utils';
@@ -185,7 +184,7 @@ export const EfficiencyChart = memo(function EfficiencyChart({
         width: Math.min(halfGap * 2, chartW),
       };
     });
-  }, [n, xScale, chartW]);
+  }, [n, xScale, chartW, points]);
 
   // Total savings line — segments split at gaps (null savings)
   const totalSegments = useMemo((): Array<Array<{ x: number; y: number; idx: number }>> => {
