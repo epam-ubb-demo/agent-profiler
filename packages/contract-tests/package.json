@@ -1,11 +1,8 @@
 {
-  "name": "@agent-profiler/sink-dcr",
+  "name": "@agent-profiler/contract-tests",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
-  },
   "scripts": {
     "build": "tsc --build",
     "lint": "eslint .",
@@ -14,10 +11,14 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@agent-profiler/adapters-claude-code": "workspace:*",
+    "@agent-profiler/adapters-vscode-chat": "workspace:*",
     "@agent-profiler/enrichment-core": "workspace:*",
-    "@azure/identity": "^4.4.0",
-    "@azure/monitor-ingestion": "^1.1.0",
-    "zod": "^3.0.0"
+    "@agent-profiler/sink-dcr": "workspace:*",
+    "@agent-profiler/source-claude-code": "workspace:*",
+    "@agent-profiler/source-copilot-cli": "workspace:*",
+    "@agent-profiler/source-vscode-chat": "workspace:*",
+    "@agent-profiler/test-fixtures": "workspace:*"
   },
   "devDependencies": {
     "@agent-profiler/tsconfig-base": "workspace:*",

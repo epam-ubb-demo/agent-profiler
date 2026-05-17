@@ -1,0 +1,118 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`DcrRow shape snapshots > DcrRow field names are stable (sorted) 1`] = `
+[
+  "Category",
+  "EventId",
+  "EventTs",
+  "Ordinal",
+  "Payload",
+  "PayloadSchema",
+  "PushedAt",
+  "SchemaVersion",
+  "SessionId",
+  "SourceMachine",
+  "SourceUser",
+  "TenantId",
+  "TimeGenerated",
+  "Tool",
+  "ToolVersion",
+]
+`;
+
+exports[`DcrRow shape snapshots > full metadata DcrRow snapshot (timestamps fixed) 1`] = `
+{
+  "Category": "metadata",
+  "EventId": "::copilot-cli:golden-copilot-001:metadata:0",
+  "EventTs": "2025-06-01T10:00:00.000Z",
+  "Ordinal": 0,
+  "Payload": "{"copilotVersion":"1.5.0","selectedModel":"claude-sonnet-4-20250514","reasoningEffort":"medium","repository":"test-org/golden-project","branch":"main","cwd":"/home/dev/golden-project","startTs":"2025-06-01T10:00:00.000Z","endTs":"2025-06-01T10:00:15.000Z","success":true,"parseStatus":{"status":"ok","error":null},"shutdown":{"totalPremiumRequests":4,"totalApiDurationMs":9000,"modelMetrics":[{"model":"claude-sonnet-4-20250514","inputTokens":7500,"outputTokens":495,"cacheReadTokens":5550,"cacheWriteTokens":40,"reasoningTokens":0,"requestCount":4,"premiumRequestCost":1,"apiDurationMs":0}],"currentTokens":6200,"systemTokens":1800,"conversationTokens":4000,"toolDefinitionsTokens":400,"codeChanges":{"src/index.ts":1},"timestamp":"2025-06-01T10:00:15.000Z"},"modelChanges":[{"timestamp":"2025-06-01T10:00:07.000Z","model":"claude-sonnet-4-20250514"}]}",
+  "PayloadSchema": "copilot-cli/metadata/v1",
+  "PushedAt": "2025-01-01T00:00:00.000Z",
+  "SchemaVersion": 1,
+  "SessionId": "golden-copilot-001",
+  "SourceMachine": "test-host",
+  "SourceUser": "",
+  "TenantId": "",
+  "TimeGenerated": "2025-01-01T00:00:00.000Z",
+  "Tool": "copilot-cli",
+  "ToolVersion": "1.5.0",
+}
+`;
+
+exports[`EnrichmentEvent shape snapshots > EnrichmentEvent field names are stable (sorted) 1`] = `
+[
+  "category",
+  "eventId",
+  "eventTs",
+  "ordinal",
+  "payload",
+  "payloadSchema",
+  "schemaVersion",
+  "sessionId",
+  "sourceMachine",
+  "tool",
+  "toolVersion",
+]
+`;
+
+exports[`EnrichmentEvent shape snapshots > full metadata EnrichmentEvent snapshot 1`] = `
+{
+  "category": "metadata",
+  "eventId": "::copilot-cli:golden-copilot-001:metadata:0",
+  "eventTs": "2025-06-01T10:00:00.000Z",
+  "ordinal": 0,
+  "payload": {
+    "branch": "main",
+    "copilotVersion": "1.5.0",
+    "cwd": "/home/dev/golden-project",
+    "endTs": "2025-06-01T10:00:15.000Z",
+    "modelChanges": [
+      {
+        "model": "claude-sonnet-4-20250514",
+        "timestamp": "2025-06-01T10:00:07.000Z",
+      },
+    ],
+    "parseStatus": {
+      "error": null,
+      "status": "ok",
+    },
+    "reasoningEffort": "medium",
+    "repository": "test-org/golden-project",
+    "selectedModel": "claude-sonnet-4-20250514",
+    "shutdown": {
+      "codeChanges": {
+        "src/index.ts": 1,
+      },
+      "conversationTokens": 4000,
+      "currentTokens": 6200,
+      "modelMetrics": [
+        {
+          "apiDurationMs": 0,
+          "cacheReadTokens": 5550,
+          "cacheWriteTokens": 40,
+          "inputTokens": 7500,
+          "model": "claude-sonnet-4-20250514",
+          "outputTokens": 495,
+          "premiumRequestCost": 1,
+          "reasoningTokens": 0,
+          "requestCount": 4,
+        },
+      ],
+      "systemTokens": 1800,
+      "timestamp": "2025-06-01T10:00:15.000Z",
+      "toolDefinitionsTokens": 400,
+      "totalApiDurationMs": 9000,
+      "totalPremiumRequests": 4,
+    },
+    "startTs": "2025-06-01T10:00:00.000Z",
+    "success": true,
+  },
+  "payloadSchema": "copilot-cli/metadata/v1",
+  "schemaVersion": 1,
+  "sessionId": "golden-copilot-001",
+  "sourceMachine": "test-host",
+  "tool": "copilot-cli",
+  "toolVersion": "1.5.0",
+}
+`;
