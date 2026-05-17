@@ -19,6 +19,7 @@ function makeDay(
 ): DailyAnalytics {
   return {
     cost: null,
+    avgTokensPerCost: null,
     wallTimeMs: null,
     inputTokens: 0,
     outputTokens: 0,
