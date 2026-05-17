@@ -163,7 +163,10 @@ export const ModelBreakdownTable = memo(function ModelBreakdownTable({
           >
             <th style={{ padding: '6px 8px', fontWeight: 600 }}>Model</th>
             <th style={{ padding: '6px 8px', fontWeight: 600, textAlign: 'right' }}>Sessions</th>
-            <th style={{ padding: '6px 8px', fontWeight: 600, textAlign: 'right' }}>Tokens</th>
+            <th style={{ padding: '6px 8px', fontWeight: 600, textAlign: 'right' }}>Input</th>
+            <th style={{ padding: '6px 8px', fontWeight: 600, textAlign: 'right' }}>Output</th>
+            <th style={{ padding: '6px 8px', fontWeight: 600, textAlign: 'right' }}>Cache Read</th>
+            <th style={{ padding: '6px 8px', fontWeight: 600, textAlign: 'right' }}>Cache Write</th>
             <th style={{ padding: '6px 8px', fontWeight: 600, textAlign: 'right' }}>Share</th>
             <th style={{ padding: '6px 8px', fontWeight: 600, textAlign: 'right' }}>Est. cost</th>
             <th style={{ padding: '6px 8px', fontWeight: 600, textAlign: 'right' }}>Avg tk/$</th>
@@ -198,7 +201,16 @@ export const ModelBreakdownTable = memo(function ModelBreakdownTable({
                   {row.sessionCount}
                 </td>
                 <td style={{ padding: '6px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                  {formatTokens(row.totalTokens)}
+                  {formatTokens(row.inputTokens)}
+                </td>
+                <td style={{ padding: '6px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  {formatTokens(row.outputTokens)}
+                </td>
+                <td style={{ padding: '6px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  {formatTokens(row.cacheReadTokens)}
+                </td>
+                <td style={{ padding: '6px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  {formatTokens(row.cacheWriteTokens)}
                 </td>
                 <td style={{ padding: '6px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                   {share}%
