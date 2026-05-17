@@ -1,0 +1,23 @@
+{
+  "name": "@agent-profiler/integration-tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@agent-profiler/enrichment-core": "workspace:*",
+    "@agent-profiler/adapters-vscode-chat": "workspace:*",
+    "@agent-profiler/adapters-claude-code": "workspace:*",
+    "@agent-profiler/source-copilot-cli": "workspace:*",
+    "@agent-profiler/source-vscode-chat": "workspace:*",
+    "@agent-profiler/source-claude-code": "workspace:*",
+    "@agent-profiler/sync-engine": "workspace:*",
+    "@agent-profiler/test-fixtures": "workspace:*",
+    "vitest": "^3.2.1"
+  }
+}
