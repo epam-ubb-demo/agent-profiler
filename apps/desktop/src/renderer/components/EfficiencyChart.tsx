@@ -1,5 +1,5 @@
 import { Text } from '@epam/uui';
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PricingTable } from '@agent-profiler/pricing';
 
@@ -9,12 +9,9 @@ import { reversePathCommands, smoothPath } from './svg-path-utils';
 /* ─── Chart geometry ────────────────────────────────────────────────────────── */
 
 const MARGIN = { top: 16, right: 16, bottom: 32, left: 36 } as const;
-/** Fixed viewBox dimensions — SVG scales to its container via width="100%". */
-const VIEW_W = 800;
 const SVG_HEIGHT = 180;
 const DOT_RADIUS = 3.5;
 
-const CHART_W = VIEW_W - MARGIN.left - MARGIN.right;
 const CHART_H = SVG_HEIGHT - MARGIN.top - MARGIN.bottom;
 const CHART_Y = MARGIN.top;
 
@@ -73,7 +70,21 @@ export const EfficiencyChart = memo(function EfficiencyChart({
 }: EfficiencyChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const [width, setWidth] = useState(800);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w != null && w > 0) setWidth((prev) => (prev === w ? prev : w));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const chartW = Math.max(width - MARGIN.left - MARGIN.right, 1);
 
   // Memoise max rates — recomputed only when pricingTable changes
   const { maxInputRate, maxOutputRate } = useMemo(() => {
@@ -160,21 +171,21 @@ export const EfficiencyChart = memo(function EfficiencyChart({
   // X positions
   const n = points.length;
   const xScale = useCallback(
-    (i: number) => (n === 1 ? CHART_W / 2 : (i / (n - 1)) * CHART_W),
-    [n],
+    (i: number) => (n === 1 ? chartW / 2 : (i / (n - 1)) * chartW),
+    [n, chartW],
   );
 
   // Hit rects — one per data column, spanning the full chart height
   const hitRects = useMemo(() => {
     return points.map((_, i) => {
       const x = MARGIN.left + xScale(i);
-      const halfGap = n > 1 ? (CHART_W / (n - 1)) / 2 : CHART_W / 2;
+      const halfGap = n > 1 ? (chartW / (n - 1)) / 2 : chartW / 2;
       return {
         x: Math.max(MARGIN.left, x - halfGap),
-        width: Math.min(halfGap * 2, CHART_W),
+        width: Math.min(halfGap * 2, chartW),
       };
     });
-  }, [n, xScale]);
+  }, [n, xScale, chartW]);
 
   // Total savings line — segments split at gaps (null savings)
   const totalSegments = useMemo((): Array<Array<{ x: number; y: number; idx: number }>> => {
@@ -241,7 +252,7 @@ export const EfficiencyChart = memo(function EfficiencyChart({
   // X-axis labels
   const xLabels = useMemo(() => {
     if (n === 0) return [];
-    const maxLabels = Math.max(2, Math.floor(CHART_W / 70));
+    const maxLabels = Math.max(2, Math.floor(chartW / 70));
     const step = Math.max(1, Math.ceil(n / maxLabels));
     const labels: Array<{ x: number; text: string }> = [];
     for (let i = 0; i < n; i += step) {
@@ -251,7 +262,7 @@ export const EfficiencyChart = memo(function EfficiencyChart({
       });
     }
     return labels;
-  }, [n, points, granularity, xScale]);
+  }, [n, points, granularity, xScale, chartW]);
 
   // Y-axis gridlines: 0%, 25%, 50%, 75%, 100%
   const yTicks = [0, 25, 50, 75, 100];
@@ -284,8 +295,8 @@ export const EfficiencyChart = memo(function EfficiencyChart({
       <div ref={containerRef} style={{ width: '100%', position: 'relative' }}>
         <svg
           ref={svgRef}
-          viewBox={`0 0 ${VIEW_W} ${SVG_HEIGHT}`}
-          width="100%"
+          width={width}
+          height={SVG_HEIGHT}
           role="img"
           aria-label="Cost savings chart"
           data-testid="efficiency-chart"
@@ -297,7 +308,7 @@ export const EfficiencyChart = memo(function EfficiencyChart({
               <g key={tick}>
                 <line
                   x1={MARGIN.left}
-                  x2={MARGIN.left + CHART_W}
+                  x2={MARGIN.left + chartW}
                   y1={y}
                   y2={y}
                   stroke={GRID_COLOUR}
